@@ -50,10 +50,20 @@ Optional website pairing is enabled through `fancontrol.pairingUrl=https://pair.
 Use Android Studio or JDK 17+ with Android SDK 36. Configure the local SDK through Android Studio or ignored `local.properties`.
 
 ```sh
-./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+./gradlew validateDebug
 ```
 
-On Windows use `gradlew.bat`. Output: `app/build/outputs/apk/debug/app-debug.apk`. CI retains debug APKs for seven days. Keep release signing keys outside Git.
+On Windows run `./gradlew.bat validateDebug` from PowerShell. You can also run the root `validateDebug` task from Android Studio's Gradle window.
+
+Validation runs on your computer: it builds the debug APK, runs unit tests and runs Android lint, failing if any task fails. Run it before pushing changes or submitting a pull request. This replaces the GitHub Actions workflow; no hosted runner is used and pushes/pull requests no longer start automatic checks.
+
+Local outputs (ignored by Git):
+
+- APK: `app/build/outputs/apk/debug/app-debug.apk`
+- Unit-test report: `app/build/reports/tests/testDebugUnitTest/index.html`
+- Lint report: `app/build/reports/lint-results-debug.html`
+
+Outputs remain locally until cleaned or replaced by a later build; there is no GitHub artifact upload or seven-day retention. Share the APK manually when needed. Keep release signing keys outside Git.
 
 Tests cover fan conversions, settings migration, encrypted traffic, tamper rejection, revoked access, endpoint fallback, command non-replay, cancellation, visible-page gating, REST payloads and tile events. Real-watch discovery, layout, platform timing, Keystore behavior and physical control still need a hardware check.
 
