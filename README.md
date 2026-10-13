@@ -14,7 +14,7 @@ HA's Configure screen manages devices, addresses and revocation. Each watch also
 
 Fans support power and six speeds, preserving **16%, 33%, 50%, 66%, 83%, 100%**. Lights, switches and input booleans support power; scenes and scripts have Run. Only explicitly approved devices and supported commands can be accessed. Other domains have no network control adapter.
 
-Tap the tile's device title or **Open device controls** for vertical swipe pages. The active tile device is the first page; other devices follow. Native tiles use the system's horizontal carousel, so vertical paging lives in the full-screen controls activity. Neighbouring pages render without connecting; only a visible settled page reads state. Starting a swipe or leaving cancels previous work.
+The fan tile has a large power toggle and **− / current speed / +** controls. Tap **More controls** or **Open device controls** for vertical swipe pages. The active tile device is the first page; other devices follow. Native tiles use the system's horizontal carousel, so vertical paging lives in the full-screen controls activity. Neighbouring pages render without connecting; only a visible settled page reads state. Starting a swipe or leaving cancels previous work.
 
 ## Connections and battery
 
@@ -23,11 +23,11 @@ Tap the tile's device title or **Open device controls** for vertical swipe pages
 - Pairing polls every five seconds while its screen is foreground, for up to ten minutes. Leaving cancels the session; return to generate another code.
 - The pairing screen stays awake only during that setup window. A successful handoff is read back from encrypted storage, acknowledged, and opens the controls; restored completed setup screens return to controls without starting another pairing session.
 - Ordinary tile/resources/prefetch requests render locally. Configuration/state reads occur on tile entry, explicit refresh/tap, or visible settled controls pages.
-- No periodic updates, WebSocket subscriptions, background jobs, alarms, push notifications, foreground service, or idle connection pool.
-- Integration reads try the local address, then HTTPS remote access if the local connection fails. Commands use the endpoint established by a preceding read and are never automatically replayed after ambiguous failures.
-- Requests have a 2.5-second timeout per endpoint; fallback can require two attempts. Leaving cancels outstanding calls when the platform delivers the event.
-- Wear OS can delay/batch visibility events. Historical entries older than two seconds and batches ending in leave are ignored. Some watches may need Refresh. An already-started bounded request can finish before a delayed leave event arrives.
-- State is a confirmed snapshot, not a live stream. Cached states show **Last:**. Stale button taps become refreshes if an automation changed the selected device, preventing the action being redirected to a new device.
+- While the tile is visible, refresh five seconds after the previous operation finishes. Leaving the tile, turning the display off, or destroying the service cancels polling and network calls. No background jobs, alarms, push notifications, foreground service, or idle connection pool.
+- Integration reads initially try the local address, then HTTPS remote access if the local connection fails. Successful routes are remembered for that configuration during the app process, avoiding repeated attempts at an unreachable local address over Bluetooth. Commands use the endpoint established by a preceding read and are never automatically replayed after ambiguous failures.
+- Requests have a six-second timeout per endpoint with short connection timeouts; fallback can require two attempts. Fan commands reread the actual state, send once, then check for the requested result up to six times, spaced 350 ms apart. Unconfirmed commands display an error rather than a guessed success. Refreshes cannot cancel an in-progress command.
+- The sideload build targets API 35 to retain immediate tile enter/leave callbacks on Wear OS 6. API 36 batches these events and cannot provide reliable immediate visibility for foreground-only polling. Compile SDK remains 36. Historical batched entries and batches ending in leave are ignored as a fallback; no freshness interval causes unseen refreshes.
+- State is a confirmed snapshot, not a live stream. Cached states are marked **Last known**; refresh failures are shown explicitly. Stale button taps become refreshes if an automation changed the selected device, preventing the action being redirected to a new device.
 
 Remote control needs internet access and remote access already enabled in HA. Changing every reachable HA address at once requires pairing again.
 

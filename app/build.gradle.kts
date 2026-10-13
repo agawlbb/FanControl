@@ -11,9 +11,9 @@ android {
     defaultConfig {
         applicationId = "dev.fancontrol.wear"
         minSdk = 30
-        targetSdk = 36
-        versionCode = 4
-        versionName = "1.1.2"
+        targetSdk = 35
+        versionCode = 5
+        versionName = "1.2.0"
         val pairingUrl = localSettings.getProperty("fancontrol.pairingUrl", "")
         buildConfigField("String", "PAIRING_BASE_URL", "\"" + pairingUrl.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
     }

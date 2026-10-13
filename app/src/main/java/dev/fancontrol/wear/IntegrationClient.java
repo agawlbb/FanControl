@@ -18,22 +18,26 @@ final class IntegrationClient {
     private volatile Call active;
     private volatile boolean cancelled;
     private String endpoint;
+    private static final java.util.concurrent.ConcurrentHashMap<String, String> endpoints = new java.util.concurrent.ConcurrentHashMap<>();
     IntegrationClient(ConnectionSettings settings) {
-        this(settings, new OkHttpClient.Builder().callTimeout(2500, TimeUnit.MILLISECONDS)
-                .connectTimeout(1500, TimeUnit.MILLISECONDS).readTimeout(2, TimeUnit.SECONDS)
+        this(settings, new OkHttpClient.Builder().callTimeout(6000, TimeUnit.MILLISECONDS)
+                .connectTimeout(1500, TimeUnit.MILLISECONDS).readTimeout(5, TimeUnit.SECONDS)
                 .retryOnConnectionFailure(false).followRedirects(false).followSslRedirects(false)
                 .connectionPool(new ConnectionPool(0, 1, TimeUnit.SECONDS)).build());
     }
-    IntegrationClient(ConnectionSettings settings, OkHttpClient http) { this.settings = settings; this.http = http; endpoint = settings.baseUrl(); }
+    IntegrationClient(ConnectionSettings settings, OkHttpClient http) { this.settings = settings; this.http = http; endpoint = endpoints.getOrDefault(routeKey(settings), settings.baseUrl());
+        if (!endpoint.equals(settings.baseUrl()) && !endpoint.equals(settings.remoteUrl())) endpoint = settings.baseUrl(); }
+    private static String routeKey(ConnectionSettings settings) { return settings.watchId() + "\n" + settings.baseUrl() + "\n" + settings.remoteUrl(); }
     void cancel() { cancelled = true; Call call = active; if (call != null) call.cancel(); }
     JSONObject request(JSONObject body) throws Exception {
         if (cancelled) throw new IOException("Cancelled");
-        try { return exchange(endpoint, body); }
+        try { JSONObject result = exchange(endpoint, body); endpoints.put(routeKey(settings), endpoint); return result; }
         catch (IOException failure) {
             // Never replay a command through another endpoint after an ambiguous response.
             if (cancelled || body.optString("action").equals("command") || settings.remoteUrl().isEmpty()
                     || settings.remoteUrl().equals(settings.baseUrl()) || failure instanceof Rejected) throw failure;
-            JSONObject result = exchange(settings.remoteUrl(), body); endpoint = settings.remoteUrl(); return result;
+            String fallback = endpoint.equals(settings.remoteUrl()) ? settings.baseUrl() : settings.remoteUrl();
+            JSONObject result = exchange(fallback, body); endpoint = fallback; endpoints.put(routeKey(settings), endpoint); return result;
         }
     }
     private JSONObject exchange(String url, JSONObject body) throws Exception {

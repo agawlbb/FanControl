@@ -32,22 +32,35 @@ public final class FanTileService extends TileService {
     private volatile IntegrationClient configuration;
     private volatile String message = "Last known state";
     private volatile boolean fresh;
+    private boolean visible, commandBusy;
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable poll = () -> {
+        if (visible && getSystemService(android.os.PowerManager.class).isInteractive()) refreshOnView();
+        else leave();
+    };
     private static final int MINT = 0xFF70E2C2;
     private static final int WHITE = 0xFFF4F7F6;
+    private final android.content.BroadcastReceiver screenOff = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context context, android.content.Intent intent) { leave(); }
+    };
+
+    @Override public void onCreate() {
+        super.onCreate();
+        android.content.IntentFilter filter = new android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF);
+        if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(screenOff, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(screenOff, filter);
+    }
 
     @Override protected ListenableFuture<TileBuilders.Tile> onTileRequest(RequestBuilders.TileRequest request) {
         String click = request.getCurrentState().getLastClickableId();
         SharedPreferences handled = getSharedPreferences("actions", MODE_PRIVATE);
         // Click IDs are unique per layout. Wear may repeat a request containing the last click.
-        if (click != null && click.matches("(toggle|activate|speed[1-6]|refresh):([a-f0-9]{16}:)?[a-f0-9-]+")
+        if (click != null && click.matches("(toggle|activate|slower|faster|speed[1-6]|refresh):([a-f0-9]{16}:)?[a-f0-9-]+")
                 && !click.equals(handled.getString("last", ""))) {
             handled.edit().putString("last", click).commit();
-            int ticket = startOperation();
-            return worker.submit(() -> {
-                String[] pieces = click.split(":");
-                fetch(pieces[0], ticket, pieces.length == 3 ? pieces[1] : "");
-                return tile();
-            });
+            String[] pieces = click.split(":");
+            if (!commandBusy) { visible = true; runOperation(pieces[0], pieces.length == 3 ? pieces[1] : ""); }
+            return Futures.immediateFuture(tile());
         }
         // Prefetch, add, resource, and other unsolicited requests never open a connection.
         return Futures.immediateFuture(tile());
@@ -65,8 +78,8 @@ public final class FanTileService extends TileService {
         if (latest == null) return Futures.immediateVoidFuture();
         boolean enter = latest.getEventType() == EventBuilders.TileInteractionEvent.ENTER;
         InteractionGate.Decision decision = gate.accept(latest.getTimestamp().toEpochMilli(), enter, System.currentTimeMillis());
-        if (decision == InteractionGate.Decision.LEAVE) stopOperation();
-        if (decision == InteractionGate.Decision.REFRESH) return refreshOnView();
+        if (decision == InteractionGate.Decision.LEAVE) leave();
+        if (decision == InteractionGate.Decision.REFRESH && getSystemService(android.os.PowerManager.class).isInteractive()) return refreshOnView();
         return Futures.immediateVoidFuture();
     }
 
@@ -74,9 +87,9 @@ public final class FanTileService extends TileService {
     @Override protected void onTileEnterEvent(EventBuilders.TileEnterEvent event) { refreshOnView(); }
 
     @SuppressWarnings("deprecation")
-    @Override protected void onTileLeaveEvent(EventBuilders.TileLeaveEvent event) { stopOperation(); }
+    @Override protected void onTileLeaveEvent(EventBuilders.TileLeaveEvent event) { leave(); }
 
-    @Override protected void onTileRemoveEvent(EventBuilders.TileRemoveEvent event) { stopOperation(); }
+    @Override protected void onTileRemoveEvent(EventBuilders.TileRemoveEvent event) { leave(); }
 
     private int startOperation() {
         stopOperation();
@@ -91,12 +104,23 @@ public final class FanTileService extends TileService {
         fresh = false;
     }
 
+    private void leave() { visible = false; handler.removeCallbacks(poll); commandBusy = false; stopOperation(); }
     private ListenableFuture<Void> refreshOnView() {
-        int ticket = startOperation();
-        return worker.submit(() -> {
-            fetch("refresh", ticket, "");
-            if (ticket == generation.get()) getUpdater(this).requestUpdate(FanTileService.class);
-            return null;
+        visible = true;
+        if (!commandBusy) runOperation("refresh", "");
+        return Futures.immediateVoidFuture();
+    }
+    private void runOperation(String action, String target) {
+        handler.removeCallbacks(poll);
+        int ticket = startOperation(); commandBusy = !action.equals("refresh");
+        if (commandBusy) message = "Updating…";
+        worker.execute(() -> {
+            fetch(action, ticket, target);
+            handler.post(() -> {
+                if (ticket != generation.get()) return;
+                commandBusy = false; getUpdater(this).requestUpdate(FanTileService.class);
+                if (visible) handler.postDelayed(poll, 5000);
+            });
         });
     }
 
@@ -121,7 +145,7 @@ public final class FanTileService extends TileService {
             if (ticket == generation.get()) {
                 new StateCache(this).saveSnapshot(state);
                 fresh = true;
-                message = "Tap to refresh";
+                message = "Updated";
             }
         } catch (Exception error) {
             if (ticket == generation.get()) {
@@ -130,7 +154,7 @@ public final class FanTileService extends TileService {
                 String text = error.getMessage();
                 message = List.of("Check access token", "Check fan entity ID", "Fan unavailable",
                         "Speed control unsupported", "Home Assistant error").contains(text == null ? "" : text)
-                        ? text : "Offline · tap to retry";
+                        ? text : "Waiting for fan confirmation".equals(text) ? "Not confirmed · refresh" : "Offline · tap to retry";
             }
         } finally { if (active == client) active = null; configuration = null; }
     }
@@ -141,38 +165,33 @@ public final class FanTileService extends TileService {
         boolean configured = settings != null;
         LayoutElementBuilders.Column.Builder content = new LayoutElementBuilders.Column.Builder()
                 .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER);
-        content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(128)).setHeight(dp(18))
-                .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? controlsClick() : setupClick())
-                        .setSemantics(new ModifiersBuilders.Semantics.Builder().setContentDescription("Open device controls").build()).build())
-                .addContent(text(configured ? settings.devices().get(0).title() : "Fan Control", 14, WHITE)).build());
-        content.addContent(spacer(2));
-        content.addContent(text(state == null ? "State unknown" : (fresh ? "" : "Last: ") + state.status(), 13, MINT));
-        content.addContent(spacer(4));
-        java.util.List<DeviceController.Control> controls = state == null ? List.of() : state.controls();
-        if (controls.isEmpty()) content.addContent(button(configured ? "Refresh" : "Set up", "refresh", 124, 32, configured, false, "Refresh device state"));
-        else {
-            DeviceController.Control power = controls.get(0);
-            content.addContent(button(power.label(), power.action(), 124, 32, configured && power.enabled(), power.selected(), power.label()));
-        }
-        content.addContent(spacer(4));
-        for (int row = 0; row < (Math.max(0, controls.size() - 1) + 2) / 3; row++) {
-            LayoutElementBuilders.Row.Builder speeds = new LayoutElementBuilders.Row.Builder();
-            for (int column = 0; column < 3; column++) {
-                int speed = row * 3 + column + 1;
-                if (speed >= controls.size()) break;
-                if (column != 0) speeds.addContent(new LayoutElementBuilders.Spacer.Builder().setWidth(dp(4)).build());
-                DeviceController.Control control = controls.get(speed);
-                speeds.addContent(button(control.label(), control.action(), 44, 40,
-                        configured && control.enabled(), control.selected(), control.label()));
-            }
-            content.addContent(speeds.build());
-            if (row == 0) content.addContent(spacer(4));
-        }
-        content.addContent(spacer(4));
-        content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(144)).setHeight(dp(22))
-                .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? click("refresh") : setupClick())
-                        .setSemantics(new ModifiersBuilders.Semantics.Builder().setContentDescription(configured ? "Refresh fan state" : "Open setup").build()).build())
-                .addContent(text(configured ? message : "Open app to set up", 10, WHITE)).build());
+        List<DeviceController.Control> controls = state == null ? List.of() : state.controls();
+        boolean fan = configured && settings.devices().get(0).domain().equals("fan");
+        boolean on = state != null && state.status().startsWith("On");
+        boolean available = !controls.isEmpty() && controls.get(0).enabled();
+        String power = !configured ? "SET UP" : controls.isEmpty() ? "REFRESH" : !available ? "UNKNOWN" : fan ? on ? "ON" : "OFF" : controls.get(0).label();
+        content.addContent(button(power, controls.isEmpty() ? "refresh" : controls.get(0).action(), 160, 60,
+                configured && !commandBusy && (controls.isEmpty() || available), on, "Toggle power", available ? 30 : 22));
+        content.addContent(spacer(8));
+        if (fan) {
+            int speed = state != null && state.status().startsWith("Off") ? 0 : -1;
+            for (DeviceController.Control control : controls)
+                if (control.selected() && control.action().matches("speed[1-6]")) speed = Integer.parseInt(control.action().substring(5));
+            boolean enabled = controls.size() > 1 && controls.get(1).enabled() && !commandBusy;
+            LayoutElementBuilders.Row.Builder row = new LayoutElementBuilders.Row.Builder();
+            row.addContent(button("−", "slower", 54, 58, enabled && speed > 1, false, "Slower", 34));
+            row.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(52)).setHeight(dp(58))
+                    .addContent(text(state == null || !available || speed < 0 ? "?" : Integer.toString(speed), 40, WHITE)).build());
+            row.addContent(button("+", "faster", 54, 58, enabled && speed < 6, false, "Faster", 34));
+            content.addContent(row.build());
+        } else content.addContent(text(state == null ? "State unknown" : state.status(), 20, WHITE));
+        content.addContent(spacer(6));
+        content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(150)).setHeight(dp(22))
+                .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? click("refresh") : setupClick()).build())
+                .addContent(text(commandBusy ? "Updating…" : configured ? fresh ? message : message.equals("Last known state") ? "Last known · refresh" : message : "Open app to set up", 11, WHITE)).build());
+        content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(120)).setHeight(dp(18))
+                .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? controlsClick() : setupClick()).build())
+                .addContent(text("More controls", 10, WHITE)).build());
         LayoutElementBuilders.Box root = new LayoutElementBuilders.Box.Builder()
                 .setWidth(DimensionBuilders.expand()).setHeight(DimensionBuilders.expand())
                 .setModifiers(new ModifiersBuilders.Modifiers.Builder().setBackground(new ModifiersBuilders.Background.Builder()
@@ -214,7 +233,7 @@ public final class FanTileService extends TileService {
     }
 
     private LayoutElementBuilders.Box button(String label, String action, int width, int height,
-                                              boolean enabled, boolean selected, String description) {
+                                              boolean enabled, boolean selected, String description, int fontSize) {
         ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder()
                 .setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(selected ? MINT : 0xFF24332F))
                         .setCorner(new ModifiersBuilders.Corner.Builder().setRadius(dp(16)).build()).build())
@@ -222,11 +241,13 @@ public final class FanTileService extends TileService {
         if (enabled) modifiers.setClickable(click(action));
         else if (new SecureSettings(this).load() == null) modifiers.setClickable(setupClick());
         return new LayoutElementBuilders.Box.Builder().setWidth(dp(width)).setHeight(dp(height))
-                .setModifiers(modifiers.build()).addContent(text(label, 16, selected ? 0xFF001F16 : enabled ? WHITE : 0xFF87918D)).build();
+                .setModifiers(modifiers.build()).addContent(text(label, fontSize, selected ? 0xFF001F16 : enabled ? WHITE : 0xFF87918D)).build();
     }
 
     @Override public void onDestroy() {
-        stopOperation();
+        leave();
+        handler.removeCallbacksAndMessages(null);
+        unregisterReceiver(screenOff);
         worker.shutdownNow();
         super.onDestroy();
     }

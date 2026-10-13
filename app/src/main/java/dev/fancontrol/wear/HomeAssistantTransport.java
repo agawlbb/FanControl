@@ -19,8 +19,8 @@ final class HomeAssistantTransport {
     private volatile boolean cancelled;
 
     HomeAssistantTransport(ConnectionSettings settings) {
-        this(settings, new OkHttpClient.Builder().callTimeout(2500, TimeUnit.MILLISECONDS)
-                .connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS)
+        this(settings, new OkHttpClient.Builder().callTimeout(6000, TimeUnit.MILLISECONDS)
+                .connectTimeout(2, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS)
                 .retryOnConnectionFailure(false).followRedirects(false).followSslRedirects(false)
                 .connectionPool(new okhttp3.ConnectionPool(0, 1, TimeUnit.SECONDS)).build());
     }

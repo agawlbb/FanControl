@@ -75,4 +75,37 @@ public class HomeAssistantClientTest {
             assertEquals("Home Assistant error", error.getMessage()); assertEquals(2, server.getRequestCount());
         }
     }
+    @Test public void delayedFanStateIsReadUntilConfirmedWithoutResendingCommand() throws Exception {
+        server.enqueue(new MockResponse().setBody(ON));
+        server.enqueue(new MockResponse().setBody("[]"));
+        server.enqueue(new MockResponse().setBody(ON));
+        server.enqueue(new MockResponse().setBody(OFF));
+        assertFalse(client.command("toggle").on());
+        assertEquals(4, server.getRequestCount());
+        server.takeRequest();
+        assertEquals("POST", server.takeRequest().getMethod());
+        assertEquals("GET", server.takeRequest().getMethod());
+        assertEquals("GET", server.takeRequest().getMethod());
+    }
+    @Test public void fasterUsesFreshServerSpeedAndOriginalPercentageMapping() throws Exception {
+        server.enqueue(new MockResponse().setBody(ON));
+        server.enqueue(new MockResponse().setBody("[]"));
+        server.enqueue(new MockResponse().setBody(ON.replace("50", "66")));
+        assertEquals(4, client.command("faster").speed());
+        server.takeRequest();
+        assertEquals(66, new JSONObject(server.takeRequest().getBody().readUtf8()).getInt("percentage"));
+    }
+    @Test public void fasterAtMaximumDoesNotSendAnotherCommand() throws Exception {
+        server.enqueue(new MockResponse().setBody(ON.replace("50", "100")));
+        assertEquals(6, client.command("faster").speed());
+        assertEquals(1, server.getRequestCount());
+    }
+    @Test public void unconfirmedStateIsNotReportedAsSuccess() throws Exception {
+        server.enqueue(new MockResponse().setBody(ON));
+        server.enqueue(new MockResponse().setBody("[]"));
+        for (int i = 0; i < 6; i++) server.enqueue(new MockResponse().setBody(ON));
+        try { client.command("toggle"); fail(); }
+        catch (java.io.IOException expected) { assertEquals("Waiting for fan confirmation", expected.getMessage()); }
+        assertEquals(8, server.getRequestCount());
+    }
 }
