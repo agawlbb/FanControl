@@ -33,6 +33,12 @@ public final class MainActivity extends Activity {
         column.setPadding(dp(28), dp(30), dp(28), dp(36));
         scroll.addView(column);
         heading(column, "Fan Control", 21);
+        if (!BuildConfig.PAIRING_BASE_URL.isBlank()) {
+            Button pair = new Button(this);
+            pair.setText("Pair with website");
+            column.addView(pair);
+            pair.setOnClickListener(view -> startActivity(new android.content.Intent(this, PairingActivity.class)));
+        }
         heading(column, "Connect directly from your watch. Add the tile after saving.", 13);
         url = field(column, "Home Assistant HTTPS URL", "https://ha.example.com", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         entity = field(column, "Fan entity ID", "fan.example", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);

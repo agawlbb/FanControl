@@ -10,6 +10,12 @@ The tile shows confirmed on/off state, highlights the current speed, offers one 
 2. Open **Fan Control** on the watch. Enter your Home Assistant HTTPS base address, a long-lived access token, and the fan entity ID. Save the connection.
 3. Add **Fan Control** from the watch's tile picker. Swipe to the tile to fetch the state.
 
+### Optional website pairing
+
+Set `fancontrol.pairingUrl=https://pair.example.com/FanControl` in the ignored `local.properties` file before building to enable **Pair with website**. The endpoint is compiled into that APK but not committed to Git. The matching pairing website is a separate project using protocol v1.
+
+The watch displays an eight-digit code and public-key fingerprint. Enter the code on the website, compare fingerprints, and provide the connection details there. The browser encrypts the settings to an ephemeral RSA key held only by this watch; decrypted settings are stored in Android Keystore-backed encrypted storage. Setup polls at five-second intervals only while its screen is foreground, for at most ten minutes. Leaving setup cancels the connection and discards the session; return to generate a new code. This setup-only polling never contacts Home Assistant. Successful receipt is acknowledged to delete the relay package; unacknowledged packages expire on the server.
+
 Create a long-lived access token in your Home Assistant profile's security section. Prefer a dedicated, non-administrator account; treat the token as a password. The watch needs network access to the server. Use a trusted HTTPS certificate; HTTP and certificate bypasses are deliberately unsupported. A watch may use its existing Wi-Fi or phone network transport, but this app does not require a companion app.
 
 Speeds 1–6 map to 16%, 33%, 50%, 66%, 83%, and 100%, matching Home Assistant's integer percentage convention for a six-speed fan. Selecting a speed uses `fan.set_percentage` (which normally turns on the fan). Power uses `fan.turn_on` or `fan.turn_off` after checking the server's current state. The fan must support percentage speed control; fans exposing only preset names need an adapter/template fan in Home Assistant. For fans with a different number of physical speeds, these buttons represent six percentage levels and may map to fewer physical speeds.

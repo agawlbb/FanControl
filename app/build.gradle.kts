@@ -1,4 +1,10 @@
+import java.util.Properties
+
 plugins { id("com.android.application") }
+val localSettings = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) localFile.inputStream().use { load(it) }
+}
 android {
     namespace = "dev.fancontrol.wear"
     compileSdk = 36
@@ -8,11 +14,14 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
+        val pairingUrl = localSettings.getProperty("fancontrol.pairingUrl", "")
+        buildConfigField("String", "PAIRING_BASE_URL", "\"" + pairingUrl.replace("\\", "\\\\").replace("\"", "\\\"") + "\"")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    buildFeatures { buildConfig = true }
 }
 dependencies {
     implementation("androidx.wear.tiles:tiles:1.6.2")
