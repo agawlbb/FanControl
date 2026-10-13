@@ -100,7 +100,7 @@ public final class FanTileService extends TileService {
                 else {
                     clearSpeed();
                     ListenableFuture<Void> operation = runOperation(pieces[0], target);
-                    if (pieces[0].equals("refresh")) return Futures.transform(operation, ignored -> tile(), MoreExecutors.directExecutor());
+                    return Futures.transform(operation, ignored -> tile(), MoreExecutors.directExecutor());
                 }
             }
             return Futures.immediateFuture(tile());
