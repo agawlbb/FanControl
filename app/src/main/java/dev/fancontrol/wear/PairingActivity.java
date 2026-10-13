@@ -29,6 +29,7 @@ public final class PairingActivity extends Activity {
     private boolean visible, completed;
     private volatile int generation;
     private PairingProgress progress;
+    private VisibleWifi wifi;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -41,9 +42,10 @@ public final class PairingActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.setBackgroundColor(android.graphics.Color.BLACK);
         LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL); content.setGravity(Gravity.CENTER);
-        int padding = Math.round(22 * getResources().getDisplayMetrics().density);
-        content.setPadding(padding, padding, padding, padding); scroll.addView(content);
+        content.setOrientation(LinearLayout.VERTICAL); content.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        float density = getResources().getDisplayMetrics().density;
+        int side = Math.round(32 * density), edge = Math.round(40 * density);
+        content.setPadding(side, edge, side, edge); scroll.addView(content);
         label(content, "Pair your watch", 18);
         code = label(content, "Starting…", 25);
         status = label(content, "", 12);
@@ -59,9 +61,13 @@ public final class PairingActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         session = null;
         int ticket = ++generation;
-        code.setText("Starting…"); status.setText("Preparing secure pairing");
+        code.setText("Starting…"); status.setText("Connecting Wi-Fi…");
+        wifi = new VisibleWifi(this);
+        VisibleWifi connection = wifi;
         worker.execute(() -> {
             try {
+                connection.await();
+                if (ticket != generation) return;
                 KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA"); generator.initialize(2048);
                 KeyPair pair = generator.generateKeyPair();
                 if (ticket != generation) return;
@@ -125,7 +131,7 @@ public final class PairingActivity extends Activity {
     }
 
     private void showError(int ticket, String message) {
-        handler.post(() -> { if (visible && ticket == generation) { getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); code.setText("Try again"); status.setText(message); } });
+        handler.post(() -> { if (visible && ticket == generation) { getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); if (wifi != null) wifi.close(); code.setText("Try again"); status.setText(message); } });
     }
 
     private void openControls() {
@@ -141,6 +147,7 @@ public final class PairingActivity extends Activity {
 
     @Override protected void onPause() {
         visible = false; generation++; handler.removeCallbacksAndMessages(null);
+        if (wifi != null) wifi.close(); wifi = null;
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         PairingClient transport = client; if (transport != null) transport.cancel();
         client = null; keys = null; session = null;

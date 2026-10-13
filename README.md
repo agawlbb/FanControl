@@ -5,7 +5,7 @@ A standalone Wear OS 3+ app for Home Assistant controls. Pair locally through th
 ## Setup with Home Assistant
 
 1. Install the custom HA integration, restart HA, and add **Fan Control** from **Settings → Devices & services**.
-2. Install this app on your watch and connect it directly to home Wi-Fi. Choose **Find Home Assistant**, then select your discovered instance. Manual address entry is available when discovery is blocked.
+2. Install this app on your watch and save your home Wi-Fi network in the watch settings. Choose **Find Home Assistant**, then select your discovered instance. The app requests direct Wi-Fi during discovery and pairing, even when connected to a phone. Manual address entry is available when discovery is blocked.
 3. Keep the watch pairing screen visible. On a phone or computer, open **Fan Control → Configure → Pair a watch** in HA and enter the eight-digit code.
 4. Compare every fingerprint character, approve the match, and choose the watch's devices, active tile device, and local/remote addresses. Remote addresses must be working HTTPS endpoints; the integration suggests HA's external or Home Assistant Cloud address when available.
 5. Add the Fan Control tile. View it or tap Refresh to read your device's state.
@@ -19,6 +19,7 @@ Tap the tile's device title or **Open device controls** for vertical swipe pages
 ## Connections and battery
 
 - Local discovery uses HA's `_home-assistant._tcp.` mDNS advertisement during a bounded 20-second setup scan. The watch needs direct Wi-Fi access and a network allowing discovery traffic. Its multicast lock is released on timeout/pause.
+- Discovery and pairing request a saved Wi-Fi network, wait up to ten seconds for it, and release the request on pause, scan completion, or pairing failure/expiry. Normal controls and the tile use Wear OS's default connection, including the phone's Bluetooth network proxy; they do not hold Wi-Fi on.
 - Pairing polls every five seconds while its screen is foreground, for up to ten minutes. Leaving cancels the session; return to generate another code.
 - The pairing screen stays awake only during that setup window. A successful handoff is read back from encrypted storage, acknowledged, and opens the controls; restored completed setup screens return to controls without starting another pairing session.
 - Ordinary tile/resources/prefetch requests render locally. Configuration/state reads occur on tile entry, explicit refresh/tap, or visible settled controls pages.

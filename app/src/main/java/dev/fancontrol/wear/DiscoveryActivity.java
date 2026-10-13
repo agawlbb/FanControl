@@ -27,6 +27,7 @@ public final class DiscoveryActivity extends Activity {
     private TextView status;
     private int generation;
     private boolean resolving;
+    private VisibleWifi wifi;
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
         ScrollView scroll = new ScrollView(this); scroll.setBackgroundColor(Color.BLACK);
@@ -52,6 +53,11 @@ public final class DiscoveryActivity extends Activity {
     }
     private void startScan() {
         stopScan(); addresses.clear(); pending.clear(); resolving = false; results.removeAllViews();
+        status.setText("Connecting Wi-Fi…");
+        wifi = new VisibleWifi(this);
+        wifi.whenReady(this::scanConnected);
+    }
+    private void scanConnected() {
         ConnectivityManager connectivity = getSystemService(ConnectivityManager.class);
         boolean wifi = false;
         for (android.net.Network network : connectivity.getAllNetworks()) {
@@ -94,6 +100,7 @@ public final class DiscoveryActivity extends Activity {
     }
     private void stopScan() {
         generation++; handler.removeCallbacksAndMessages(null); pending.clear();
+        if (wifi != null) wifi.close(); wifi = null;
         if(discovery!=null) { try { nsd.stopServiceDiscovery(discovery); } catch(Exception ignored) { } discovery=null; }
         if(multicast!=null && multicast.isHeld()) multicast.release(); multicast=null;
     }
