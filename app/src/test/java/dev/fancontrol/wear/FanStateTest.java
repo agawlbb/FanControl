@@ -4,8 +4,8 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class FanStateTest {
-    @Test public void allSixSpeedsMapToFanPercentages() {
-        int[] expected = {17, 33, 50, 67, 83, 100};
+    @Test public void allSixSpeedsMapToHomeAssistantPercentages() {
+        int[] expected = {16, 33, 50, 66, 83, 100};
         for (int speed = 1; speed <= 6; speed++) {
             assertEquals(expected[speed - 1], FanState.percentageForSpeed(speed));
             assertEquals(speed, FanState.speedForPercentage(expected[speed - 1]));

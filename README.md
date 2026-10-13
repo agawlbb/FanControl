@@ -18,7 +18,7 @@ The watch displays an eight-digit code and public-key fingerprint. Enter the cod
 
 Create a long-lived access token in your Home Assistant profile's security section. Prefer a dedicated, non-administrator account; treat the token as a password. The watch needs network access to the server. Use a trusted HTTPS certificate; HTTP and certificate bypasses are deliberately unsupported. A watch may use its existing Wi-Fi or phone network transport, but this app does not require a companion app.
 
-Speeds 1–6 map to 17%, 33%, 50%, 67%, 83%, and 100%, matching this fan's six speed levels. Selecting a speed uses `fan.set_percentage` (which normally turns on the fan). Power uses `fan.turn_on` or `fan.turn_off` after checking the server's current state. The fan must support percentage speed control; fans exposing only preset names need an adapter/template fan in Home Assistant. For fans with a different number of physical speeds, these buttons represent six percentage levels and may map to fewer physical speeds.
+Speeds 1–6 map to 16%, 33%, 50%, 66%, 83%, and 100%, matching Home Assistant's integer percentage convention for a six-speed fan. Selecting a speed uses `fan.set_percentage` (which normally turns on the fan). Power uses `fan.turn_on` or `fan.turn_off` after checking the server's current state. The fan must support percentage speed control; fans exposing only preset names need an adapter/template fan in Home Assistant. For fans with a different number of physical speeds, these buttons represent six percentage levels and may map to fewer physical speeds.
 
 ## Battery and state freshness
 

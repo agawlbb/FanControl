@@ -6,7 +6,7 @@ import org.json.JSONObject;
 public record FanState(boolean on, int speed, boolean speedSupported, boolean available) {
     public static int percentageForSpeed(int speed) {
         if (speed < 1 || speed > 6) throw new IllegalArgumentException("Speed must be 1–6");
-        return Math.round(speed * 100 / 6.0f);
+        return speed * 100 / 6;
     }
 
     public static int speedForPercentage(double percentage) {
