@@ -32,6 +32,9 @@ public final class ControlsActivity extends Activity {
     private boolean resumed;
     private int selected;
     private int loading = -1;
+    private int configurationGeneration;
+    private volatile IntegrationClient configuration;
+    private boolean configurationReady;
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
@@ -61,7 +64,7 @@ public final class ControlsActivity extends Activity {
                 if (state != ViewPager2.SCROLL_STATE_IDLE) {
                     // Neighbour page creation and gestures must not prefetch network state.
                     session.suspend(); loading = -1;
-                } else if (resumed) session.resume();
+                } else if (resumed && configurationReady) session.resume();
             }
         });
         selected = saved == null ? 0 : Math.min(Math.max(0, saved.getInt("selected", 0)), settings.devices().size() - 1);
@@ -71,11 +74,35 @@ public final class ControlsActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume(); resumed = true;
+        configurationReady = false;
         if (session != null && !settings.equals(new SecureSettings(this).load())) { session.suspend(); recreate(); return; }
-        if (session != null && pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE) session.resume();
+        if (session != null && settings.integration()) {
+            session.suspend();
+            int ticket = ++configurationGeneration;
+            IntegrationClient client = new IntegrationClient(settings); configuration = client;
+            worker.execute(() -> {
+                try {
+                    ConnectionSettings updated = client.configuration();
+                    handler.post(() -> {
+                        if (!resumed || ticket != configurationGeneration) return;
+                        try {
+                            if (!settings.equals(updated)) {
+                                if (!settings.entityId().equals(updated.entityId())) new StateCache(this).clear();
+                                new SecureSettings(this).save(updated); selected = 0; recreate(); return;
+                            }
+                        } catch (Exception ignored) { }
+                        configurationReady = true;
+                        if (pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE) session.resume();
+                    });
+                } catch (Exception ignored) {
+                    handler.post(() -> { if (resumed && ticket == configurationGeneration) { configurationReady = true; if (pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE) session.resume(); } });
+                } finally { if(configuration == client) configuration = null; }
+            });
+        } else if (session != null) { configurationReady = true; if (pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE) session.resume(); }
     }
     @Override protected void onPause() {
         resumed = false;
+        configurationGeneration++; IntegrationClient client = configuration; if(client != null) client.cancel(); configuration = null;
         if (session != null) session.suspend();
         handler.removeCallbacksAndMessages(null); loading = -1;
         super.onPause();

@@ -26,13 +26,19 @@ final class PairingClient {
         @Override public String toString() { return "PairingSession[redacted]"; }
     }
     private final String baseUrl;
+    private final boolean integration;
     private final OkHttpClient http;
     private volatile Call active;
     private volatile boolean cancelled;
 
     PairingClient(String url) {
+        this(url, false);
+    }
+    PairingClient(String url, boolean integration) {
+        this.integration = integration;
         URI uri = URI.create(url);
-        if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null)
+        if (integration) ConnectionSettings.integrationAddress(url, false);
+        else if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null)
             throw new IllegalArgumentException("Pairing requires HTTPS");
         baseUrl = url.replaceAll("/+$", "");
         http = new OkHttpClient.Builder().callTimeout(6, TimeUnit.SECONDS).connectTimeout(3, TimeUnit.SECONDS)
@@ -42,9 +48,9 @@ final class PairingClient {
 
     private JSONObject request(String action, JSONObject body, String token) throws Exception {
         if (cancelled) throw new IllegalStateException("Cancelled");
-        Request.Builder builder = new Request.Builder().url(baseUrl + "/api.php?action=" + action)
+        Request.Builder builder = new Request.Builder().url(baseUrl + (integration ? "/api/fan_control/pair/" + action : "/api.php?action=" + action))
                 .post(RequestBody.create(body.toString(), MediaType.get("application/json")));
-        if (token != null) builder.header("Authorization", "Bearer " + token);
+        if (token != null) builder.header(integration ? "X-Fan-Control-Pairing" : "Authorization", integration ? token : "Bearer " + token);
         Call call = http.newCall(builder.build());
         active = call;
         if (cancelled) call.cancel();

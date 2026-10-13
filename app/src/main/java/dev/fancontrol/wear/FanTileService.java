@@ -28,7 +28,8 @@ public final class FanTileService extends TileService {
     private final ListeningExecutorService worker = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
     private final AtomicInteger generation = new AtomicInteger();
     private final InteractionGate gate = new InteractionGate();
-    private volatile HomeAssistantClient active;
+    private volatile DeviceController active;
+    private volatile IntegrationClient configuration;
     private volatile String message = "Last known state";
     private volatile boolean fresh;
     private static final int MINT = 0xFF70E2C2;
@@ -38,12 +39,13 @@ public final class FanTileService extends TileService {
         String click = request.getCurrentState().getLastClickableId();
         SharedPreferences handled = getSharedPreferences("actions", MODE_PRIVATE);
         // Click IDs are unique per layout. Wear may repeat a request containing the last click.
-        if (click != null && click.matches("(toggle|speed[1-6]|refresh):[a-f0-9-]+")
+        if (click != null && click.matches("(toggle|activate|speed[1-6]|refresh):([a-f0-9]{16}:)?[a-f0-9-]+")
                 && !click.equals(handled.getString("last", ""))) {
             handled.edit().putString("last", click).commit();
             int ticket = startOperation();
             return worker.submit(() -> {
-                fetch(click.substring(0, click.indexOf(':')), ticket);
+                String[] pieces = click.split(":");
+                fetch(pieces[0], ticket, pieces.length == 3 ? pieces[1] : "");
                 return tile();
             });
         }
@@ -83,33 +85,43 @@ public final class FanTileService extends TileService {
 
     private void stopOperation() {
         generation.incrementAndGet();
-        HomeAssistantClient client = active;
+        DeviceController client = active;
         if (client != null) client.cancel();
+        IntegrationClient config = configuration; if (config != null) config.cancel();
         fresh = false;
     }
 
     private ListenableFuture<Void> refreshOnView() {
         int ticket = startOperation();
         return worker.submit(() -> {
-            fetch("refresh", ticket);
+            fetch("refresh", ticket, "");
             if (ticket == generation.get()) getUpdater(this).requestUpdate(FanTileService.class);
             return null;
         });
     }
 
-    private void fetch(String action, int ticket) {
+    private void fetch(String action, int ticket, String displayedDevice) {
         if (ticket != generation.get()) return;
         ConnectionSettings settings = new SecureSettings(this).load();
         if (settings == null) { message = "Open app to set up"; return; }
-        HomeAssistantClient client = new HomeAssistantClient(settings);
-        active = client;
+        DeviceController client = null;
         try {
+            if (settings.integration()) {
+                IntegrationClient config = new IntegrationClient(settings); configuration = config;
+                if (ticket != generation.get()) { config.cancel(); return; }
+                ConnectionSettings updated = config.configuration();
+                if (ticket != generation.get()) return;
+                if (!settings.entityId().equals(updated.entityId())) new StateCache(this).clear();
+                new SecureSettings(this).save(updated); settings = updated;
+            }
+            action = TileTarget.action(settings, action, displayedDevice);
+            client = DeviceControllers.create(settings, settings.devices().get(0)); active = client;
             if (ticket != generation.get()) { client.cancel(); return; }
-            FanState state = action.equals("refresh") ? client.read() : client.command(action);
+            DeviceController.Snapshot state = action.equals("refresh") ? client.read() : client.command(action);
             if (ticket == generation.get()) {
-                new StateCache(this).save(state);
+                new StateCache(this).saveSnapshot(state);
                 fresh = true;
-                message = !state.available() ? "Fan unavailable" : state.speedSupported() ? "Tap to refresh" : "On/off only";
+                message = "Tap to refresh";
             }
         } catch (Exception error) {
             if (ticket == generation.get()) {
@@ -120,32 +132,38 @@ public final class FanTileService extends TileService {
                         "Speed control unsupported", "Home Assistant error").contains(text == null ? "" : text)
                         ? text : "Offline · tap to retry";
             }
-        } finally { if (active == client) active = null; }
+        } finally { if (active == client) active = null; configuration = null; }
     }
 
     private TileBuilders.Tile tile() {
-        FanState state = new StateCache(this).read();
-        boolean configured = new SecureSettings(this).load() != null;
+        DeviceController.Snapshot state = new StateCache(this).readSnapshot();
+        ConnectionSettings settings = new SecureSettings(this).load();
+        boolean configured = settings != null;
         LayoutElementBuilders.Column.Builder content = new LayoutElementBuilders.Column.Builder()
                 .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER);
         content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(128)).setHeight(dp(18))
                 .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? controlsClick() : setupClick())
                         .setSemantics(new ModifiersBuilders.Semantics.Builder().setContentDescription("Open device controls").build()).build())
-                .addContent(text("Fan Control", 14, WHITE)).build());
+                .addContent(text(configured ? settings.devices().get(0).title() : "Fan Control", 14, WHITE)).build());
         content.addContent(spacer(2));
-        content.addContent(text(state == null ? "State unknown" : (fresh ? "" : "Last: ") + state.label(), 13, MINT));
+        content.addContent(text(state == null ? "State unknown" : (fresh ? "" : "Last: ") + state.status(), 13, MINT));
         content.addContent(spacer(4));
-        content.addContent(button(configured ? state != null && state.on() ? "Turn off" : "Turn on" : "Set up",
-                "toggle", 124, 32, configured, false, "Toggle fan power"));
+        java.util.List<DeviceController.Control> controls = state == null ? List.of() : state.controls();
+        if (controls.isEmpty()) content.addContent(button(configured ? "Refresh" : "Set up", "refresh", 124, 32, configured, false, "Refresh device state"));
+        else {
+            DeviceController.Control power = controls.get(0);
+            content.addContent(button(power.label(), power.action(), 124, 32, configured && power.enabled(), power.selected(), power.label()));
+        }
         content.addContent(spacer(4));
-        for (int row = 0; row < 2; row++) {
+        for (int row = 0; row < (Math.max(0, controls.size() - 1) + 2) / 3; row++) {
             LayoutElementBuilders.Row.Builder speeds = new LayoutElementBuilders.Row.Builder();
             for (int column = 0; column < 3; column++) {
                 int speed = row * 3 + column + 1;
+                if (speed >= controls.size()) break;
                 if (column != 0) speeds.addContent(new LayoutElementBuilders.Spacer.Builder().setWidth(dp(4)).build());
-                boolean supported = configured && (state == null || state.speedSupported());
-                speeds.addContent(button(Integer.toString(speed), "speed" + speed, 44, 40,
-                        supported, state != null && state.on() && state.speed() == speed, "Set fan speed " + speed));
+                DeviceController.Control control = controls.get(speed);
+                speeds.addContent(button(control.label(), control.action(), 44, 40,
+                        configured && control.enabled(), control.selected(), control.label()));
             }
             content.addContent(speeds.build());
             if (row == 0) content.addContent(spacer(4));
@@ -178,7 +196,8 @@ public final class FanTileService extends TileService {
     }
 
     private ModifiersBuilders.Clickable click(String action) {
-        return new ModifiersBuilders.Clickable.Builder().setId(action + ":" + UUID.randomUUID())
+        ConnectionSettings settings = new SecureSettings(this).load();
+        return new ModifiersBuilders.Clickable.Builder().setId(action + ":" + TileTarget.key(settings) + ":" + UUID.randomUUID())
                 .setOnClick(new ActionBuilders.LoadAction.Builder().build()).build();
     }
 

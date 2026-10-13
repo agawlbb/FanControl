@@ -34,6 +34,8 @@ public final class MainActivity extends Activity {
         column.setPadding(dp(28), dp(30), dp(28), dp(36));
         scroll.addView(column);
         heading(column, "Fan Control", 21);
+        Button discover = new Button(this); discover.setText("Find Home Assistant"); column.addView(discover);
+        discover.setOnClickListener(view -> startActivity(new android.content.Intent(this, DiscoveryActivity.class)));
         openControls = new Button(this);
         openControls.setText("Open device controls");
         column.addView(openControls);
@@ -54,15 +56,18 @@ public final class MainActivity extends Activity {
             url.setText(saved.baseUrl());
             entity.setText(saved.entityId());
             token.setHint("Saved · leave blank to keep");
+            if (saved.integration()) { url.setEnabled(false); entity.setEnabled(false); token.setEnabled(false); }
         }
         Button save = new Button(this);
         save.setText("Save connection");
         column.addView(save);
-        status = heading(column, "Settings stay encrypted on this watch. HTTPS is required. No background polling.", 12);
+        status = heading(column, saved != null && saved.integration() ? "Managed in Home Assistant. Watch ID:\n" + saved.watchId()
+                : "Find HA to pair without a password. Manual connections require HTTPS. No background polling.", 12);
         save.setOnClickListener(view -> {
             try {
                 SecureSettings storage = new SecureSettings(this);
                 ConnectionSettings previous = storage.load();
+                if (previous != null && previous.integration()) throw new IllegalArgumentException("Manage this watch in Home Assistant, or forget it to set up again.");
                 String secret = token.getText().toString();
                 if (secret.isBlank() && previous != null) {
                     if (!url.getText().toString().trim().replaceAll("/+$", "").equals(previous.baseUrl()))
@@ -88,6 +93,7 @@ public final class MainActivity extends Activity {
                 new SecureSettings(this).clear();
                 new StateCache(this).clear();
                 url.setText(""); entity.setText(""); token.setText(""); token.setHint("Access token");
+                url.setEnabled(true); entity.setEnabled(true); token.setEnabled(true);
                 status.setText("Connection removed.");
                 openControls.setVisibility(android.view.View.GONE);
                 TileService.getUpdater(this).requestUpdate(FanTileService.class);
@@ -98,7 +104,13 @@ public final class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
-        openControls.setVisibility(new SecureSettings(this).load() == null ? android.view.View.GONE : android.view.View.VISIBLE);
+        ConnectionSettings current = new SecureSettings(this).load();
+        openControls.setVisibility(current == null ? android.view.View.GONE : android.view.View.VISIBLE);
+        if (current != null && current.integration()) {
+            url.setText(current.baseUrl()); entity.setText(current.entityId()); token.setText("");
+            url.setEnabled(false); entity.setEnabled(false); token.setEnabled(false);
+            status.setText("Managed in Home Assistant. Watch ID:\n" + current.watchId());
+        }
     }
 
     private TextView heading(LinearLayout parent, String text, int size) {
