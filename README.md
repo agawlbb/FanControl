@@ -5,7 +5,7 @@ A standalone Wear OS 3+ app for Home Assistant controls. Pair locally through th
 ## Setup with Home Assistant
 
 1. Install the custom HA integration, restart HA, and add **Fan Control** from **Settings → Devices & services**.
-2. Install this app on your watch and save your home Wi-Fi network in the watch settings. Choose **Find Home Assistant**, then select your discovered instance. The app requests direct Wi-Fi during discovery and pairing, even when connected to a phone. Manual address entry is available when discovery is blocked.
+2. Install this app on your watch and save your home Wi-Fi network in the watch settings. Choose **Find Home Assistant**, then select your discovered instance. The app requests direct Wi-Fi during discovery and pairing, even when connected to a phone. Discovery requires both devices on the same LAN and mDNS traffic allowed.
 3. Keep the watch pairing screen visible. On a phone or computer, open **Fan Control → Configure → Pair a watch** in HA and enter the eight-digit code.
 4. Compare every fingerprint character, approve the match, and choose the watch's devices, active tile device, and local/remote addresses. Remote addresses must be working HTTPS endpoints; the integration suggests HA's external or Home Assistant Cloud address when available.
 5. Add the Fan Control tile. View it or tap Refresh to read your device's state.
@@ -14,7 +14,7 @@ HA's Configure screen manages devices, addresses and revocation. Each watch also
 
 Fans support power and six speeds, preserving **16%, 33%, 50%, 66%, 83%, 100%**. Lights, switches and input booleans support power; scenes and scripts have Run. Only explicitly approved devices and supported commands can be accessed. Other domains have no network control adapter.
 
-The fan tile has a large power toggle and **− / current speed / +** controls. Tap **More controls** or **Open device controls** for vertical swipe pages. The active tile device is the first page; other devices follow. Native tiles use the system's horizontal carousel, so vertical paging lives in the full-screen controls activity. Neighbouring pages render without connecting; only a visible settled page reads state. Starting a swipe or leaving cancels previous work.
+The fan tile has a large power toggle and **− / current speed / +** controls. Speed taps accumulate locally and send one absolute speed three seconds after the last tap; the displayed draft is labelled as pending. Leaving before the quiet window expires discards it. Tap **More controls** or **Open device controls** for vertical swipe pages. The active tile device is the first page; other devices follow. Native tiles use the system's horizontal carousel, so vertical paging lives in the full-screen controls activity. Neighbouring pages render without connecting; only a visible settled page reads state. Starting a swipe or leaving cancels previous work.
 
 ## Connections and battery
 
@@ -41,11 +41,6 @@ Saved addresses, credentials, names and entity IDs are encrypted using Android K
 
 Repositories contain no personal addresses, installed entity IDs, tokens, signing keys or watch configuration. Test values are synthetic. Local configuration, output and tooling are ignored; commits use a generic identity. GitHub ownership/activity remain visible if repositories become public.
 
-## Existing manual and website pairing
-
-Existing saved fan connections and website protocol-v1 handoffs still work. Manual setup requires HTTPS, an HA access token and a `fan.…` entity. Prefer a dedicated non-administrator account for manual tokens. Standard fan service calls retain the original speed mappings; preset-only fans need an HA adapter.
-
-Optional website pairing is enabled through `fancontrol.pairingUrl=https://pair.example.com/FanControl` in ignored `local.properties`, compiled into that APK only. The website encrypts settings to the ephemeral watch key. Its setup polling never contacts HA. This mode is not needed by integration pairing.
 
 ## Build and validation
 

@@ -1,6 +1,5 @@
 package dev.fancontrol.wear;
 
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.MessageDigest;
@@ -20,26 +19,18 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.json.JSONObject;
 
-/** Setup-only transport. Neither this class nor the website contacts Home Assistant. */
+/** Setup-only transport for the Home Assistant integration. */
 final class PairingClient {
     record Session(String code, String deviceToken, String fingerprint, long expiresAt) {
         @Override public String toString() { return "PairingSession[redacted]"; }
     }
     private final String baseUrl;
-    private final boolean integration;
     private final OkHttpClient http;
     private volatile Call active;
     private volatile boolean cancelled;
 
     PairingClient(String url) {
-        this(url, false);
-    }
-    PairingClient(String url, boolean integration) {
-        this.integration = integration;
-        URI uri = URI.create(url);
-        if (integration) ConnectionSettings.integrationAddress(url, false);
-        else if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null)
-            throw new IllegalArgumentException("Pairing requires HTTPS");
+        ConnectionSettings.integrationAddress(url, false);
         baseUrl = url.replaceAll("/+$", "");
         http = new OkHttpClient.Builder().callTimeout(6, TimeUnit.SECONDS).connectTimeout(3, TimeUnit.SECONDS)
                 .readTimeout(4, TimeUnit.SECONDS).retryOnConnectionFailure(false).followRedirects(false)
@@ -48,9 +39,9 @@ final class PairingClient {
 
     private JSONObject request(String action, JSONObject body, String token) throws Exception {
         if (cancelled) throw new IllegalStateException("Cancelled");
-        Request.Builder builder = new Request.Builder().url(baseUrl + (integration ? "/api/fan_control/pair/" + action : "/api.php?action=" + action))
+        Request.Builder builder = new Request.Builder().url(baseUrl + "/api/fan_control/pair/" + action)
                 .post(RequestBody.create(body.toString(), MediaType.get("application/json")));
-        if (token != null) builder.header(integration ? "X-Fan-Control-Pairing" : "Authorization", integration ? token : "Bearer " + token);
+        if (token != null) builder.header("X-Fan-Control-Pairing", token);
         Call call = http.newCall(builder.build());
         active = call;
         if (cancelled) call.cancel();
@@ -103,7 +94,9 @@ final class PairingClient {
         JSONObject settings = new JSONObject(new String(aes.doFinal(ciphertext), StandardCharsets.UTF_8));
         java.util.Arrays.fill(key, (byte) 0);
         if (settings.getInt("version") != 1) throw new IllegalArgumentException("Unsupported settings version");
-        return ConnectionSettings.fromJson(settings);
+        ConnectionSettings result = ConnectionSettings.fromJson(settings);
+        if (!result.integration()) throw new IllegalArgumentException("Home Assistant integration pairing required");
+        return result;
     }
 
     private static String hex(byte[] bytes) {

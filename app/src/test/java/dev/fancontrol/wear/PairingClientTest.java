@@ -21,16 +21,16 @@ public class PairingClientTest {
         Cipher aes = Cipher.getInstance("AES/GCM/NoPadding");
         aes.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(128, iv));
         aes.updateAAD(code.getBytes(StandardCharsets.US_ASCII));
-        byte[] data = aes.doFinal("{\"version\":1,\"url\":\"https://ha.example.com\",\"entity\":\"fan.example\",\"token\":\"test-token\"}".getBytes(StandardCharsets.UTF_8));
+        byte[] data = aes.doFinal("{\"version\":1,\"url\":\"https://ha.example.com\",\"entity\":\"fan.example\",\"token\":\"1212121212121212121212121212121212121212121212121212121212121212\",\"integration\":true,\"watch_id\":\"abababababababababababababababab\"}".getBytes(StandardCharsets.UTF_8));
         Cipher rsa = Cipher.getInstance("RSA/ECB/OAEPPadding");
         rsa.init(Cipher.ENCRYPT_MODE, pair.getPublic(), new OAEPParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA256, PSource.PSpecified.DEFAULT));
         return new JSONObject().put("version", 1).put("wrapped_key", Base64.getEncoder().encodeToString(rsa.doFinal(key)))
                 .put("iv", Base64.getEncoder().encodeToString(iv)).put("ciphertext", Base64.getEncoder().encodeToString(data));
     }
     private KeyPair keys() throws Exception { KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA"); gen.initialize(2048); return gen.generateKeyPair(); }
-    @Test public void decryptsBrowserProtocol() throws Exception {
+    @Test public void decryptsHomeAssistantProtocol() throws Exception {
         KeyPair pair = keys(); ConnectionSettings settings = PairingClient.decrypt(encrypt(pair, "12345678"), "12345678", pair);
-        assertEquals("https://ha.example.com", settings.baseUrl()); assertEquals("test-token", settings.token());
+        assertEquals("https://ha.example.com", settings.baseUrl()); assertTrue(settings.integration());
     }
     @Test(expected = javax.crypto.AEADBadTagException.class) public void differentCodeCannotAuthenticatePackage() throws Exception {
         KeyPair pair = keys(); PairingClient.decrypt(encrypt(pair, "12345678"), "87654321", pair);

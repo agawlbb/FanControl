@@ -34,10 +34,6 @@ public final class DiscoveryActivity extends Activity {
         LinearLayout column = new LinearLayout(this); column.setOrientation(LinearLayout.VERTICAL); column.setPadding(24,24,24,24); scroll.addView(column);
         status = new TextView(this); status.setTextColor(Color.WHITE); status.setTextSize(14); column.addView(status);
         results = new LinearLayout(this); results.setOrientation(LinearLayout.VERTICAL); column.addView(results);
-        EditText manual = new EditText(this); manual.setTextColor(Color.WHITE); manual.setHintTextColor(Color.LTGRAY); manual.setHint("HA address (optional)");
-        manual.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI); column.addView(manual);
-        Button connect = new Button(this); connect.setText("Use address"); column.addView(connect);
-        connect.setOnClickListener(view -> pair(manual.getText().toString()));
         Button scan = new Button(this); scan.setText("Search again"); column.addView(scan); scan.setOnClickListener(view -> startScan());
         setContentView(scroll); nsd = getSystemService(NsdManager.class);
     }
@@ -64,20 +60,20 @@ public final class DiscoveryActivity extends Activity {
             NetworkCapabilities caps = connectivity.getNetworkCapabilities(network);
             if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) wifi = true;
         }
-        if (!wifi) { status.setText("Connect your watch directly to home Wi-Fi, then search again. You can also enter your HA address."); return; }
+        if (!wifi) { status.setText("Connect your watch directly to home Wi-Fi, then search again. Check that your saved home Wi-Fi is in range."); return; }
         status.setText("Searching home Wi-Fi for 20 seconds…"); int ticket = ++generation;
         WifiManager manager = (WifiManager)getApplicationContext().getSystemService(WIFI_SERVICE);
         multicast = manager.createMulticastLock("fan-control-setup"); multicast.setReferenceCounted(false); multicast.acquire();
         discovery = new NsdManager.DiscoveryListener() {
             public void onDiscoveryStarted(String type) { }
             public void onDiscoveryStopped(String type) { }
-            public void onStartDiscoveryFailed(String type, int error) { handler.post(() -> { if(ticket==generation) { stopScan(); status.setText("Discovery unavailable. Enter the HA address."); } }); }
+            public void onStartDiscoveryFailed(String type, int error) { handler.post(() -> { if(ticket==generation) { stopScan(); status.setText("Discovery unavailable. Check home Wi-Fi and search again."); } }); }
             public void onStopDiscoveryFailed(String type, int error) { }
             public void onServiceLost(NsdServiceInfo service) { }
             public void onServiceFound(NsdServiceInfo service) { handler.post(() -> { if(ticket==generation && pending.size()<16) { pending.add(service); resolveNext(ticket); } }); }
         };
         try { nsd.discoverServices("_home-assistant._tcp.", NsdManager.PROTOCOL_DNS_SD, discovery); }
-        catch (Exception ignored) { stopScan(); status.setText("Discovery unavailable. Enter the HA address."); return; }
+        catch (Exception ignored) { stopScan(); status.setText("Discovery unavailable. Check home Wi-Fi and search again."); return; }
         handler.postDelayed(() -> { if(ticket==generation) { stopScan(); status.setText(addresses.isEmpty() ? "No HA found. Check Wi-Fi or enter the address." : "Choose your Home Assistant."); } }, 20000);
     }
     @SuppressWarnings("deprecation")

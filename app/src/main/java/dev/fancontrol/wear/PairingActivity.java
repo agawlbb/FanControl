@@ -10,7 +10,6 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import java.net.URI;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.concurrent.ExecutorService;
@@ -72,9 +71,8 @@ public final class PairingActivity extends Activity {
                 KeyPair pair = generator.generateKeyPair();
                 if (ticket != generation) return;
                 String local = getIntent().getStringExtra("ha_url");
-                boolean integration = local != null;
-                String baseUrl = integration ? local : BuildConfig.PAIRING_BASE_URL;
-                PairingClient transport = new PairingClient(baseUrl, integration);
+                String baseUrl = ConnectionSettings.integrationAddress(local, false);
+                PairingClient transport = new PairingClient(baseUrl);
                 client = transport;
                 if (ticket != generation) { transport.cancel(); return; }
                 PairingClient.Session created = transport.create(pair);
@@ -82,9 +80,8 @@ public final class PairingActivity extends Activity {
                     if (!visible || ticket != generation) { transport.cancel(); return; }
                     keys = pair; session = created;
                     code.setText(created.code().substring(0, 4) + " " + created.code().substring(4));
-                    URI url = URI.create(baseUrl);
                     String fingerprint = created.fingerprint();
-                    status.setText((integration ? "In Home Assistant, open Settings → Devices & services → Fan Control → Configure → Pair a watch." : "Visit " + url.getHost() + url.getPath()) + "\n\nFingerprint:\n"
+                    status.setText("In Home Assistant, open Settings → Devices & services → Fan Control → Configure → Pair a watch." + "\n\nFingerprint:\n"
                             + fingerprint.substring(0, 4) + " " + fingerprint.substring(4, 8) + " " + fingerprint.substring(8)
                             + "\n\nKeep this screen open. Code expires in 10 minutes.");
                     handler.postDelayed(() -> poll(ticket, transport, pair, created), 5000);

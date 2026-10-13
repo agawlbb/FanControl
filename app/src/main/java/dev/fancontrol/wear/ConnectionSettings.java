@@ -70,7 +70,7 @@ public record ConnectionSettings(String baseUrl, String token, String entityId, 
                 .put("remote_url", remoteUrl).put("watch_id", watchId).put("integration", integration());
     }
 
-    /** Existing single-fan storage and v1 website handoffs remain valid. */
+    /** Existing single-fan encrypted storage remains readable. */
     public static ConnectionSettings fromJson(JSONObject json) throws Exception {
         boolean integration = json.optBoolean("integration", false);
         if (integration && (!json.getString("watch_id").matches("[a-f0-9]{32}") || !json.getString("token").matches("[a-f0-9]{64}")))
