@@ -44,7 +44,8 @@ public final class MainActivity extends Activity {
             Button pair = new Button(this);
             pair.setText("Pair with website");
             column.addView(pair);
-            pair.setOnClickListener(view -> startActivity(new android.content.Intent(this, PairingActivity.class)));
+            pair.setOnClickListener(view -> startActivity(new android.content.Intent(this, PairingActivity.class)
+                    .putExtra(PairingActivity.REPLACE_CONNECTION, new SecureSettings(this).load() != null)));
         }
         heading(column, "Connect directly from your watch. Add the tile after saving.", 13);
         url = field(column, "Home Assistant HTTPS URL", "https://ha.example.com", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);

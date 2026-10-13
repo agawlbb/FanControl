@@ -19,6 +19,7 @@ import androidx.wear.tiles.TileService;
 
 /** Polls only while foreground setup is visible; stops on pause, completion, or expiry. */
 public final class PairingActivity extends Activity {
+    static final String REPLACE_CONNECTION = "replace_connection";
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private volatile PairingClient client;
@@ -27,9 +28,15 @@ public final class PairingActivity extends Activity {
     private TextView code, status;
     private boolean visible, completed;
     private volatile int generation;
+    private PairingProgress progress;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        ConnectionSettings existing = new SecureSettings(this).load();
+        String baseline = state != null ? state.getString("original_connection", "")
+                : getIntent().getBooleanExtra(REPLACE_CONNECTION, false) ? PairingProgress.key(existing) : "";
+        progress = new PairingProgress(baseline);
+        completed = state != null && state.getBoolean("connected", false);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         ScrollView scroll = new ScrollView(this);
         scroll.setBackgroundColor(android.graphics.Color.BLACK);
@@ -46,7 +53,10 @@ public final class PairingActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume(); visible = true;
-        if (completed) return;
+        if (progress.hasConnected(new SecureSettings(this).load(), completed)) { openControls(); return; }
+        completed = false;
+        // Foreground setup only; clear on completion, error, expiry, or pause.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         session = null;
         int ticket = ++generation;
         code.setText("Starting…"); status.setText("Preparing secure pairing");
@@ -94,11 +104,20 @@ public final class PairingActivity extends Activity {
                     if (!visible || ticket != generation) return;
                     // Saving is on the visible screen's thread to avoid a pause/save race.
                     try {
-                        new SecureSettings(this).save(settings); new StateCache(this).clear();
+                        SecureSettings storage = new SecureSettings(this);
+                        storage.save(settings);
+                        if (!settings.equals(storage.load())) throw new IllegalStateException("Settings verification failed");
+                        new StateCache(this).clear();
                         completed = true; keys = null; session = null;
                         code.setText("Connected"); status.setText("Add the Fan Control tile. View it to check your fan.");
                         TileService.getUpdater(this).requestUpdate(FanTileService.class);
-                        worker.execute(() -> { try { transport.acknowledge(pairing); } catch (Exception ignored) { } finally { transport.cancel(); } });
+                        worker.execute(() -> {
+                            try { transport.acknowledge(pairing); } catch (Exception ignored) { }
+                            finally {
+                                transport.cancel();
+                                handler.post(() -> { if (visible && ticket == generation && completed) openControls(); });
+                            }
+                        });
                     } catch (Exception ignored) { showError(ticket, "Could not save settings. Start pairing again."); }
                 });
             } catch (Exception ignored) { showError(ticket, "Pairing stopped. Reopen this screen to try again."); transport.cancel(); }
@@ -106,11 +125,23 @@ public final class PairingActivity extends Activity {
     }
 
     private void showError(int ticket, String message) {
-        handler.post(() -> { if (visible && ticket == generation) { code.setText("Try again"); status.setText(message); } });
+        handler.post(() -> { if (visible && ticket == generation) { getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); code.setText("Try again"); status.setText(message); } });
+    }
+
+    private void openControls() {
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        startActivity(new android.content.Intent(this, ControlsActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP));
+        finish();
+    }
+
+    @Override protected void onSaveInstanceState(Bundle state) {
+        state.putString("original_connection", progress.originalKey()); state.putBoolean("connected", completed);
+        super.onSaveInstanceState(state);
     }
 
     @Override protected void onPause() {
         visible = false; generation++; handler.removeCallbacksAndMessages(null);
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         PairingClient transport = client; if (transport != null) transport.cancel();
         client = null; keys = null; session = null;
         super.onPause();

@@ -16,6 +16,8 @@ import org.json.JSONObject;
 /** Encrypt all connection details with a non-exportable Android Keystore key. */
 public final class SecureSettings {
     private static final String ALIAS = "fan-control-settings-v1";
+    // Setup, controls, and the tile use different storage instances in the same process.
+    private static final Object LOCK = new Object();
     private final SharedPreferences preferences;
 
     public SecureSettings(Context context) {
@@ -36,32 +38,40 @@ public final class SecureSettings {
         return (SecretKey) store.getKey(ALIAS, null);
     }
 
-    public synchronized void save(ConnectionSettings settings) throws Exception {
-        JSONObject json = settings.toJson();
-        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, key());
-        String encrypted = Base64.encodeToString(cipher.doFinal(json.toString().getBytes(StandardCharsets.UTF_8)), Base64.NO_WRAP);
-        if (!preferences.edit().putString("data", encrypted)
-                .putString("iv", Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP)).commit())
-            throw new IllegalStateException("Could not save settings");
-    }
-
-    public synchronized ConnectionSettings load() {
-        try {
-            if (!preferences.contains("data")) return null;
+    public void save(ConnectionSettings settings) throws Exception {
+        synchronized (LOCK) {
+            JSONObject json = settings.toJson();
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128,
-                    Base64.decode(preferences.getString("iv", ""), Base64.NO_WRAP)));
-            JSONObject json = new JSONObject(new String(cipher.doFinal(
-                    Base64.decode(preferences.getString("data", ""), Base64.NO_WRAP)), StandardCharsets.UTF_8));
-            return ConnectionSettings.fromJson(json);
-        } catch (Exception ignored) { return null; } // Never log connection details or secrets.
+            cipher.init(Cipher.ENCRYPT_MODE, key());
+            String encrypted = Base64.encodeToString(cipher.doFinal(json.toString().getBytes(StandardCharsets.UTF_8)), Base64.NO_WRAP);
+            if (!preferences.edit().putString("data", encrypted)
+                    .putString("iv", Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP)).commit())
+                throw new IllegalStateException("Could not save settings");
+        }
     }
 
-    public synchronized void clear() throws Exception {
-        if (!preferences.edit().clear().commit()) throw new IllegalStateException("Could not clear settings");
-        KeyStore store = KeyStore.getInstance("AndroidKeyStore");
-        store.load(null);
-        store.deleteEntry(ALIAS);
+    public ConnectionSettings load() {
+        synchronized (LOCK) {
+            try {
+                // Read ciphertext and IV from one revision rather than two independent reads.
+                java.util.Map<String, ?> snapshot = preferences.getAll();
+                if (!snapshot.containsKey("data")) return null;
+                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+                cipher.init(Cipher.DECRYPT_MODE, key(), new GCMParameterSpec(128,
+                        Base64.decode((String)snapshot.get("iv"), Base64.NO_WRAP)));
+                JSONObject json = new JSONObject(new String(cipher.doFinal(
+                        Base64.decode((String)snapshot.get("data"), Base64.NO_WRAP)), StandardCharsets.UTF_8));
+                return ConnectionSettings.fromJson(json);
+            } catch (Exception ignored) { return null; } // Never log connection details or secrets.
+        }
+    }
+
+    public void clear() throws Exception {
+        synchronized (LOCK) {
+            if (!preferences.edit().clear().commit()) throw new IllegalStateException("Could not clear settings");
+            KeyStore store = KeyStore.getInstance("AndroidKeyStore");
+            store.load(null);
+            store.deleteEntry(ALIAS);
+        }
     }
 }

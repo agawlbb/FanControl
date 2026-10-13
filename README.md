@@ -20,6 +20,7 @@ Tap the tile's device title or **Open device controls** for vertical swipe pages
 
 - Local discovery uses HA's `_home-assistant._tcp.` mDNS advertisement during a bounded 20-second setup scan. The watch needs direct Wi-Fi access and a network allowing discovery traffic. Its multicast lock is released on timeout/pause.
 - Pairing polls every five seconds while its screen is foreground, for up to ten minutes. Leaving cancels the session; return to generate another code.
+- The pairing screen stays awake only during that setup window. A successful handoff is read back from encrypted storage, acknowledged, and opens the controls; restored completed setup screens return to controls without starting another pairing session.
 - Ordinary tile/resources/prefetch requests render locally. Configuration/state reads occur on tile entry, explicit refresh/tap, or visible settled controls pages.
 - No periodic updates, WebSocket subscriptions, background jobs, alarms, push notifications, foreground service, or idle connection pool.
 - Integration reads try the local address, then HTTPS remote access if the local connection fails. Commands use the endpoint established by a preceding read and are never automatically replayed after ambiguous failures.

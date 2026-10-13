@@ -45,7 +45,9 @@ public final class DiscoveryActivity extends Activity {
     private void pair(String url) {
         try {
             String safe = ConnectionSettings.integrationAddress(url, false);
-            startActivity(new android.content.Intent(this, PairingActivity.class).putExtra("ha_url", safe));
+            startActivity(new android.content.Intent(this, PairingActivity.class).putExtra("ha_url", safe)
+                    .putExtra(PairingActivity.REPLACE_CONNECTION, new SecureSettings(this).load() != null));
+            finish(); // Successful setup must not leave a discovery/pairing screen atop the app task.
         } catch (Exception ignored) { status.setText("Use an HTTPS address or a local HTTP address, such as http://homeassistant.local:8123"); }
     }
     private void startScan() {
