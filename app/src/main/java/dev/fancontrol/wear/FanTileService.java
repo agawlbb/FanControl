@@ -97,7 +97,11 @@ public final class FanTileService extends TileService {
                 visible = true; watchSelection();
                 String target = pieces.length == 3 ? pieces[1] : "";
                 if (pieces[0].equals("slower") || pieces[0].equals("faster")) selectSpeed(pieces[0], target);
-                else { clearSpeed(); runOperation(pieces[0], target); }
+                else {
+                    clearSpeed();
+                    ListenableFuture<Void> operation = runOperation(pieces[0], target);
+                    if (pieces[0].equals("refresh")) return Futures.transform(operation, ignored -> tile(), MoreExecutors.directExecutor());
+                }
             }
             return Futures.immediateFuture(tile());
         }
@@ -163,20 +167,21 @@ public final class FanTileService extends TileService {
     private void leave() { handler.removeCallbacks(checkSelection); if (selectionSession != null) selectionSession.close(); clearSpeed(); sendingSpeed = -1; visible = false; handler.removeCallbacks(poll); commandBusy = false; stopOperation(); }
     private ListenableFuture<Void> refreshOnView() {
         visible = true; watchSelection();
-        if (!commandBusy && !speedSelection.pending()) runOperation("refresh", "");
+        if (!commandBusy && !speedSelection.pending()) return runOperation("refresh", "");
         return Futures.immediateVoidFuture();
     }
-    private void runOperation(String action, String target) {
+    private ListenableFuture<Void> runOperation(String action, String target) {
         handler.removeCallbacks(poll);
         int ticket = startOperation(); commandBusy = !action.equals("refresh");
         if (commandBusy) message = "Updating…";
-        worker.execute(() -> {
+        return worker.submit(() -> {
             fetch(action, ticket, target);
             handler.post(() -> {
                 if (ticket != generation.get()) return;
                 commandBusy = false; sendingSpeed = -1; getUpdater(this).requestUpdate(FanTileService.class);
                 if (visible) handler.postDelayed(poll, 5000);
             });
+            return null;
         });
     }
 
@@ -186,7 +191,7 @@ public final class FanTileService extends TileService {
         if (settings == null) { message = "Open app to set up"; return; }
         DeviceController client = null;
         try {
-            if (settings.integration() && !action.equals("refresh")) {
+            if (settings.integration()) {
                 IntegrationClient config = new IntegrationClient(settings); configuration = config;
                 if (ticket != generation.get()) { config.cancel(); return; }
                 ConnectionSettings updated = config.configuration();
