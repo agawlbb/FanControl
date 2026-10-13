@@ -37,8 +37,7 @@ public final class SecureSettings {
     }
 
     public synchronized void save(ConnectionSettings settings) throws Exception {
-        JSONObject json = new JSONObject().put("url", settings.baseUrl())
-                .put("token", settings.token()).put("entity", settings.entityId());
+        JSONObject json = settings.toJson();
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, key());
         String encrypted = Base64.encodeToString(cipher.doFinal(json.toString().getBytes(StandardCharsets.UTF_8)), Base64.NO_WRAP);
@@ -55,7 +54,7 @@ public final class SecureSettings {
                     Base64.decode(preferences.getString("iv", ""), Base64.NO_WRAP)));
             JSONObject json = new JSONObject(new String(cipher.doFinal(
                     Base64.decode(preferences.getString("data", ""), Base64.NO_WRAP)), StandardCharsets.UTF_8));
-            return ConnectionSettings.validate(json.getString("url"), json.getString("token"), json.getString("entity"));
+            return ConnectionSettings.fromJson(json);
         } catch (Exception ignored) { return null; } // Never log connection details or secrets.
     }
 

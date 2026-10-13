@@ -2,6 +2,16 @@
 
 A standalone Wear OS 3+ app with a Home Assistant fan tile. No phone companion is required.
 
+## Device control pages
+
+Tap the **Fan Control** title in the tile, or **Open device controls** in the app's setup screen, to open the full-screen control pager. It uses vertical paging, ready for switching devices by swiping up/down. The primary fan is currently the only configured page; the website still selects one fan. The existing tile retains its power toggle and six speeds.
+
+Custom swipe handlers cannot be attached to the system-rendered tile layout. Vertical paging lives in an Android activity reached from the tile. The pager renders neighbouring pages without connecting to HA. Only the selected page, once scrolling settles and the activity is resumed, reads state. Beginning a swipe, leaving the activity, or selecting another page cancels its previous request. Explicit controls and Refresh read only the selected device. There are no periodic updates.
+
+Connection settings now carry an ordered, immutable device list inside the existing encrypted storage. Existing single-fan saved settings and website pairing payloads load automatically as one page. The `entity` field remains the primary tile fan. An optional `devices` array can supply up to 16 unique `{ "entity": "fan.example", "title": "Fan Control" }` entries; its first entity must match the primary fan. Names and entity IDs remain encrypted. Editing the primary connection preserves additional pages on the same server; changing servers drops the old device list.
+
+Future light, switch, and other controls can add their own domain adapter in `DeviceControllers`, returning their confirmed state and available buttons through `DeviceController`. The pager and visibility/cancellation logic do not need to know the device type. `HomeAssistantTransport` shares entity reads, service calls, authentication, bounded timeouts, and cancellation across adapters. Fan controls reuse the existing HA client and preserve 16%, 33%, 50%, 66%, 83%, and 100%. Other domains are not implemented yet and show an unsupported control page without sending a guessed service call. Adding selection of multiple devices to the website is a future feature.
+
 The tile shows confirmed on/off state, highlights the current speed, offers one power toggle and six speed buttons, and refreshes when viewed or tapped. Black backgrounds and short, bounded HTTPS requests keep battery use low.
 
 ## Setup

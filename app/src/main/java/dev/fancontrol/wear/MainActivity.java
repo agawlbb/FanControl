@@ -17,6 +17,7 @@ import androidx.wear.tiles.TileService;
 public final class MainActivity extends Activity {
     private EditText url, token, entity;
     private TextView status;
+    private Button openControls;
 
     // Personal sideload app: a self-hosted server token is entered once, masked and encrypted.
     // No phone companion or public OAuth client registration is required.
@@ -33,6 +34,10 @@ public final class MainActivity extends Activity {
         column.setPadding(dp(28), dp(30), dp(28), dp(36));
         scroll.addView(column);
         heading(column, "Fan Control", 21);
+        openControls = new Button(this);
+        openControls.setText("Open device controls");
+        column.addView(openControls);
+        openControls.setOnClickListener(view -> startActivity(new android.content.Intent(this, ControlsActivity.class)));
         if (!BuildConfig.PAIRING_BASE_URL.isBlank()) {
             Button pair = new Button(this);
             pair.setText("Pair with website");
@@ -64,7 +69,9 @@ public final class MainActivity extends Activity {
                         throw new IllegalArgumentException("Enter a token when changing the server");
                     secret = previous.token();
                 }
-                storage.save(ConnectionSettings.validate(url.getText().toString(), secret, entity.getText().toString()));
+                ConnectionSettings updated = ConnectionSettings.validate(url.getText().toString(), secret, entity.getText().toString());
+                storage.save(previous == null ? updated : previous.replacePrimary(updated));
+                openControls.setVisibility(android.view.View.VISIBLE);
                 new StateCache(this).clear();
                 token.setText("");
                 token.setHint("Saved · leave blank to keep");
@@ -82,10 +89,16 @@ public final class MainActivity extends Activity {
                 new StateCache(this).clear();
                 url.setText(""); entity.setText(""); token.setText(""); token.setHint("Access token");
                 status.setText("Connection removed.");
+                openControls.setVisibility(android.view.View.GONE);
                 TileService.getUpdater(this).requestUpdate(FanTileService.class);
             } catch (Exception ignored) { status.setText("Could not clear. Try again."); }
         });
         setContentView(scroll);
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        openControls.setVisibility(new SecureSettings(this).load() == null ? android.view.View.GONE : android.view.View.VISIBLE);
     }
 
     private TextView heading(LinearLayout parent, String text, int size) {

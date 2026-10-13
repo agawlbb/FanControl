@@ -8,6 +8,7 @@
         android:usesCleartextTraffic="false" android:supportsRtl="true">
         <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />
         <activity android:name=".PairingActivity" android:exported="false" android:taskAffinity="dev.fancontrol.wear" />
+        <activity android:name=".ControlsActivity" android:exported="true" android:taskAffinity="dev.fancontrol.wear" />
         <activity android:name=".MainActivity" android:exported="true" android:taskAffinity="dev.fancontrol.wear">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

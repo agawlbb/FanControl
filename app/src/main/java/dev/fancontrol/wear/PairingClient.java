@@ -97,7 +97,7 @@ final class PairingClient {
         JSONObject settings = new JSONObject(new String(aes.doFinal(ciphertext), StandardCharsets.UTF_8));
         java.util.Arrays.fill(key, (byte) 0);
         if (settings.getInt("version") != 1) throw new IllegalArgumentException("Unsupported settings version");
-        return ConnectionSettings.validate(settings.getString("url"), settings.getString("token"), settings.getString("entity"));
+        return ConnectionSettings.fromJson(settings);
     }
 
     private static String hex(byte[] bytes) {

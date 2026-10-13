@@ -128,7 +128,10 @@ public final class FanTileService extends TileService {
         boolean configured = new SecureSettings(this).load() != null;
         LayoutElementBuilders.Column.Builder content = new LayoutElementBuilders.Column.Builder()
                 .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER);
-        content.addContent(text("Fan Control", 14, WHITE));
+        content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(128)).setHeight(dp(18))
+                .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? controlsClick() : setupClick())
+                        .setSemantics(new ModifiersBuilders.Semantics.Builder().setContentDescription("Open device controls").build()).build())
+                .addContent(text("Fan Control", 14, WHITE)).build());
         content.addContent(spacer(2));
         content.addContent(text(state == null ? "State unknown" : (fresh ? "" : "Last: ") + state.label(), 13, MINT));
         content.addContent(spacer(4));
@@ -183,6 +186,12 @@ public final class FanTileService extends TileService {
         return new ModifiersBuilders.Clickable.Builder().setId("setup").setOnClick(new ActionBuilders.LaunchAction.Builder()
                 .setAndroidActivity(new ActionBuilders.AndroidActivity.Builder().setPackageName(getPackageName())
                         .setClassName(MainActivity.class.getName()).build()).build()).build();
+    }
+
+    private ModifiersBuilders.Clickable controlsClick() {
+        return new ModifiersBuilders.Clickable.Builder().setId("controls").setOnClick(new ActionBuilders.LaunchAction.Builder()
+                .setAndroidActivity(new ActionBuilders.AndroidActivity.Builder().setPackageName(getPackageName())
+                        .setClassName(ControlsActivity.class.getName()).build()).build()).build();
     }
 
     private LayoutElementBuilders.Box button(String label, String action, int width, int height,
