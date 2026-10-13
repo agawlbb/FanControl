@@ -26,6 +26,8 @@ import static androidx.wear.protolayout.DimensionBuilders.sp;
 
 public final class FanTileService extends TileService {
     private final ListeningExecutorService worker = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
+    private final java.util.concurrent.ExecutorService configurationWorker = Executors.newSingleThreadExecutor();
+    private VisibleConfigurationSession selectionSession;
     private final AtomicInteger generation = new AtomicInteger();
     private final InteractionGate gate = new InteractionGate();
     private volatile DeviceController active;
@@ -46,6 +48,14 @@ public final class FanTileService extends TileService {
         if (visible && getSystemService(android.os.PowerManager.class).isInteractive()) refreshOnView();
         else leave();
     };
+    private final Runnable checkSelection = new Runnable() {
+        @Override public void run() {
+            if (!visible || !getSystemService(android.os.PowerManager.class).isInteractive()) { leave(); return; }
+            selectionSession.refresh(new SecureSettings(FanTileService.this).load());
+            handler.postDelayed(this, 2000);
+        }
+    };
+    private void watchSelection() { handler.removeCallbacks(checkSelection); handler.post(checkSelection); }
     private static final int MINT = 0xFF70E2C2;
     private static final int WHITE = 0xFFF4F7F6;
     private final android.content.BroadcastReceiver screenOff = new android.content.BroadcastReceiver() {
@@ -54,6 +64,22 @@ public final class FanTileService extends TileService {
 
     @Override public void onCreate() {
         super.onCreate();
+        selectionSession = new VisibleConfigurationSession(configurationWorker, IntegrationClient::new, update -> handler.post(() -> {
+            if (!visible || !selectionSession.accepts(update)) return;
+            SecureSettings storage = new SecureSettings(this);
+            ConnectionSettings current = storage.load();
+            if (current == null || !current.equals(update.original()) || current.equals(update.updated())) return;
+            try {
+                boolean changed = !current.devices().get(0).equals(update.updated().devices().get(0));
+                storage.save(update.updated());
+                if (changed) {
+                    clearSpeed(); sendingSpeed = -1; commandBusy = false;
+                    stopOperation(); new StateCache(this).clear(); message = "Updating…";
+                }
+                getUpdater(this).requestUpdate(FanTileService.class); // Publish the new layout before slow device reads.
+                if (changed) runOperation("refresh", "");
+            } catch (Exception ignored) { }
+        }));
         android.content.IntentFilter filter = new android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF);
         if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(screenOff, filter, android.content.Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(screenOff, filter);
@@ -68,7 +94,7 @@ public final class FanTileService extends TileService {
             handled.edit().putString("last", click).commit();
             String[] pieces = click.split(":");
             if (!commandBusy) {
-                visible = true;
+                visible = true; watchSelection();
                 String target = pieces.length == 3 ? pieces[1] : "";
                 if (pieces[0].equals("slower") || pieces[0].equals("faster")) selectSpeed(pieces[0], target);
                 else { clearSpeed(); runOperation(pieces[0], target); }
@@ -134,9 +160,9 @@ public final class FanTileService extends TileService {
             handler.removeCallbacks(sendSpeed); handler.postDelayed(sendSpeed, 3000);
         }
     }
-    private void leave() { clearSpeed(); sendingSpeed = -1; visible = false; handler.removeCallbacks(poll); commandBusy = false; stopOperation(); }
+    private void leave() { handler.removeCallbacks(checkSelection); if (selectionSession != null) selectionSession.close(); clearSpeed(); sendingSpeed = -1; visible = false; handler.removeCallbacks(poll); commandBusy = false; stopOperation(); }
     private ListenableFuture<Void> refreshOnView() {
-        visible = true;
+        visible = true; watchSelection();
         if (!commandBusy && !speedSelection.pending()) runOperation("refresh", "");
         return Futures.immediateVoidFuture();
     }
@@ -160,13 +186,14 @@ public final class FanTileService extends TileService {
         if (settings == null) { message = "Open app to set up"; return; }
         DeviceController client = null;
         try {
-            if (settings.integration()) {
+            if (settings.integration() && !action.equals("refresh")) {
                 IntegrationClient config = new IntegrationClient(settings); configuration = config;
                 if (ticket != generation.get()) { config.cancel(); return; }
                 ConnectionSettings updated = config.configuration();
                 if (ticket != generation.get()) return;
                 if (!settings.devices().get(0).equals(updated.devices().get(0))) new StateCache(this).clear();
                 new SecureSettings(this).save(updated); settings = updated;
+                handler.post(() -> { if (ticket == generation.get()) getUpdater(this).requestUpdate(FanTileService.class); });
             }
             action = TileTarget.action(settings, action, displayedDevice);
             client = DeviceControllers.create(settings, settings.devices().get(0)); active = client;
@@ -201,12 +228,15 @@ public final class FanTileService extends TileService {
         boolean available = !controls.isEmpty() && controls.get(0).enabled();
         PanelDefinition panel = configured ? settings.devices().get(0).panel() : null;
         if (panel != null) {
-            content.addContent(text(state == null ? "?%" : state.readings().getOrDefault("battery", "?") + "%", 38, WHITE));
             String climate = state == null ? "?" : state.readings().getOrDefault("climate", "?");
-            content.addContent(button(panel.climateLabel() + " " + climate, "climate", 160, 44,
-                    available && !commandBusy, climate.equals("ON"), "Toggle climate", 18));
-            content.addContent(spacer(6));
-            content.addContent(button(panel.scriptLabel(), "leave", 160, 50,
+            LayoutElementBuilders.Row.Builder top = new LayoutElementBuilders.Row.Builder();
+            top.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(78)).setHeight(dp(72))
+                    .addContent(text(state == null ? "?%" : state.readings().getOrDefault("battery", "?") + "%", 32, WHITE)).build());
+            top.addContent(new LayoutElementBuilders.Spacer.Builder().setWidth(dp(4)).build());
+            top.addContent(climateButton(panel.climateLabel(), climate, available && !commandBusy));
+            content.addContent(top.build());
+            content.addContent(spacer(8));
+            content.addContent(button(panel.scriptLabel(), "leave", 160, 56,
                     controls.size() > 1 && controls.get(1).enabled() && !commandBusy, false, "Run configured script", 18));
         } else {
         String power = !configured ? "SET UP" : controls.isEmpty() ? "REFRESH" : !available ? "UNKNOWN" : fan ? on ? "ON" : "OFF" : controls.get(0).label();
@@ -241,6 +271,19 @@ public final class FanTileService extends TileService {
                 .setTileTimeline(new TimelineBuilders.Timeline.Builder().addTimelineEntry(
                         new TimelineBuilders.TimelineEntry.Builder().setLayout(new LayoutElementBuilders.Layout.Builder()
                                 .setRoot(root).build()).build()).build()).build();
+    }
+
+    private LayoutElementBuilders.Box climateButton(String label, String state, boolean enabled) {
+        boolean on = state.equals("ON");
+        int color = on ? 0xFF001F16 : enabled ? WHITE : 0xFF87918D;
+        ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder()
+                .setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(on ? MINT : 0xFF24332F))
+                        .setCorner(new ModifiersBuilders.Corner.Builder().setRadius(dp(16)).build()).build())
+                .setSemantics(new ModifiersBuilders.Semantics.Builder().setContentDescription(label + " " + state).build());
+        if (enabled) modifiers.setClickable(click("climate"));
+        return new LayoutElementBuilders.Box.Builder().setWidth(dp(78)).setHeight(dp(72)).setModifiers(modifiers.build())
+                .addContent(new LayoutElementBuilders.Column.Builder().setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
+                        .addContent(text(label, 12, color)).addContent(text(state, 24, color)).build()).build();
     }
 
     private LayoutElementBuilders.Text text(String value, int size, int color) {
@@ -288,6 +331,7 @@ public final class FanTileService extends TileService {
         handler.removeCallbacksAndMessages(null);
         unregisterReceiver(screenOff);
         worker.shutdownNow();
+        configurationWorker.shutdownNow();
         super.onDestroy();
     }
 }

@@ -12,7 +12,7 @@ import okhttp3.*;
 import org.json.JSONObject;
 
 /** Only instantiated by visible setup/controls. Credentials never cross the network. */
-final class IntegrationClient {
+final class IntegrationClient implements VisibleConfigurationSession.Client {
     private final ConnectionSettings settings;
     private final OkHttpClient http;
     private volatile Call active;
@@ -28,7 +28,7 @@ final class IntegrationClient {
     IntegrationClient(ConnectionSettings settings, OkHttpClient http) { this.settings = settings; this.http = http; endpoint = endpoints.getOrDefault(routeKey(settings), settings.baseUrl());
         if (!endpoint.equals(settings.baseUrl()) && !endpoint.equals(settings.remoteUrl())) endpoint = settings.baseUrl(); }
     private static String routeKey(ConnectionSettings settings) { return settings.watchId() + "\n" + settings.baseUrl() + "\n" + settings.remoteUrl(); }
-    void cancel() { cancelled = true; Call call = active; if (call != null) call.cancel(); }
+    public void cancel() { cancelled = true; Call call = active; if (call != null) call.cancel(); }
     JSONObject request(JSONObject body) throws Exception {
         if (cancelled) throw new IOException("Cancelled");
         try { JSONObject result = exchange(endpoint, body); endpoints.put(routeKey(settings), endpoint); return result; }
@@ -65,7 +65,7 @@ final class IntegrationClient {
             return new JSONObject(new String(cipher.doFinal(Base64.getDecoder().decode(envelope.getString("ciphertext"))), StandardCharsets.UTF_8));
         } finally { active = null; java.util.Arrays.fill(key, (byte)0); }
     }
-    ConnectionSettings configuration() throws Exception {
+    public ConnectionSettings configuration() throws Exception {
         JSONObject config = request(new JSONObject().put("action", "config"));
         config.put("token", settings.token()).put("watch_id", settings.watchId()).put("integration", true);
         return ConnectionSettings.fromJson(config);

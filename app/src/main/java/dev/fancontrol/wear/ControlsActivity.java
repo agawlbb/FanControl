@@ -143,23 +143,28 @@ public final class ControlsActivity extends Activity {
             root.removeAllViews();
             DeviceController.Snapshot snapshot = snapshots.get(position);
             label(root, device.title(), 14);
-            if (device.panel() != null) label(root, snapshot == null ? "?%" : snapshot.readings().getOrDefault("battery", "?") + "%", 32);
             String message = messages.getOrDefault(position, "");
-            label(root, !message.isEmpty() ? message : snapshot == null ? "State unknown" : snapshot.status(), 12);
-            if (snapshot != null) {
-                LinearLayout row = null;
-                for (int i = 0; i < snapshot.controls().size(); i++) {
-                    DeviceController.Control control = snapshot.controls().get(i);
-                    if (device.panel() != null) {
-                        String label = control.action().equals("leave") ? device.panel().scriptLabel() : device.panel().climateLabel() + " " + snapshot.readings().getOrDefault("climate", "?");
-                        addButton(root, new DeviceController.Control(control.action(), label, control.enabled(), control.selected()), 160, 44);
-                    } else if (i == 0) addButton(root, control, 120, 30);
-                    else {
-                        if ((i - 1) % 3 == 0) {
-                            row = new LinearLayout(ControlsActivity.this); row.setGravity(Gravity.CENTER);
-                            root.addView(row);
+            if (device.panel() != null) {
+                LinearLayout top = new LinearLayout(ControlsActivity.this); top.setGravity(Gravity.CENTER); root.addView(top);
+                TextView battery = new TextView(ControlsActivity.this); battery.setTextColor(Color.WHITE); battery.setTextSize(28); battery.setGravity(Gravity.CENTER);
+                battery.setText(snapshot == null ? "?%" : snapshot.readings().getOrDefault("battery", "?") + "%");
+                top.addView(battery, new LinearLayout.LayoutParams(dp(78), dp(64)));
+                DeviceController.Control climate = snapshot == null ? new DeviceController.Control("climate", "", false, false) : snapshot.controls().get(0);
+                addButton(top, new DeviceController.Control("climate", device.panel().climateLabel() + "\n" + (snapshot == null ? "?" : snapshot.readings().getOrDefault("climate", "?")), climate.enabled(), climate.selected()), 78, 64);
+                DeviceController.Control script = snapshot == null ? new DeviceController.Control("leave", "", false, false) : snapshot.controls().get(1);
+                addButton(root, new DeviceController.Control("leave", device.panel().scriptLabel(), script.enabled(), false), 160, 48);
+                label(root, message, 12);
+            } else {
+                label(root, !message.isEmpty() ? message : snapshot == null ? "State unknown" : snapshot.status(), 12);
+                if (snapshot != null) {
+                    LinearLayout row = null;
+                    for (int i = 0; i < snapshot.controls().size(); i++) {
+                        DeviceController.Control control = snapshot.controls().get(i);
+                        if (i == 0) addButton(root, control, 120, 30);
+                        else {
+                            if ((i - 1) % 3 == 0) { row = new LinearLayout(ControlsActivity.this); row.setGravity(Gravity.CENTER); root.addView(row); }
+                            addButton(row, control, 40, 34);
                         }
-                        addButton(row, control, 40, 34);
                     }
                 }
             }
