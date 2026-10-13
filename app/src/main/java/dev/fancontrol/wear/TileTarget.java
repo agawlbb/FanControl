@@ -5,7 +5,9 @@ final class TileTarget {
     static String key(ConnectionSettings settings) {
         if (settings == null) return "0".repeat(16);
         String identity = (settings.integration() ? settings.watchId() : settings.baseUrl()) + "\n" + settings.entityId();
-        try { return IntegrationClient.hex(java.security.MessageDigest.getInstance("SHA-256").digest(identity.getBytes(java.nio.charset.StandardCharsets.UTF_8))).substring(0,16); }
+        try {
+            if (settings.devices().get(0).panel() != null) identity += "\n" + settings.devices().get(0).panel().toJson();
+            return IntegrationClient.hex(java.security.MessageDigest.getInstance("SHA-256").digest(identity.getBytes(java.nio.charset.StandardCharsets.UTF_8))).substring(0,16); }
         catch(Exception impossible) { throw new IllegalStateException(impossible); }
     }
     static String action(ConnectionSettings current, String action, String displayedTarget) {

@@ -87,7 +87,7 @@ public final class ControlsActivity extends Activity {
                         if (!resumed || ticket != configurationGeneration) return;
                         try {
                             if (!settings.equals(updated)) {
-                                if (!settings.entityId().equals(updated.entityId())) new StateCache(this).clear();
+                                if (!settings.devices().get(0).equals(updated.devices().get(0))) new StateCache(this).clear();
                                 new SecureSettings(this).save(updated); selected = 0; recreate(); return;
                             }
                         } catch (Exception ignored) { }
@@ -143,13 +143,17 @@ public final class ControlsActivity extends Activity {
             root.removeAllViews();
             DeviceController.Snapshot snapshot = snapshots.get(position);
             label(root, device.title(), 14);
+            if (device.panel() != null) label(root, snapshot == null ? "?%" : snapshot.readings().getOrDefault("battery", "?") + "%", 32);
             String message = messages.getOrDefault(position, "");
             label(root, !message.isEmpty() ? message : snapshot == null ? "State unknown" : snapshot.status(), 12);
             if (snapshot != null) {
                 LinearLayout row = null;
                 for (int i = 0; i < snapshot.controls().size(); i++) {
                     DeviceController.Control control = snapshot.controls().get(i);
-                    if (i == 0) addButton(root, control, 120, 30);
+                    if (device.panel() != null) {
+                        String label = control.action().equals("leave") ? device.panel().scriptLabel() : device.panel().climateLabel() + " " + snapshot.readings().getOrDefault("climate", "?");
+                        addButton(root, new DeviceController.Control(control.action(), label, control.enabled(), control.selected()), 160, 44);
+                    } else if (i == 0) addButton(root, control, 120, 30);
                     else {
                         if ((i - 1) % 3 == 0) {
                             row = new LinearLayout(ControlsActivity.this); row.setGravity(Gravity.CENTER);

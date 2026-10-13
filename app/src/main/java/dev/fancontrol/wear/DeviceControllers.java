@@ -6,6 +6,7 @@ import java.util.List;
 /** Add one domain adapter here when implementing another type of device. */
 final class DeviceControllers {
     static DeviceController create(ConnectionSettings connection, DeviceDefinition device) {
+        if (connection.integration() && device.panel() != null) return new WorkMorning(connection, device.panel());
         if (device.domain().equals("fan")) return new Fan(new HomeAssistantClient(connection.forFan(device)));
         if (connection.integration() && List.of("light", "switch", "input_boolean", "script", "scene").contains(device.domain()))
             return new Simple(connection, device);
@@ -15,6 +16,33 @@ final class DeviceControllers {
             public Snapshot command(String action) { throw new IllegalArgumentException("Device type unsupported"); }
             public void cancel() { }
         };
+    }
+
+    static final class WorkMorning implements DeviceController {
+        private final PanelDefinition panel;
+        private final IntegrationClient client;
+        WorkMorning(ConnectionSettings settings, PanelDefinition panel) { this.panel = panel; client = new IntegrationClient(settings); }
+        private WorkMorningState state() throws Exception {
+            return WorkMorningState.parse(client.request(new org.json.JSONObject().put("action", "panel_state").put("panel_id", panel.id())));
+        }
+        public Snapshot read() throws Exception { return state().snapshot(); }
+        public Snapshot command(String action) throws Exception {
+            WorkMorningState before = state();
+            boolean desired = !before.climateOn();
+            String command;
+            if (action.equals("climate") && before.climateAvailable()) command = desired ? "climate_on" : "climate_off";
+            else if (action.equals("leave") && before.scriptAvailable()) command = "leave";
+            else throw new IllegalArgumentException("Panel action unavailable");
+            WorkMorningState result = WorkMorningState.parse(client.request(new org.json.JSONObject().put("action", "panel_command")
+                    .put("panel_id", panel.id()).put("command", command)));
+            if (action.equals("leave")) return result.snapshot(); // Acknowledges dispatch, not script completion. Never replay.
+            for (int attempt = 0; attempt < 6; attempt++) {
+                if (result.climateAvailable() && result.climateOn() == desired) return result.snapshot();
+                if (attempt < 5) { Thread.sleep(350); result = state(); }
+            }
+            throw new java.io.IOException("Waiting for climate confirmation");
+        }
+        public void cancel() { client.cancel(); }
     }
 
     static final class Simple implements DeviceController {

@@ -63,7 +63,7 @@ public final class FanTileService extends TileService {
         String click = request.getCurrentState().getLastClickableId();
         SharedPreferences handled = getSharedPreferences("actions", MODE_PRIVATE);
         // Click IDs are unique per layout. Wear may repeat a request containing the last click.
-        if (click != null && click.matches("(toggle|activate|slower|faster|speed[1-6]|refresh):([a-f0-9]{16}:)?[a-f0-9-]+")
+        if (click != null && click.matches("(toggle|activate|climate|leave|slower|faster|speed[1-6]|refresh):([a-f0-9]{16}:)?[a-f0-9-]+")
                 && !click.equals(handled.getString("last", ""))) {
             handled.edit().putString("last", click).commit();
             String[] pieces = click.split(":");
@@ -165,7 +165,7 @@ public final class FanTileService extends TileService {
                 if (ticket != generation.get()) { config.cancel(); return; }
                 ConnectionSettings updated = config.configuration();
                 if (ticket != generation.get()) return;
-                if (!settings.entityId().equals(updated.entityId())) new StateCache(this).clear();
+                if (!settings.devices().get(0).equals(updated.devices().get(0))) new StateCache(this).clear();
                 new SecureSettings(this).save(updated); settings = updated;
             }
             action = TileTarget.action(settings, action, displayedDevice);
@@ -175,7 +175,7 @@ public final class FanTileService extends TileService {
             if (ticket == generation.get()) {
                 new StateCache(this).saveSnapshot(state);
                 fresh = true;
-                message = "Updated";
+                message = action.equals("leave") ? "Script requested" : "Updated";
             }
         } catch (Exception error) {
             if (ticket == generation.get()) {
@@ -184,7 +184,7 @@ public final class FanTileService extends TileService {
                 String text = error.getMessage();
                 message = List.of("Check access token", "Check fan entity ID", "Fan unavailable",
                         "Speed control unsupported", "Home Assistant error").contains(text == null ? "" : text)
-                        ? text : "Waiting for fan confirmation".equals(text) ? "Not confirmed · refresh" : "Offline · tap to retry";
+                        ? text : ("Waiting for fan confirmation".equals(text) || "Waiting for climate confirmation".equals(text)) ? "Not confirmed · refresh" : "Offline · tap to retry";
             }
         } finally { if (active == client) active = null; configuration = null; }
     }
@@ -199,6 +199,16 @@ public final class FanTileService extends TileService {
         boolean fan = configured && settings.devices().get(0).domain().equals("fan");
         boolean on = state != null && state.status().startsWith("On");
         boolean available = !controls.isEmpty() && controls.get(0).enabled();
+        PanelDefinition panel = configured ? settings.devices().get(0).panel() : null;
+        if (panel != null) {
+            content.addContent(text(state == null ? "?%" : state.readings().getOrDefault("battery", "?") + "%", 38, WHITE));
+            String climate = state == null ? "?" : state.readings().getOrDefault("climate", "?");
+            content.addContent(button(panel.climateLabel() + " " + climate, "climate", 160, 44,
+                    available && !commandBusy, climate.equals("ON"), "Toggle climate", 18));
+            content.addContent(spacer(6));
+            content.addContent(button(panel.scriptLabel(), "leave", 160, 50,
+                    controls.size() > 1 && controls.get(1).enabled() && !commandBusy, false, "Run configured script", 18));
+        } else {
         String power = !configured ? "SET UP" : controls.isEmpty() ? "REFRESH" : !available ? "UNKNOWN" : fan ? on ? "ON" : "OFF" : controls.get(0).label();
         content.addContent(button(power, controls.isEmpty() ? "refresh" : controls.get(0).action(), 160, 60,
                 configured && !commandBusy && (controls.isEmpty() || available), on, "Toggle power", available ? 30 : 22));
@@ -213,6 +223,7 @@ public final class FanTileService extends TileService {
             row.addContent(button("+", "faster", 54, 58, enabled && speed < 6, false, "Faster", 34));
             content.addContent(row.build());
         } else content.addContent(text(state == null ? "State unknown" : state.status(), 20, WHITE));
+        }
         content.addContent(spacer(6));
         content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(150)).setHeight(dp(22))
                 .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? click("refresh") : setupClick()).build())

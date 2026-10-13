@@ -16,6 +16,16 @@ Fans support power and six speeds, preserving **16%, 33%, 50%, 66%, 83%, 100%**.
 
 The fan tile has a large power toggle and **− / current speed / +** controls. Speed taps accumulate locally and send one absolute speed three seconds after the last tap; the displayed draft is labelled as pending. Leaving before the quiet window expires discards it. Tap **More controls** or **Open device controls** for vertical swipe pages. The active tile device is the first page; other devices follow. Native tiles use the system's horizontal carousel, so vertical paging lives in the full-screen controls activity. Neighbouring pages render without connecting; only a visible settled page reads state. Starting a swipe or leaving cancels previous work.
 
+## Configurable watch panels
+
+In **Settings → Devices & services → Fan Control → Configure → Manage watch panels**, choose a watch and **Add Work Morning panel**. Select a battery percentage sensor, a climate power entity (or switch/input boolean), and a script using HA entity pickers. Panel names and button labels are editable; no personal entity IDs are compiled into the watch. Battery sensors must use `%`; climate entities must support HA power on/off. Missing sensor values show `?%`, unavailable climate controls are disabled, and running scripts cannot be started again from the panel.
+
+The Work Morning layout places large battery percentage and climate toggle in its top half and a large script button below. A script response confirms dispatch, not that the entire script completed. Existing fan controls and their speed mapping remain unchanged. Configured panels also appear in the app's vertical swipe pages.
+
+Choose **Select active panel** in the panel manager, or use the watch's new **Tile panel** select entity in an automation with `select.select_option`. Its options are `devices` and your stable panel IDs (default `work_morning`). Alternatively call **Fan Control: Set active watch panel** (`fan_control.set_active_panel`) with the Watch ID and Panel ID. `devices` restores the active device controls. The existing **Tile device** selector and `fan_control.set_active_device` also restore device controls when selecting a device.
+
+Panels are stored per watch. Up to eight panels and sixteen total device/panel pages are supported. Their configured roles authorize only percentage reads, climate power, and their selected script; the watch cannot substitute another entity or an arbitrary service. Panel ID stays fixed when editing so automations do not break. Changing panel entities invalidates existing tile buttons until refresh. Removing the active panel falls back to device controls. Changes arrive on the next visible refresh; no background watch connections or Wi-Fi holds are added.
+
 ## Connections and battery
 
 - Local discovery uses HA's `_home-assistant._tcp.` mDNS advertisement during a bounded 20-second setup scan. The watch needs direct Wi-Fi access and a network allowing discovery traffic. Its multicast lock is released on timeout/pause.

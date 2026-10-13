@@ -65,7 +65,11 @@ public record ConnectionSettings(String baseUrl, String token, String entityId, 
 
     public JSONObject toJson() throws Exception {
         JSONArray ordered = new JSONArray();
-        for (DeviceDefinition device : devices) ordered.put(new JSONObject().put("entity", device.entityId()).put("title", device.title()));
+        for (DeviceDefinition device : devices) {
+            JSONObject item = new JSONObject().put("entity", device.entityId()).put("title", device.title());
+            if (device.panel() != null) item.put("panel", device.panel().toJson());
+            ordered.put(item);
+        }
         return new JSONObject().put("url", baseUrl).put("token", token).put("entity", entityId).put("devices", ordered)
                 .put("remote_url", remoteUrl).put("watch_id", watchId).put("integration", integration());
     }
@@ -83,7 +87,7 @@ public record ConnectionSettings(String baseUrl, String token, String entityId, 
         java.util.ArrayList<DeviceDefinition> devices = new java.util.ArrayList<>();
         for (int i = 0; i < array.length(); i++) {
             JSONObject item = array.getJSONObject(i);
-            devices.add(new DeviceDefinition(item.getString("entity"), item.getString("title")));
+            devices.add(new DeviceDefinition(item.getString("entity"), item.getString("title"), item.has("panel") ? PanelDefinition.fromJson(item.getJSONObject("panel")) : null));
         }
         if (integration) {
             // HA stores swipe order separately from the active tile selection.

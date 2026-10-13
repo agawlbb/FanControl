@@ -34,7 +34,7 @@ final class IntegrationClient {
         try { JSONObject result = exchange(endpoint, body); endpoints.put(routeKey(settings), endpoint); return result; }
         catch (IOException failure) {
             // Never replay a command through another endpoint after an ambiguous response.
-            if (cancelled || body.optString("action").equals("command") || settings.remoteUrl().isEmpty()
+            if (cancelled || java.util.List.of("command", "panel_command").contains(body.optString("action")) || settings.remoteUrl().isEmpty()
                     || settings.remoteUrl().equals(settings.baseUrl()) || failure instanceof Rejected) throw failure;
             String fallback = endpoint.equals(settings.remoteUrl()) ? settings.baseUrl() : settings.remoteUrl();
             JSONObject result = exchange(fallback, body); endpoint = fallback; endpoints.put(routeKey(settings), endpoint); return result;
