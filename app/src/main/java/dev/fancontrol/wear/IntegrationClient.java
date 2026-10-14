@@ -11,7 +11,7 @@ import javax.crypto.spec.SecretKeySpec;
 import okhttp3.*;
 import org.json.JSONObject;
 
-/** Only instantiated by visible setup/controls. Credentials never cross the network. */
+/** Encrypted HA reads/commands for visible controls and bounded configuration checks. */
 final class IntegrationClient implements VisibleConfigurationSession.Client {
     private final ConnectionSettings settings;
     private final OkHttpClient http;
@@ -54,7 +54,7 @@ final class IntegrationClient implements VisibleConfigurationSession.Client {
                 .post(RequestBody.create(packet.toString(), MediaType.get("application/json"))).build());
         active = call; if (cancelled) call.cancel();
         try (Response response = call.execute()) {
-            if (!response.isSuccessful()) throw new Rejected("Home Assistant rejected watch access");
+            if (!response.isSuccessful()) throw new Rejected(response.code());
             if (response.body() == null) throw new IOException("Empty response");
             String raw = response.body().string(); if (raw.length() > 24576) throw new IOException("Invalid response");
             JSONObject envelope = new JSONObject(raw);
@@ -76,5 +76,9 @@ final class IntegrationClient implements VisibleConfigurationSession.Client {
     static byte[] unhex(String text) {
         byte[] bytes = new byte[text.length()/2]; for (int i=0;i<bytes.length;i++) bytes[i]=(byte)Integer.parseInt(text.substring(i*2,i*2+2),16); return bytes;
     }
-    private static final class Rejected extends IOException { Rejected(String message) { super(message); } }
+    static boolean accessRevoked(Exception failure) { return failure instanceof Rejected rejection && (rejection.status == 401 || rejection.status == 403); }
+    static final class Rejected extends IOException {
+        final int status;
+        Rejected(int status) { super("Home Assistant rejected watch access"); this.status = status; }
+    }
 }

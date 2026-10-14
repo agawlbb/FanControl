@@ -19,8 +19,10 @@ public final class SecureSettings {
     // Setup, controls, and the tile use different storage instances in the same process.
     private static final Object LOCK = new Object();
     private final SharedPreferences preferences;
+    private final Context context;
 
     public SecureSettings(Context context) {
+        this.context = context.getApplicationContext();
         preferences = context.getSharedPreferences("connection", Context.MODE_PRIVATE);
     }
 
@@ -48,6 +50,14 @@ public final class SecureSettings {
                     .putString("iv", Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP)).commit())
                 throw new IllegalStateException("Could not save settings");
         }
+        BackgroundConfigurationScheduler.ensure(context, load());
+    }
+
+    boolean saveIfCurrent(ConnectionSettings expected, ConnectionSettings updated) throws Exception {
+        synchronized (LOCK) { if (!expected.equals(load())) return false; save(updated); return true; }
+    }
+    boolean clearIfCurrent(ConnectionSettings expected) throws Exception {
+        synchronized (LOCK) { if (!expected.equals(load())) return false; clear(); return true; }
     }
 
     public ConnectionSettings load() {
@@ -73,5 +83,6 @@ public final class SecureSettings {
             store.load(null);
             store.deleteEntry(ALIAS);
         }
+        BackgroundConfigurationScheduler.ensure(context, load());
     }
 }

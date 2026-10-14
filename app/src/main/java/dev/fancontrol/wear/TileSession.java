@@ -25,7 +25,8 @@ import static androidx.wear.protolayout.DimensionBuilders.dp;
 import static androidx.wear.protolayout.DimensionBuilders.sp;
 
 final class TileSession extends android.content.ContextWrapper {
-    private static TileSession instance;
+    private static volatile TileSession instance;
+    static boolean isVisible() { TileSession current = instance; return current != null && current.visible; }
     static synchronized TileSession get(android.content.Context context) {
         if (instance == null) instance = new TileSession(context.getApplicationContext());
         return instance;
@@ -40,7 +41,8 @@ final class TileSession extends android.content.ContextWrapper {
     private volatile IntegrationClient configuration;
     private volatile String message = "Last known state";
     private volatile boolean fresh;
-    private boolean visible, commandBusy;
+    private volatile boolean visible;
+    private boolean commandBusy;
     private final SpeedSelection speedSelection = new SpeedSelection();
     private final FanTileState fanState = new FanTileState();
     private int sendingSpeed = -1;
@@ -102,7 +104,7 @@ final class TileSession extends android.content.ContextWrapper {
             handled.edit().putString("last", click).commit();
             String[] pieces = click.split(":");
             if (!commandBusy) {
-                visible = true; watchSelection();
+                visible = true; BackgroundConfigurationJob.cancelActive(); watchSelection();
                 ConnectionSettings current = new SecureSettings(this).load();
                 if (current != null && current.devices().get(0).domain().equals("fan") && fanState.current() == null)
                     pieces[0] = "refresh"; // A tap from an old renderer layout cannot operate an unknown fan.
@@ -178,6 +180,7 @@ final class TileSession extends android.content.ContextWrapper {
     }
     private void leave() { handler.removeCallbacks(checkSelection); if (selectionSession != null) selectionSession.close(); clearSpeed(); sendingSpeed = -1; fanState.clear(); visible = false; handler.removeCallbacks(poll); commandBusy = false; stopOperation(); TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
     private ListenableFuture<Void> refreshOnView() {
+        BackgroundConfigurationJob.cancelActive();
         if (!visible) { fanState.clear(); message = "Updating…"; TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
         visible = true; watchSelection();
         if (!commandBusy && !speedSelection.pending()) return runOperation("refresh", "");
