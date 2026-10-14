@@ -42,6 +42,7 @@ final class TileSession extends android.content.ContextWrapper {
     private volatile boolean fresh;
     private boolean visible, commandBusy;
     private final SpeedSelection speedSelection = new SpeedSelection();
+    private final FanTileState fanState = new FanTileState();
     private int sendingSpeed = -1;
     private final Runnable sendSpeed = () -> {
         if (!visible) { speedSelection.clear(); return; }
@@ -80,7 +81,7 @@ final class TileSession extends android.content.ContextWrapper {
                 storage.save(update.updated());
                 if (changed) {
                     clearSpeed(); sendingSpeed = -1; commandBusy = false;
-                    stopOperation(); new StateCache(this).clear(); message = "Updating…";
+                    stopOperation(); fanState.clear(); new StateCache(this).clear(); message = "Updating…";
                 }
                 TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); // Publish the new layout before slow device reads.
                 if (changed) runOperation("refresh", "");
@@ -102,6 +103,9 @@ final class TileSession extends android.content.ContextWrapper {
             String[] pieces = click.split(":");
             if (!commandBusy) {
                 visible = true; watchSelection();
+                ConnectionSettings current = new SecureSettings(this).load();
+                if (current != null && current.devices().get(0).domain().equals("fan") && fanState.current() == null)
+                    pieces[0] = "refresh"; // A tap from an old renderer layout cannot operate an unknown fan.
                 String target = pieces.length == 3 ? pieces[1] : "";
                 if (pieces[0].equals("slower") || pieces[0].equals("faster")) selectSpeed(pieces[0], target);
                 else {
@@ -167,13 +171,14 @@ final class TileSession extends android.content.ContextWrapper {
         ConnectionSettings settings = new SecureSettings(this).load();
         if (settings == null || !TileTarget.key(settings).equals(target)) { clearSpeed(); runOperation("refresh", ""); return; }
         if (!speedSelection.pending()) { handler.removeCallbacks(poll); stopOperation(); }
-        if (speedSelection.tap(confirmedSpeed(new StateCache(this).readSnapshot()), action.equals("faster") ? 1 : -1,
+        if (speedSelection.tap(confirmedSpeed(fanState.current()), action.equals("faster") ? 1 : -1,
                 target, android.os.SystemClock.elapsedRealtime())) {
-            handler.removeCallbacks(sendSpeed); handler.postDelayed(sendSpeed, 3000);
+            handler.removeCallbacks(sendSpeed); handler.postDelayed(sendSpeed, SpeedSelection.QUIET_WINDOW_MS);
         }
     }
-    private void leave() { handler.removeCallbacks(checkSelection); if (selectionSession != null) selectionSession.close(); clearSpeed(); sendingSpeed = -1; visible = false; handler.removeCallbacks(poll); commandBusy = false; stopOperation(); }
+    private void leave() { handler.removeCallbacks(checkSelection); if (selectionSession != null) selectionSession.close(); clearSpeed(); sendingSpeed = -1; fanState.clear(); visible = false; handler.removeCallbacks(poll); commandBusy = false; stopOperation(); TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
     private ListenableFuture<Void> refreshOnView() {
+        if (!visible) { fanState.clear(); message = "Updating…"; TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
         visible = true; watchSelection();
         if (!commandBusy && !speedSelection.pending()) return runOperation("refresh", "");
         return Futures.immediateVoidFuture();
@@ -204,7 +209,7 @@ final class TileSession extends android.content.ContextWrapper {
                 if (ticket != generation.get()) { config.cancel(); return; }
                 ConnectionSettings updated = config.configuration();
                 if (ticket != generation.get()) return;
-                if (!settings.devices().get(0).equals(updated.devices().get(0))) new StateCache(this).clear();
+                if (!settings.devices().get(0).equals(updated.devices().get(0))) { fanState.clear(); new StateCache(this).clear(); }
                 new SecureSettings(this).save(updated); settings = updated;
                 handler.post(() -> { if (ticket == generation.get()) TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); });
             }
@@ -215,13 +220,16 @@ final class TileSession extends android.content.ContextWrapper {
             DeviceController.Snapshot state = action.equals("refresh") ? client.read() : client.command(action);
             if (ticket == generation.get()) {
                 new StateCache(this).saveSnapshot(state);
-                fresh = true;
-                message = action.equals("leave") ? "Script requested" : "Updated";
+                if (settings.devices().get(0).domain().equals("fan")) fanState.confirm(state);
+                boolean fan = settings.devices().get(0).domain().equals("fan");
+                fresh = !fan || fanState.current() != null;
+                message = fan && !fresh ? "Fan unavailable" : action.equals("leave") ? "Script requested" : "Updated";
             }
         } catch (Exception error) {
             if (BuildConfig.DEBUG) android.util.Log.d("FanTile", "operation failed: " + error.getClass().getSimpleName());
             if (ticket == generation.get()) {
                 fresh = false;
+                fanState.clear();
                 // Whitelist safe messages; never display raw network errors, URLs, or response bodies.
                 String text = error.getMessage();
                 message = List.of("Check access token", "Check fan entity ID", "Fan unavailable",
@@ -237,8 +245,9 @@ final class TileSession extends android.content.ContextWrapper {
         boolean configured = settings != null;
         LayoutElementBuilders.Column.Builder content = new LayoutElementBuilders.Column.Builder()
                 .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER);
-        List<DeviceController.Control> controls = state == null ? List.of() : state.controls();
         boolean fan = configured && settings.devices().get(0).domain().equals("fan");
+        if (fan) state = visible ? fanState.current() : null;
+        List<DeviceController.Control> controls = state == null ? List.of() : state.controls();
         boolean on = state != null && state.status().startsWith("On");
         boolean available = !controls.isEmpty() && controls.get(0).enabled();
         PanelDefinition panel = configured ? settings.devices().get(0).panel() : null;
@@ -254,9 +263,9 @@ final class TileSession extends android.content.ContextWrapper {
             content.addContent(button(panel.scriptLabel(), "leave", 160, 56,
                     controls.size() > 1 && controls.get(1).enabled() && !commandBusy, false, "Run configured script", 18));
         } else {
-        String power = !configured ? "SET UP" : controls.isEmpty() ? "REFRESH" : !available ? "UNKNOWN" : fan ? on ? "ON" : "OFF" : controls.get(0).label();
+        String power = !configured ? "SET UP" : fan && !available ? "UNKNOWN" : controls.isEmpty() ? "REFRESH" : !available ? "UNKNOWN" : fan ? on ? "ON" : "OFF" : controls.get(0).label();
         content.addContent(button(power, controls.isEmpty() ? "refresh" : controls.get(0).action(), 160, 60,
-                configured && !commandBusy && (controls.isEmpty() || available), on, "Toggle power", available ? 30 : 22));
+                configured && !commandBusy && (fan ? available : controls.isEmpty() || available), on, "Toggle power", available ? 30 : 22));
         content.addContent(spacer(8));
         if (fan) {
             int speed = sendingSpeed >= 1 ? sendingSpeed : speedSelection.displayed(confirmedSpeed(state));
@@ -264,7 +273,7 @@ final class TileSession extends android.content.ContextWrapper {
             LayoutElementBuilders.Row.Builder row = new LayoutElementBuilders.Row.Builder();
             row.addContent(button("−", "slower", 54, 58, enabled && speed > 1, false, "Slower", 34));
             row.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(52)).setHeight(dp(58))
-                    .addContent(text(state == null || !available || speed < 0 ? "?" : Integer.toString(speed), 40, WHITE)).build());
+                    .addContent(text(state == null || !available || speed < 0 ? "?" : Integer.toString(speed), 40, available ? WHITE : 0xFF87918D)).build());
             row.addContent(button("+", "faster", 54, 58, enabled && speed < 6, false, "Faster", 34));
             content.addContent(row.build());
         } else content.addContent(text(state == null ? "State unknown" : state.status(), 20, WHITE));
@@ -272,7 +281,7 @@ final class TileSession extends android.content.ContextWrapper {
         content.addContent(spacer(6));
         content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(150)).setHeight(dp(22))
                 .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? click("refresh") : setupClick()).build())
-                .addContent(text(speedSelection.pending() ? "Sending in 3 seconds" : commandBusy ? "Updating…" : configured ? fresh ? message : message.equals("Last known state") ? "Last known · refresh" : message : "Open app to set up", 11, WHITE)).build());
+                .addContent(text(speedSelection.pending() ? "Sending in 1 second" : commandBusy ? "Updating…" : configured ? fresh ? message : message.equals("Last known state") ? fan ? "Unknown · refresh" : "Last known · refresh" : message : "Open app to set up", 11, WHITE)).build());
         content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(120)).setHeight(dp(18))
                 .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? controlsClick() : setupClick()).build())
                 .addContent(text("More controls", 10, WHITE)).build());

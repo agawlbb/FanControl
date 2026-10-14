@@ -2,6 +2,7 @@ package dev.fancontrol.wear;
 
 /** A visible-only draft; only its final absolute speed is sent after the quiet window. */
 final class SpeedSelection {
+    static final long QUIET_WINDOW_MS = 1000;
     private int desired = -1;
     private long due;
     private String target = "";
@@ -12,7 +13,7 @@ final class SpeedSelection {
         if (confirmed < 0 || confirmed > 6 || (delta != -1 && delta != 1)) return false;
         if (pending() && !target.equals(device)) clear();
         desired = Math.max(1, Math.min(6, displayed(confirmed) + delta));
-        target = device; due = now + 3000;
+        target = device; due = now + QUIET_WINDOW_MS;
         return true;
     }
     String take(long now) {
