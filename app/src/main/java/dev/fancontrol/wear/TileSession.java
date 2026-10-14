@@ -42,6 +42,7 @@ final class TileSession extends android.content.ContextWrapper {
     private volatile String message = "Last known state";
     private volatile boolean fresh;
     private volatile boolean visible;
+    private final VisibleEntryGate entryGate = new VisibleEntryGate();
     private boolean commandBusy;
     private final SpeedSelection speedSelection = new SpeedSelection();
     private final FanTileState fanState = new FanTileState();
@@ -108,6 +109,10 @@ final class TileSession extends android.content.ContextWrapper {
                 ConnectionSettings current = new SecureSettings(this).load();
                 if (current != null && current.devices().get(0).domain().equals("fan") && fanState.current() == null)
                     pieces[0] = "refresh"; // A tap from an old renderer layout cannot operate an unknown fan.
+                if (current != null) {
+                    PanelDefinition panel = current.devices().get(0).panel();
+                    pieces[0] = VisibleEntryGate.safeAction(pieces[0], panel != null && panel.vehicle(), fresh);
+                }
                 String target = pieces.length == 3 ? pieces[1] : "";
                 if (pieces[0].equals("slower") || pieces[0].equals("faster")) selectSpeed(pieces[0], target);
                 else {
@@ -178,8 +183,9 @@ final class TileSession extends android.content.ContextWrapper {
             handler.removeCallbacks(sendSpeed); handler.postDelayed(sendSpeed, SpeedSelection.QUIET_WINDOW_MS);
         }
     }
-    private void leave() { handler.removeCallbacks(checkSelection); if (selectionSession != null) selectionSession.close(); clearSpeed(); sendingSpeed = -1; fanState.clear(); visible = false; handler.removeCallbacks(poll); commandBusy = false; stopOperation(); TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
+    private void leave() { entryGate.leave(); handler.removeCallbacks(checkSelection); if (selectionSession != null) selectionSession.close(); clearSpeed(); sendingSpeed = -1; fanState.clear(); visible = false; handler.removeCallbacks(poll); commandBusy = false; stopOperation(); TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
     private ListenableFuture<Void> refreshOnView() {
+        if (visible && (active != null || configuration != null)) return Futures.immediateVoidFuture();
         BackgroundConfigurationJob.cancelActive();
         if (!visible) { fanState.clear(); message = "Updating…"; TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
         visible = true; watchSelection();
@@ -220,7 +226,10 @@ final class TileSession extends android.content.ContextWrapper {
             if (BuildConfig.DEBUG) android.util.Log.d("FanTile", "operation: " + action);
             client = DeviceControllers.create(settings, settings.devices().get(0)); active = client;
             if (ticket != generation.get()) { client.cancel(); return; }
-            DeviceController.Snapshot state = action.equals("refresh") ? client.read() : client.command(action);
+            boolean entry = visible && entryGate.claim(TileTarget.key(settings));
+            PanelDefinition panel = settings.devices().get(0).panel();
+            action = VisibleEntryGate.safeAction(action, panel != null && panel.vehicle(), !entry);
+            DeviceController.Snapshot state = action.equals("refresh") ? (entry ? client.enter() : client.read()) : client.command(action);
             if (ticket == generation.get()) {
                 new StateCache(this).saveSnapshot(state);
                 if (settings.devices().get(0).domain().equals("fan")) fanState.confirm(state);
@@ -236,7 +245,7 @@ final class TileSession extends android.content.ContextWrapper {
                 // Whitelist safe messages; never display raw network errors, URLs, or response bodies.
                 String text = error.getMessage();
                 message = List.of("Check access token", "Check fan entity ID", "Fan unavailable",
-                        "Speed control unsupported", "Home Assistant error").contains(text == null ? "" : text)
+                        "Speed control unsupported", "Home Assistant error", "Vehicle not ready").contains(text == null ? "" : text)
                         ? text : ("Waiting for fan confirmation".equals(text) || "Waiting for climate confirmation".equals(text)) ? "Not confirmed · refresh" : "Offline · tap to retry";
             }
         } finally { if (active == client) active = null; configuration = null; }
@@ -250,6 +259,8 @@ final class TileSession extends android.content.ContextWrapper {
                 .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER);
         boolean fan = configured && settings.devices().get(0).domain().equals("fan");
         if (fan) state = visible ? fanState.current() : null;
+        // Panel snapshots are usable only after a successful read in this visible operation.
+        if (configured && settings.devices().get(0).panel() != null && settings.devices().get(0).panel().vehicle() && (!visible || !fresh)) state = null;
         List<DeviceController.Control> controls = state == null ? List.of() : state.controls();
         boolean on = state != null && state.status().startsWith("On");
         boolean available = !controls.isEmpty() && controls.get(0).enabled();

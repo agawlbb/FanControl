@@ -14,7 +14,8 @@ public class VisibleDeviceSessionTest {
         void drain() { while (!tasks.isEmpty()) tasks.remove().run(); }
     }
     private static final class Controller implements DeviceController {
-        int reads, commands; boolean cancelled; Runnable onRead;
+        int reads, commands, entries; boolean cancelled; Runnable onRead;
+        public Snapshot enter() { entries++; return read(); }
         public Snapshot read() {
             reads++; if (onRead != null) onRead.run();
             return new Snapshot("Confirmed", List.of());
@@ -62,6 +63,13 @@ public class VisibleDeviceSessionTest {
     @Test public void repeatedResumeDoesNotPoll() {
         VisibleDeviceSession session = session(); session.resume(); session.resume(); queue.drain();
         assertEquals(1, created.size()); assertEquals(1, created.get(0).reads); assertTrue(queue.tasks.isEmpty());
+    }
+    @Test public void refreshDoesNotRepeatVisibleEntry() {
+        VisibleDeviceSession session = session(); session.resume(); queue.drain();
+        session.refresh(); queue.drain();
+        assertEquals(1, created.stream().mapToInt(c -> c.entries).sum());
+        session.suspend(); session.resume(); queue.drain();
+        assertEquals(2, created.stream().mapToInt(c -> c.entries).sum());
     }
     @Test(expected = IllegalArgumentException.class) public void invalidPageDoesNotChangeSelection() { session().select(2); }
 }

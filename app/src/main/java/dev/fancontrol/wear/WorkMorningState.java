@@ -5,6 +5,12 @@ import java.util.Map;
 import org.json.JSONObject;
 
 record WorkMorningState(String battery, boolean climateOn, boolean climateAvailable, boolean scriptAvailable) {
+    static WorkMorningState parse(JSONObject json, boolean vehicle) throws Exception {
+        if (vehicle && !Boolean.TRUE.equals(json.opt("vehicle_ready"))) return new WorkMorningState("?", false, false, false);
+        return parse(json);
+    }
+    // Vehicle parsing hides battery unless HA confirmed online status and valid fields.
+    boolean ready() { return !battery.equals("?"); }
     static WorkMorningState parse(JSONObject json) throws Exception {
         String battery = "?";
         if (!json.isNull("battery")) {

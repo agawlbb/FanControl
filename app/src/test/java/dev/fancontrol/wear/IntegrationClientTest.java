@@ -90,6 +90,19 @@ public class IntegrationClientTest {
             assertEquals(1, local.getRequestCount()); assertEquals(0, remote.getRequestCount());
         }
     }
+    @Test public void ambiguousWakeIsNeverReplayedThroughRemote() throws Exception {
+        try (MockWebServer local = new MockWebServer(); MockWebServer remote = new MockWebServer()) {
+            local.start(); remote.start();
+            local.enqueue(new MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST));
+            OkHttpClient http = new OkHttpClient.Builder().retryOnConnectionFailure(false)
+                    .addInterceptor(chain -> chain.proceed(chain.request().url().host().equals("remote.example.com")
+                            ? chain.request().newBuilder().url(remote.url("/api/fan_control/watch/request")).build() : chain.request())).build();
+            IntegrationClient client = new IntegrationClient(settings(local.url("/").toString(), "https://remote.example.com"), http);
+            try { client.request(new JSONObject().put("action", "panel_command").put("panel_id", "work_morning").put("command", "wake")); fail(); }
+            catch (java.io.IOException expected) { }
+            assertEquals(1, local.getRequestCount()); assertEquals(0, remote.getRequestCount());
+        }
+    }
     @Test public void cancellationPreventsNetwork() throws Exception {
         try(MockWebServer server = new MockWebServer()) {
             server.start(); IntegrationClient client = new IntegrationClient(settings(server.url("/").toString(), "")); client.cancel();

@@ -37,6 +37,21 @@ public class WorkMorningTest {
         assertEquals("?", state.readings().get("battery")); assertEquals("?", state.readings().get("climate"));
         assertFalse(state.controls().get(0).enabled()); assertTrue(state.controls().get(1).enabled());
     }
+    @Test public void vehicleMissingReadinessFailsClosedEvenWithCachedFields() throws Exception {
+        JSONObject state = new JSONObject().put("battery", 82).put("climate_on", true)
+                .put("climate_available", true).put("script_available", true);
+        assertEquals("?", WorkMorningState.parse(state, true).snapshot().readings().get("battery"));
+        assertFalse(WorkMorningState.parse(state, true).snapshot().controls().get(1).enabled());
+        assertTrue(WorkMorningState.parse(state.put("vehicle_ready", true), true).ready());
+    }
+    @Test public void vehicleRolesRoundTripAndBindTileIdentity() throws Exception {
+        PanelDefinition p = PanelDefinition.fromJson(panel().put("wake_entity", "button.example_wake").put("awake_entity", "binary_sensor.example_online"));
+        assertTrue(p.vehicle()); assertEquals(p, PanelDefinition.fromJson(p.toJson()));
+        assertFalse(PanelDefinition.fromJson(panel()).vehicle());
+    }
+    @Test(expected = IllegalArgumentException.class) public void incompleteVehicleConfigurationRejected() throws Exception {
+        PanelDefinition.fromJson(panel().put("wake_entity", "button.example_wake"));
+    }
     @Test public void percentageAndConfirmedClimateAreSeparate() throws Exception {
         DeviceController.Snapshot state = WorkMorningState.parse(new JSONObject().put("battery", 82)
                 .put("climate_on", true).put("climate_available", true).put("script_available", false)).snapshot();

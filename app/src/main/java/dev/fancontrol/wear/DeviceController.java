@@ -9,6 +9,7 @@ interface DeviceController {
         public Snapshot(String status, List<Control> controls) { this(status, controls, java.util.Map.of()); }
         public Snapshot { controls = List.copyOf(controls); readings = java.util.Map.copyOf(readings); }
     }
+    default Snapshot enter() throws Exception { return read(); }
     Snapshot read() throws Exception;
     Snapshot command(String action) throws Exception;
     void cancel();

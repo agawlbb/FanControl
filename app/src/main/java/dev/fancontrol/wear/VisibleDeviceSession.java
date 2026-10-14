@@ -26,9 +26,9 @@ final class VisibleDeviceSession {
         if (page < 0 || page >= devices.size()) throw new IllegalArgumentException("Invalid device page");
         if (this.page == page) return;
         stop(); this.page = page;
-        if (visible) start(null);
+        if (visible) start("@enter");
     }
-    synchronized void resume() { if (!visible) { visible = true; start(null); } }
+    synchronized void resume() { if (!visible) { visible = true; start("@enter"); } }
     synchronized void suspend() { visible = false; stop(); }
     synchronized void refresh() { if (visible) start(null); }
     synchronized void command(String action) { if (visible) start(action); }
@@ -43,7 +43,7 @@ final class VisibleDeviceSession {
         executor.execute(() -> {
             if (!current(ticket, selected)) return;
             try {
-                DeviceController.Snapshot state = action == null ? controller.read() : controller.command(action);
+                DeviceController.Snapshot state = action == null ? controller.read() : action.equals("@enter") ? controller.enter() : controller.command(action);
                 deliver(ticket, selected, state, null);
             } catch (Exception ignored) {
                 // Never expose a URL, device identity, response body, or credential through an exception.

@@ -48,6 +48,9 @@ public final class ControlsActivity extends Activity {
         session = new VisibleDeviceSession(settings.devices(), device -> DeviceControllers.create(settings, device), worker,
                 update -> handler.post(() -> {
                     if (!resumed || !session.accepts(update) || update.page() != selected || pager.getScrollState() != ViewPager2.SCROLL_STATE_IDLE) return;
+                    // Never reuse a panel's prior readings after a new read starts or fails.
+                    if (settings.devices().get(update.page()).panel() != null && settings.devices().get(update.page()).panel().vehicle() && update.snapshot() == null)
+                        snapshots.remove(update.page());
                     if (update.snapshot() == null && update.error() == null) {
                         loading = update.page(); messages.put(update.page(), "Updating…");
                     } else {
@@ -63,13 +66,21 @@ public final class ControlsActivity extends Activity {
             @Override public void onPageScrollStateChanged(int state) {
                 if (state != ViewPager2.SCROLL_STATE_IDLE) {
                     // Neighbour page creation and gestures must not prefetch network state.
-                    session.suspend(); loading = -1;
+                    session.suspend(); loading = -1; clearVehicleSnapshots();
                 } else if (resumed && configurationReady) session.resume();
             }
         });
         selected = saved == null ? 0 : Math.min(Math.max(0, saved.getInt("selected", 0)), settings.devices().size() - 1);
         session.select(selected); pager.setCurrentItem(selected, false);
         setContentView(pager);
+    }
+
+    private void clearVehicleSnapshots() {
+        for (int i = 0; settings != null && i < settings.devices().size(); i++) {
+            PanelDefinition panel = settings.devices().get(i).panel();
+            if (panel != null && panel.vehicle()) snapshots.remove(i);
+        }
+        for (Page page : attached.values()) page.render();
     }
 
     @Override protected void onResume() {
@@ -101,7 +112,7 @@ public final class ControlsActivity extends Activity {
         } else if (session != null) { configurationReady = true; if (pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE) session.resume(); }
     }
     @Override protected void onPause() {
-        resumed = false;
+        resumed = false; clearVehicleSnapshots();
         configurationGeneration++; IntegrationClient client = configuration; if(client != null) client.cancel(); configuration = null;
         if (session != null) session.suspend();
         handler.removeCallbacksAndMessages(null); loading = -1;
@@ -142,6 +153,8 @@ public final class ControlsActivity extends Activity {
             if (position == RecyclerView.NO_POSITION || device == null) return;
             root.removeAllViews();
             DeviceController.Snapshot snapshot = snapshots.get(position);
+            if (device.panel() != null && device.panel().vehicle() && (!resumed || !configurationReady || loading == position
+                    || pager.getScrollState() != ViewPager2.SCROLL_STATE_IDLE)) snapshot = null;
             label(root, device.title(), 14);
             String message = messages.getOrDefault(position, "");
             if (device.panel() != null) {

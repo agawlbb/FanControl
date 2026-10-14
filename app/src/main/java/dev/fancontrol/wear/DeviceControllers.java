@@ -20,12 +20,20 @@ final class DeviceControllers {
 
     static final class WorkMorning implements DeviceController {
         private final PanelDefinition panel;
+        private volatile boolean cancelled;
         private final IntegrationClient client;
         WorkMorning(ConnectionSettings settings, PanelDefinition panel) { this.panel = panel; client = new IntegrationClient(settings); }
         private WorkMorningState state() throws Exception {
-            return WorkMorningState.parse(client.request(new org.json.JSONObject().put("action", "panel_state").put("panel_id", panel.id())));
+            return WorkMorningState.parse(client.request(new org.json.JSONObject().put("action", "panel_state").put("panel_id", panel.id())), panel.vehicle());
         }
         public Snapshot read() throws Exception { return state().snapshot(); }
+        public Snapshot enter() throws Exception {
+            if (!panel.vehicle()) return read();
+            return VehicleEntry.await(() -> {
+                client.request(new org.json.JSONObject().put("action", "panel_command")
+                        .put("panel_id", panel.id()).put("command", "wake"));
+            }, this::state, () -> cancelled, () -> System.nanoTime() / 1_000_000L, Thread::sleep).snapshot();
+        }
         public Snapshot command(String action) throws Exception {
             WorkMorningState before = state();
             boolean desired = !before.climateOn();
@@ -34,7 +42,7 @@ final class DeviceControllers {
             else if (action.equals("leave") && before.scriptAvailable()) command = "leave";
             else throw new IllegalArgumentException("Panel action unavailable");
             WorkMorningState result = WorkMorningState.parse(client.request(new org.json.JSONObject().put("action", "panel_command")
-                    .put("panel_id", panel.id()).put("command", command)));
+                    .put("panel_id", panel.id()).put("command", command)), panel.vehicle());
             if (action.equals("leave")) return result.snapshot(); // Acknowledges dispatch, not script completion. Never replay.
             for (int attempt = 0; attempt < 6; attempt++) {
                 if (result.climateAvailable() && result.climateOn() == desired) return result.snapshot();
@@ -42,7 +50,7 @@ final class DeviceControllers {
             }
             throw new java.io.IOException("Waiting for climate confirmation");
         }
-        public void cancel() { client.cancel(); }
+        public void cancel() { cancelled = true; client.cancel(); }
     }
 
     static final class Simple implements DeviceController {
