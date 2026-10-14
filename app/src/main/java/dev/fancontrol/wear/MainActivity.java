@@ -32,7 +32,7 @@ public final class MainActivity extends Activity {
         forget.setOnClickListener(view -> {
             try {
                 new SecureSettings(this).clear(); new StateCache(this).clear(); updateStatus();
-                TileService.getUpdater(this).requestUpdate(FanTileService.class);
+                TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class);
             } catch (Exception ignored) { status.setText("Could not clear. Try again."); }
         });
         setContentView(scroll);

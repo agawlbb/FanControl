@@ -113,7 +113,7 @@ public final class PairingActivity extends Activity {
                         new StateCache(this).clear();
                         completed = true; keys = null; session = null;
                         code.setText("Connected"); status.setText("Add the Fan Control tile. View it to check your fan.");
-                        TileService.getUpdater(this).requestUpdate(FanTileService.class);
+                        TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class);
                         worker.execute(() -> {
                             try { transport.acknowledge(pairing); } catch (Exception ignored) { }
                             finally {

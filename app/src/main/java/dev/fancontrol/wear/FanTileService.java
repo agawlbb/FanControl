@@ -76,7 +76,7 @@ public final class FanTileService extends TileService {
                     clearSpeed(); sendingSpeed = -1; commandBusy = false;
                     stopOperation(); new StateCache(this).clear(); message = "Updating…";
                 }
-                getUpdater(this).requestUpdate(FanTileService.class); // Publish the new layout before slow device reads.
+                getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); // Publish the new layout before slow device reads.
                 if (changed) runOperation("refresh", "");
             } catch (Exception ignored) { }
         }));
@@ -87,6 +87,7 @@ public final class FanTileService extends TileService {
 
     @Override protected ListenableFuture<TileBuilders.Tile> onTileRequest(RequestBuilders.TileRequest request) {
         String click = request.getCurrentState().getLastClickableId();
+        if (BuildConfig.DEBUG) android.util.Log.d("FanTile", "request: click=" + (click == null || click.isEmpty() ? "none" : click.split(":")[0]) + " busy=" + commandBusy);
         SharedPreferences handled = getSharedPreferences("actions", MODE_PRIVATE);
         // Click IDs are unique per layout. Wear may repeat a request containing the last click.
         if (click != null && click.matches("(toggle|activate|climate|leave|slower|faster|speed[1-6]|refresh):([a-f0-9]{16}:)?[a-f0-9-]+")
@@ -178,7 +179,7 @@ public final class FanTileService extends TileService {
             fetch(action, ticket, target);
             handler.post(() -> {
                 if (ticket != generation.get()) return;
-                commandBusy = false; sendingSpeed = -1; getUpdater(this).requestUpdate(FanTileService.class);
+                commandBusy = false; sendingSpeed = -1; getUpdater(getApplicationContext()).requestUpdate(FanTileService.class);
                 if (visible) handler.postDelayed(poll, 5000);
             });
             return null;
@@ -198,9 +199,10 @@ public final class FanTileService extends TileService {
                 if (ticket != generation.get()) return;
                 if (!settings.devices().get(0).equals(updated.devices().get(0))) new StateCache(this).clear();
                 new SecureSettings(this).save(updated); settings = updated;
-                handler.post(() -> { if (ticket == generation.get()) getUpdater(this).requestUpdate(FanTileService.class); });
+                handler.post(() -> { if (ticket == generation.get()) getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); });
             }
             action = TileTarget.action(settings, action, displayedDevice);
+            if (BuildConfig.DEBUG) android.util.Log.d("FanTile", "operation: " + action);
             client = DeviceControllers.create(settings, settings.devices().get(0)); active = client;
             if (ticket != generation.get()) { client.cancel(); return; }
             DeviceController.Snapshot state = action.equals("refresh") ? client.read() : client.command(action);
@@ -210,6 +212,7 @@ public final class FanTileService extends TileService {
                 message = action.equals("leave") ? "Script requested" : "Updated";
             }
         } catch (Exception error) {
+            if (BuildConfig.DEBUG) android.util.Log.d("FanTile", "operation failed: " + error.getClass().getSimpleName());
             if (ticket == generation.get()) {
                 fresh = false;
                 // Whitelist safe messages; never display raw network errors, URLs, or response bodies.
