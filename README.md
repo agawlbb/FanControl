@@ -81,3 +81,16 @@ Tests cover fan conversions, settings migration, encrypted traffic, tamper rejec
 - [Tile lifecycle](https://developer.android.com/reference/androidx/wear/tiles/TileService)
 - [Fan services](https://www.home-assistant.io/integrations/fan/)
 - [Percentage conversion](https://github.com/home-assistant/core/blob/dev/homeassistant/util/percentage.py)
+
+## Gradle security maintenance (October 14, 2026)
+
+Updated the wrapper from Gradle 9.3.1 to 9.8.1 to fix the three high-severity
+build-process advisories published October 7. The wrapper verifies the official
+SHA-256 checksum before using the downloaded distribution. AGP remains 9.1.0;
+Java compilation remains targeted to 17.
+
+Validation: `gradlew.bat validateDebug` passed with Gradle 9.8.1 (debug APK,
+unit tests, and Android lint). SDK XML and deprecated API/Gradle feature warnings
+remain; no validation task failed. No release or deployment was performed.
+
+Source: https://docs.gradle.org/9.8.1/release-notes.html
