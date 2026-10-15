@@ -6,6 +6,7 @@ import java.util.List;
 /** Add one domain adapter here when implementing another type of device. */
 final class DeviceControllers {
     static DeviceController create(ConnectionSettings connection, DeviceDefinition device) {
+        if (connection.integration() && device.panel() != null && device.panel().exercise()) return new ExerciseController(connection, device.panel());
         if (connection.integration() && device.panel() != null) return new WorkMorning(connection, device.panel());
         if (device.domain().equals("fan")) return new Fan(new HomeAssistantClient(connection.forFan(device)));
         if (connection.integration() && List.of("light", "switch", "input_boolean", "script", "scene").contains(device.domain()))

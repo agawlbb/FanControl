@@ -157,6 +157,16 @@ public final class ControlsActivity extends Activity {
                     || pager.getScrollState() != ViewPager2.SCROLL_STATE_IDLE)) snapshot = null;
             label(root, device.title(), 14);
             String message = messages.getOrDefault(position, "");
+            if (device.panel() != null && device.panel().exercise()) {
+                label(root, snapshot == null ? "Updating" : snapshot.status(), 12);
+                for (String action : java.util.List.of("start_exercise", "stop_exercise")) {
+                    Button exercise = button(action.equals("start_exercise") ? "Start exercise" : "Stop exercise", false);
+                    exercise.setEnabled(snapshot != null && snapshot.controls().stream().anyMatch(c -> c.action().equals(action) && c.enabled()) && position == selected && loading != position);
+                    exercise.setOnClickListener(v -> ExerciseActivity.open(ControlsActivity.this, device.panel().id(), action));
+                    root.addView(exercise, new LinearLayout.LayoutParams(dp(160), dp(48)));
+                }
+                return;
+            }
             if (device.panel() != null) {
                 LinearLayout top = new LinearLayout(ControlsActivity.this); top.setGravity(Gravity.CENTER); root.addView(top);
                 TextView battery = new TextView(ControlsActivity.this); battery.setTextColor(Color.WHITE); battery.setTextSize(28); battery.setGravity(Gravity.CENTER);

@@ -7,11 +7,13 @@
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <queries><package android:name="com.spotify.music" /></queries>
     <application android:name=".FanControlApplication" android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="@string/app_name" android:icon="@drawable/ic_fan"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="true" android:supportsRtl="true">
         <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />
+        <activity android:name=".ExerciseActivity" android:exported="true" />
         <activity android:name=".PairingActivity" android:exported="false" android:taskAffinity="dev.fancontrol.wear" />
         <activity android:name=".DiscoveryActivity" android:exported="false" android:taskAffinity="dev.fancontrol.wear" />
         <activity android:name=".ControlsActivity" android:exported="true" android:taskAffinity="dev.fancontrol.wear" />
@@ -22,6 +24,12 @@
             </intent-filter>
         </activity>
         <service android:name=".BackgroundConfigurationJob" android:exported="true" android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service android:name=".SpotifyNotificationAccess" android:label="Fan Control watch Spotify pause" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
+        </service>
+        <service android:name=".ExerciseTileService" android:exported="true" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER" android:label="Exercise">
+            <intent-filter><action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" /></intent-filter>
+        </service>
         <service android:name=".FanTileService" android:exported="true"
             android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER"
             android:label="@string/app_name">

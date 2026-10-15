@@ -265,7 +265,17 @@ final class TileSession extends android.content.ContextWrapper {
         boolean on = state != null && state.status().startsWith("On");
         boolean available = !controls.isEmpty() && controls.get(0).enabled();
         PanelDefinition panel = configured ? settings.devices().get(0).panel() : null;
-        if (panel != null) {
+        if (panel != null && panel.exercise()) {
+            content.addContent(text("Exercise", 20, WHITE));
+            for (int i=0;i<2;i++) {
+                String action = i == 0 ? "start_exercise" : "stop_exercise";
+                ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder();
+                if (visible && fresh && !commandBusy && controls.size()>i && controls.get(i).enabled())
+                    modifiers.setClickable(ExerciseTileService.action(getPackageName(), panel, action, settings.watchId()));
+                content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(160)).setHeight(dp(55))
+                        .setModifiers(modifiers.build()).addContent(text(i == 0 ? "Start exercise" : "Stop exercise", 18, WHITE)).build());
+            }
+        } else if (panel != null) {
             String climate = state == null ? "?" : state.readings().getOrDefault("climate", "?");
             LayoutElementBuilders.Row.Builder top = new LayoutElementBuilders.Row.Builder();
             top.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(78)).setHeight(dp(72))
