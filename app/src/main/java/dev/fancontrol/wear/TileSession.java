@@ -270,7 +270,7 @@ final class TileSession extends android.content.ContextWrapper {
             for (int i=0;i<2;i++) {
                 String action = i == 0 ? "start_exercise" : "stop_exercise";
                 ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder();
-                if (visible && fresh && !commandBusy && controls.size()>i && controls.get(i).enabled())
+                if (i==1 || visible && fresh && !commandBusy && controls.size()>i && controls.get(i).enabled())
                     modifiers.setClickable(ExerciseTileService.action(getPackageName(), panel, action, settings.watchId()));
                 content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(160)).setHeight(dp(55))
                         .setModifiers(modifiers.build()).addContent(text(i == 0 ? "Start exercise" : "Stop exercise", 18, WHITE)).build());

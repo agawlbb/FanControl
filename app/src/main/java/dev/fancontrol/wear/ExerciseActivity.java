@@ -14,6 +14,7 @@ public final class ExerciseActivity extends Activity {
     private volatile DeviceController active;
     private volatile boolean stopped;
     private TextView status;
+    private final android.os.Handler stopProgress = new android.os.Handler(android.os.Looper.getMainLooper());
     static void open(Activity activity, String panel, String action) {
         ConnectionSettings settings = new SecureSettings(activity).load();
         if (settings == null) return;
@@ -36,6 +37,28 @@ public final class ExerciseActivity extends Activity {
         if (grant == null) { status.setText("Open a current Exercise button"); return; }
         String panelId = grant.panel().id(), action = grant.action();
         if (!java.util.List.of("start_exercise", "stop_exercise").contains(action == null ? "" : action)) { status.setText("Open an Exercise button"); return; }
+        status.setText(action.equals("stop_exercise") ? "Stop received; preparing retries" : "Start received");
+        root.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM);
+        if (action.equals("stop_exercise")) {
+            String spotify = WatchSpotify.pause(this); // Exactly once per accepted user tap, outside car retries.
+            try {
+                ExerciseStopService.begin(this, grant);
+                status.setText("Stop received; retries continue with screen off for up to 2 minutes. " + spotify);
+                Button cancel = new Button(this); cancel.setText("Cancel pending Stop");
+                cancel.setOnClickListener(v -> { ExerciseStopService.cancel(this); status.setText("Cancellation requested; an in-flight command may finish"); });
+                root.addView(cancel);
+                stopProgress.postDelayed(new Runnable() {
+                    public void run() {
+                        status.setText(ExerciseStopService.status() + "; " + spotify);
+                        if (ExerciseStopService.pending()) stopProgress.postDelayed(this,500);
+                    }
+                },500);
+                if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                    requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 52);
+            } catch (RuntimeException failure) { status.setText("Stop received, but background delivery could not start. " + spotify); }
+            return;
+        }
+        ExerciseStopService.cancel(this); // A new Start supersedes any local pending Stop.
         worker.execute(() -> {
             IntegrationClient config = null;
             try {
@@ -69,6 +92,6 @@ public final class ExerciseActivity extends Activity {
             } finally { active = null; if (config != null) config.cancel(); }
         });
     }
-    @Override protected void onPause() { stopped = true; DeviceController controller = active; if(controller!=null) controller.cancel(); super.onPause(); }
+    @Override protected void onPause() { stopProgress.removeCallbacksAndMessages(null); stopped = true; DeviceController controller = active; if(controller!=null) controller.cancel(); super.onPause(); }
     @Override protected void onDestroy() { worker.shutdownNow(); super.onDestroy(); }
 }

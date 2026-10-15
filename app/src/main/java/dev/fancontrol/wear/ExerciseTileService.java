@@ -111,11 +111,18 @@ public final class ExerciseTileService extends TileService {
         TileBuilders.Tile tile() {
             DeviceController.Snapshot state=visible ? snapshot : null;
             PanelDefinition selected=panel;
+            if (selected==null) {
+                ConnectionSettings saved=new SecureSettings(this).load();
+                if(saved!=null) {
+                    java.util.List<DeviceDefinition> candidates=saved.devices().stream().filter(d -> d.panel()!=null && d.panel().exercise()).collect(java.util.stream.Collectors.toList());
+                    if(candidates.size()==1) { selected=candidates.get(0).panel(); watchId=saved.watchId(); }
+                }
+            }
             LayoutElementBuilders.Column.Builder column=new LayoutElementBuilders.Column.Builder().setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER);
             column.addContent(text("Exercise",20));
             for(int i=0;i<2;i++) {
                 String command=i==0 ? "start_exercise" : "stop_exercise";
-                boolean enabled=state!=null && selected!=null && state.controls().size()>i && state.controls().get(i).enabled();
+                boolean enabled=selected!=null && (i==1 || state!=null && state.controls().size()>i && state.controls().get(i).enabled());
                 ModifiersBuilders.Modifiers.Builder modifiers=new ModifiersBuilders.Modifiers.Builder().setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(enabled?0xFF245C4F:0xFF242A28)).build());
                 if(enabled) modifiers.setClickable(action(getPackageName(),selected,command,watchId));
                 column.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(160)).setHeight(dp(52)).setModifiers(modifiers.build()).addContent(text(i==0?"Start exercise":"Stop exercise",18)).build());

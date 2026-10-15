@@ -161,7 +161,7 @@ public final class ControlsActivity extends Activity {
                 label(root, snapshot == null ? "Updating" : snapshot.status(), 12);
                 for (String action : java.util.List.of("start_exercise", "stop_exercise")) {
                     Button exercise = button(action.equals("start_exercise") ? "Start exercise" : "Stop exercise", false);
-                    exercise.setEnabled(snapshot != null && snapshot.controls().stream().anyMatch(c -> c.action().equals(action) && c.enabled()) && position == selected && loading != position);
+                    exercise.setEnabled(position == selected && (action.equals("stop_exercise") || snapshot != null && snapshot.controls().stream().anyMatch(c -> c.action().equals(action) && c.enabled()) && loading != position));
                     exercise.setOnClickListener(v -> ExerciseActivity.open(ControlsActivity.this, device.panel().id(), action));
                     root.addView(exercise, new LinearLayout.LayoutParams(dp(160), dp(48)));
                 }
