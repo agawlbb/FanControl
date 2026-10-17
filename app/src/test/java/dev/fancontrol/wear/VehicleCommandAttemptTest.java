@@ -83,7 +83,31 @@ public class VehicleCommandAttemptTest {
         assertEquals(60_000,VehicleCommandAttempt.WINDOW_MS);
         assertFalse(VehicleCommandAttempt.supported(morning(),"start_exercise"));
         assertFalse(VehicleCommandAttempt.supported(exercise(),"leave"));
-        assertFalse(VehicleCommandAttempt.supported(new PanelDefinition("plain","Plain","sensor.battery","climate.car","script.leave","Climate","Leave"),"climate"));
+        assertTrue(VehicleCommandAttempt.supported(new PanelDefinition("plain","Plain","sensor.battery","climate.car","script.leave","Climate","Leave"),"climate"));
+    }
+    @Test public void plainPanelRetriesRejectedClimateWithoutWakeAndConfirmsObservedState() throws Exception {
+        PanelDefinition panel = new PanelDefinition("plain","Plain","sensor.battery","climate.car","script.leave","Climate","Leave");
+        VehicleCommandAttempt attempt = new VehicleCommandAttempt(panel,"climate_on","id",0);
+        int[] writes = {0};
+        VehicleCommandAttempt.Request request = body -> {
+            String command = body.optString("command");
+            assertNotEquals("wake", command);
+            assertNotEquals("climate_off", command);
+            if (command.equals("climate_on") && ++writes[0] == 1) throw new IntegrationClient.Rejected(403);
+            return new JSONObject().put("climate_available",true).put("climate_on", command.equals("climate_on"));
+        };
+        try { attempt.step(request); fail(); } catch (IntegrationClient.Rejected expected) { }
+        assertTrue(attempt.step(request));
+        assertEquals(2,writes[0]);
+    }
+    @Test public void plainPanelDoesNotConfirmAnUnchangedClimateResponse() throws Exception {
+        PanelDefinition panel = new PanelDefinition("plain","Plain","sensor.battery","climate.car","script.leave","Climate","Leave");
+        VehicleCommandAttempt attempt = new VehicleCommandAttempt(panel,"climate_on","id",0);
+        assertFalse(attempt.step(body -> new JSONObject().put("climate_available",true).put("climate_on",false)));
+        assertTrue(attempt.step(body -> {
+            assertFalse(body.has("command"));
+            return new JSONObject().put("climate_available",true).put("climate_on",true);
+        }));
     }
     @Test public void displayedClimateOnRemainsOnEvenIfVehicleWakesAlreadyOn() throws Exception {
         VehicleCommandAttempt attempt=new VehicleCommandAttempt(morning(),"climate_on","id",0);

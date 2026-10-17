@@ -228,7 +228,7 @@ public final class ControlsActivity extends Activity {
         private void addButton(LinearLayout parent, DeviceController.Control control, int width, int height) {
             Button button = button(control.label(), control.selected());
             int position = getBindingAdapterPosition();
-            boolean vehicle = device.panel() != null && device.panel().vehicle();
+            boolean vehicle = device.panel() != null;
             VehicleFeedback feedback = vehicle ? ExerciseStopService.feedback(device.panel(), settings.watchId()) : null;
             button.setEnabled(position == selected && resumed && pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE
                     && !requested.containsKey(position) && !(feedback != null && feedback.pending()) && (vehicle || control.enabled() && loading != position));

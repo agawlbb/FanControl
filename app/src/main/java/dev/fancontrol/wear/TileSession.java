@@ -300,9 +300,7 @@ final class TileSession extends android.content.ContextWrapper {
             top.addContent(climateButton(panel.climateLabel(), climate, available && !commandBusy));
             content.addContent(top.build());
             content.addContent(spacer(8));
-            if (panel.vehicle()) content.addContent(vehicleButton(panel.scriptLabel(), panel, "leave", 160, 56));
-            else content.addContent(button(pending && "leave".equals(state.readings().get("pending_action")) ? "REQUESTED" : panel.scriptLabel(), "leave", 160, 56,
-                    controls.size() > 1 && controls.get(1).enabled() && !commandBusy, false, "Run configured script", 18));
+            content.addContent(vehicleButton(panel.scriptLabel(), panel, "leave", 160, 56));
         } else {
         String power = !configured ? "SET UP" : fan && !available ? "UNKNOWN" : controls.isEmpty() ? "REFRESH" : !available ? "UNKNOWN" : fan ? on ? "ON" : "OFF" : controls.get(0).label();
         content.addContent(button(power, controls.isEmpty() ? "refresh" : controls.get(0).action(), 160, 60,
@@ -342,7 +340,7 @@ final class TileSession extends android.content.ContextWrapper {
     private LayoutElementBuilders.Box climateButton(String label, String state, boolean enabled) {
         ConnectionSettings settings = new SecureSettings(this).load();
         PanelDefinition panel = settings == null ? null : settings.devices().get(0).panel();
-        boolean vehicle = panel != null && panel.vehicle();
+        boolean vehicle = panel != null;
         VehicleFeedback feedback = vehicle ? ExerciseStopService.feedback(panel, settings.watchId()) : null;
         boolean waiting = feedback != null && feedback.pending();
         if (vehicle) enabled = !waiting;

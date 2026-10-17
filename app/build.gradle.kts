@@ -6,8 +6,8 @@ android {
         applicationId = "dev.fancontrol.wear"
         minSdk = 30
         targetSdk = 35
-        versionCode = 15
-        versionName = "1.4.2"
+        versionCode = 16
+        versionName = "1.4.3"
 
     }
     compileOptions {
