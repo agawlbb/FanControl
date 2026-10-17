@@ -13,6 +13,11 @@ public final class ExerciseStopService extends Service {
     private static volatile ExerciseStopService running;
     private static volatile String latestStatus="Command received";
     private static volatile String spotifyGrant="";
+    private static volatile VehicleFeedback feedback;
+    static VehicleFeedback feedback() { return feedback; }
+    static VehicleFeedback feedback(PanelDefinition panel,String watchId) {
+        VehicleFeedback value=feedback; return value!=null && value.matches(panel,watchId) ? value : null;
+    }
     static String status() { return latestStatus; }
     static boolean pending() { return running!=null && running.grant!=null; }
     static synchronized String takeSpotifyGrant() { String value=spotifyGrant; spotifyGrant=""; return value; }
@@ -23,6 +28,7 @@ public final class ExerciseStopService extends Service {
     private volatile ExerciseLaunch.Grant grant;
     private volatile String operation;
     private PowerManager.WakeLock wakeLock;
+    private volatile boolean commandConfirmed;
     static void begin(Context context, ExerciseLaunch.Grant grant) {
         context.startForegroundService(new Intent(context,ExerciseStopService.class).putExtra("grant",
                 ExerciseLaunch.issue(grant.panel(),grant.action(),grant.watchId())));
@@ -50,6 +56,7 @@ public final class ExerciseStopService extends Service {
             } else { progress("A command is pending; cancel it before sending another"); return START_NOT_STICKY; }
         }
         int ticket=generation.incrementAndGet(); grant=next; operation=java.util.UUID.randomUUID().toString();
+        commandConfirmed=false; feedback=new VehicleFeedback(next.panel(),next.watchId(),next.action(),true,false); publish();
         long issued=System.currentTimeMillis(), deadline=SystemClock.elapsedRealtime()+VehicleCommandAttempt.WINDOW_MS;
         spotifyGrant=""; latestStatus="Button pressed; command queued while vehicle wakes";
         startForeground(NOTICE,notification(latestStatus,true,false));
@@ -79,8 +86,10 @@ public final class ExerciseStopService extends Service {
                 if(!target.panel().equals(selected)) { finish(ticket,"Command cancelled: panel changed",false); return; }
                 boolean complete=attempt.step(client::request, () -> ticket==generation.get() && SystemClock.elapsedRealtime()<deadline);
                 if(ticket!=generation.get()) return;
+                if(SystemClock.elapsedRealtime()>=deadline) { timeout(ticket); return; }
                 if(attempt.spotifyReady() && !spotifyPublished) { spotifyGrant=target.watchId()+":"+target.panel().id(); spotifyPublished=true; }
                 if(complete) {
+                    commandConfirmed=true;
                     finish(ticket,target.action().equals("leave") ? "Script request accepted by Home Assistant" : "Vehicle command confirmed",false); return;
                 }
                 progress("Command received; waiting for vehicle, retrying");
@@ -129,11 +138,18 @@ public final class ExerciseStopService extends Service {
     private synchronized void finish(int ticket,String message,boolean alert) { if(ticket==generation.get()) end(message,alert); }
     private void end(String message,boolean alert) {
         generation.incrementAndGet(); handler.removeCallbacksAndMessages(null); latestStatus=message;
+        ExerciseLaunch.Grant target=grant;
+        if(target!=null) feedback=new VehicleFeedback(target.panel(),target.watchId(),target.action(),false,commandConfirmed);
+        publish();
         stopForeground(STOP_FOREGROUND_REMOVE);
         getSystemService(NotificationManager.class).notify(NOTICE,notification(message,false,alert));
         if(alert) getSystemService(Vibrator.class).vibrate(VibrationEffect.createWaveform(new long[]{0,300,150,300},-1));
         if(wakeLock!=null && wakeLock.isHeld()) wakeLock.release();
         grant=null; stopSelf();
+    }
+    private void publish() {
+        androidx.wear.tiles.TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class);
+        androidx.wear.tiles.TileService.getUpdater(getApplicationContext()).requestUpdate(ExerciseTileService.class);
     }
     @Override public void onDestroy() {
         generation.incrementAndGet(); handler.removeCallbacksAndMessages(null); IntegrationClient client=active; if(client!=null) client.cancel();

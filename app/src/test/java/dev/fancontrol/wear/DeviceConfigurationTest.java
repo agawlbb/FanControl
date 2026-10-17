@@ -42,7 +42,8 @@ public class DeviceConfigurationTest {
     @Test public void fanAdapterPreservesPowerAndAllSixSpeeds() {
         DeviceController.Snapshot snapshot = DeviceControllers.Fan.snapshot(new FanState(true, 4, true, true));
         assertEquals(7, snapshot.controls().size()); assertEquals("toggle", snapshot.controls().get(0).action());
-        assertEquals("Turn off", snapshot.controls().get(0).label());
+        assertEquals("ON", snapshot.controls().get(0).label());
+        assertTrue(snapshot.controls().get(0).selected());
         for (int speed = 1; speed <= 6; speed++) {
             assertEquals("speed" + speed, snapshot.controls().get(speed).action());
             assertEquals(speed == 4, snapshot.controls().get(speed).selected());

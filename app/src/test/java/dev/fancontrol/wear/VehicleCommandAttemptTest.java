@@ -85,6 +85,13 @@ public class VehicleCommandAttemptTest {
         assertFalse(VehicleCommandAttempt.supported(exercise(),"leave"));
         assertFalse(VehicleCommandAttempt.supported(new PanelDefinition("plain","Plain","sensor.battery","climate.car","script.leave","Climate","Leave"),"climate"));
     }
+    @Test public void displayedClimateOnRemainsOnEvenIfVehicleWakesAlreadyOn() throws Exception {
+        VehicleCommandAttempt attempt=new VehicleCommandAttempt(morning(),"climate_on","id",0);
+        assertTrue(attempt.step(body -> {
+            assertNotEquals("climate_off",body.optString("command"));
+            return state(true,true);
+        }));
+    }
     @Test public void deadlineReachedDuringReadPreventsDispatch() throws Exception {
         VehicleCommandAttempt attempt=new VehicleCommandAttempt(morning(),"climate","id",0);
         long[] now={59_999}; List<String> commands=new ArrayList<>();

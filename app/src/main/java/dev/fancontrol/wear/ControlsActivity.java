@@ -25,6 +25,7 @@ public final class ControlsActivity extends Activity {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Map<Integer, DeviceController.Snapshot> snapshots = new HashMap<>();
     private final Map<Integer, String> messages = new HashMap<>();
+    private final Map<Integer, DeviceController.Snapshot> requested = new HashMap<>();
     private final Map<String, Page> attached = new HashMap<>();
     private ConnectionSettings settings;
     private VisibleDeviceSession session;
@@ -35,6 +36,20 @@ public final class ControlsActivity extends Activity {
     private int configurationGeneration;
     private volatile IntegrationClient configuration;
     private boolean configurationReady;
+    private VehicleFeedback lastVehicleFeedback;
+    private final Runnable vehicleFeedbackPoll = new Runnable() {
+        public void run() {
+            if (!resumed) return;
+            VehicleFeedback current = ExerciseStopService.feedback();
+            if (current != lastVehicleFeedback) {
+                boolean completed = lastVehicleFeedback != null && lastVehicleFeedback.pending() && current != null && !current.pending();
+                lastVehicleFeedback = current;
+                for (Page page : attached.values()) page.render();
+                if (completed && session != null) session.refresh();
+            }
+            handler.postDelayed(this, 500);
+        }
+    };
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
@@ -55,7 +70,9 @@ public final class ControlsActivity extends Activity {
                         loading = update.page(); messages.put(update.page(), "Updating…");
                     } else {
                         loading = -1;
+                        requested.remove(update.page());
                         if (update.snapshot() != null) snapshots.put(update.page(), update.snapshot());
+                        else snapshots.remove(update.page());
                         messages.put(update.page(), update.error() == null ? "" : update.error());
                     }
                     Page page = attached.get(settings.devices().get(update.page()).entityId()); if (page != null) page.render();
@@ -87,6 +104,7 @@ public final class ControlsActivity extends Activity {
         super.onResume(); resumed = true;
         configurationReady = false;
         for (Page page : attached.values()) page.render(); // Stored approved roles can accept taps before HA replies.
+        handler.post(vehicleFeedbackPoll);
         if (session != null && !settings.equals(new SecureSettings(this).load())) { session.suspend(); recreate(); return; }
         if (session != null && settings.integration()) {
             session.suspend();
@@ -113,7 +131,7 @@ public final class ControlsActivity extends Activity {
         } else if (session != null) { configurationReady = true; if (pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE) session.resume(); }
     }
     @Override protected void onPause() {
-        resumed = false; clearVehicleSnapshots();
+        resumed = false; for (Integer page : requested.keySet()) snapshots.remove(page); requested.clear(); clearVehicleSnapshots();
         configurationGeneration++; IntegrationClient client = configuration; if(client != null) client.cancel(); configuration = null;
         if (session != null) session.suspend();
         handler.removeCallbacksAndMessages(null); loading = -1;
@@ -156,13 +174,19 @@ public final class ControlsActivity extends Activity {
             DeviceController.Snapshot snapshot = snapshots.get(position);
             if (device.panel() != null && device.panel().vehicle() && (!resumed || !configurationReady || loading == position
                     || pager.getScrollState() != ViewPager2.SCROLL_STATE_IDLE)) snapshot = null;
+            boolean pending = requested.containsKey(position);
+            if (pending) snapshot = requested.get(position);
+            VehicleFeedback vehicleFeedback = device.panel() == null ? null : ExerciseStopService.feedback(device.panel(), settings.watchId());
+            boolean vehiclePending = vehicleFeedback != null && vehicleFeedback.pending();
             label(root, device.title(), 14);
             String message = messages.getOrDefault(position, "");
             if (device.panel() != null && device.panel().exercise()) {
                 label(root, snapshot == null ? "Updating" : snapshot.status(), 12);
                 for (String action : java.util.List.of("start_exercise", "stop_exercise")) {
-                    Button exercise = button(action.equals("start_exercise") ? "Start exercise" : "Stop exercise", false);
-                    exercise.setEnabled(position == selected && resumed && pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE);
+                    String label = action.equals("start_exercise") ? "Start exercise" : "Stop exercise";
+                    Button exercise = button(vehiclePending ? vehicleFeedback.label(action, label) : label, false);
+                    exercise.setEnabled(!vehiclePending && position == selected && resumed && pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE);
+                    style(exercise, false, exercise.isEnabled());
                     exercise.setOnClickListener(v -> ExerciseActivity.open(ControlsActivity.this, device.panel().id(), action));
                     root.addView(exercise, new LinearLayout.LayoutParams(dp(160), dp(48)));
                 }
@@ -174,9 +198,11 @@ public final class ControlsActivity extends Activity {
                 battery.setText(snapshot == null ? "?%" : snapshot.readings().getOrDefault("battery", "?") + "%");
                 top.addView(battery, new LinearLayout.LayoutParams(dp(78), dp(64)));
                 DeviceController.Control climate = snapshot == null ? new DeviceController.Control("climate", "", false, false) : snapshot.controls().get(0);
-                addButton(top, new DeviceController.Control("climate", device.panel().climateLabel() + "\n" + (snapshot == null ? "?" : snapshot.readings().getOrDefault("climate", "?")), climate.enabled(), climate.selected()), 78, 64);
+                String climateText = snapshot == null ? "?" : snapshot.readings().getOrDefault("climate", "?");
+                if (vehiclePending && vehicleFeedback.action().startsWith("climate_")) climateText = vehicleFeedback.action().equals("climate_on") ? "ON" : "OFF";
+                addButton(top, new DeviceController.Control("climate", device.panel().climateLabel() + "\n" + climateText, climate.enabled(), climateText.equals("ON")), 78, 64);
                 DeviceController.Control script = snapshot == null ? new DeviceController.Control("leave", "", false, false) : snapshot.controls().get(1);
-                addButton(root, new DeviceController.Control("leave", device.panel().scriptLabel(), script.enabled(), false), 160, 48);
+                addButton(root, new DeviceController.Control("leave", vehiclePending ? vehicleFeedback.label("leave", device.panel().scriptLabel()) : pending && script.label().equals("REQUESTED") ? "REQUESTED" : device.panel().scriptLabel(), script.enabled(), false), 160, 48);
                 label(root, message, 12);
             } else {
                 label(root, !message.isEmpty() ? message : snapshot == null ? "State unknown" : snapshot.status(), 12);
@@ -194,6 +220,7 @@ public final class ControlsActivity extends Activity {
             }
             Button refresh = button("Refresh", false);
             refresh.setEnabled(position == selected && loading != position);
+            style(refresh, false, refresh.isEnabled());
             refresh.setOnClickListener(view -> { if (getBindingAdapterPosition() == selected) session.refresh(); });
             root.addView(refresh, new LinearLayout.LayoutParams(dp(120), dp(26)));
             label(root, (position + 1) + " / " + settings.devices().size(), 10);
@@ -202,13 +229,20 @@ public final class ControlsActivity extends Activity {
             Button button = button(control.label(), control.selected());
             int position = getBindingAdapterPosition();
             boolean vehicle = device.panel() != null && device.panel().vehicle();
+            VehicleFeedback feedback = vehicle ? ExerciseStopService.feedback(device.panel(), settings.watchId()) : null;
             button.setEnabled(position == selected && resumed && pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE
-                    && (vehicle || control.enabled() && loading != position));
+                    && !requested.containsKey(position) && !(feedback != null && feedback.pending()) && (vehicle || control.enabled() && loading != position));
+            style(button, control.selected(), button.isEnabled());
             button.setContentDescription(control.label() + (control.selected() ? ", selected" : ""));
             button.setOnClickListener(view -> {
                 if (getBindingAdapterPosition() != selected) return;
-                if (vehicle) ExerciseActivity.open(ControlsActivity.this, device.panel().id(), control.action());
-                else session.command(control.action());
+                if (vehicle) ExerciseActivity.open(ControlsActivity.this, device.panel().id(), CommandFeedback.vehicleAction(control.action(), control.selected()));
+                else {
+                    String action = CommandFeedback.action(snapshots.get(position), control.action());
+                    DeviceController.Snapshot projection = CommandFeedback.requested(snapshots.get(position), action);
+                    if (projection != null) requested.put(position, projection);
+                    render(); session.command(action);
+                }
             });
             LinearLayout.LayoutParams size = new LinearLayout.LayoutParams(dp(width), dp(height));
             size.setMargins(dp(2), dp(2), dp(2), dp(2)); parent.addView(button, size);
@@ -218,9 +252,12 @@ public final class ControlsActivity extends Activity {
     private Button button(String label, boolean selected) {
         Button button = new Button(this); button.setText(label); button.setTextSize(13); button.setAllCaps(false);
         button.setMinHeight(0); button.setMinimumHeight(0); button.setMinWidth(0); button.setMinimumWidth(0); button.setPadding(0, 0, 0, 0);
-        button.setTextColor(selected ? Color.BLACK : Color.WHITE);
-        GradientDrawable background = new GradientDrawable(); background.setColor(selected ? 0xFF70E2C2 : 0xFF24332F);
-        background.setCornerRadius(dp(14)); button.setBackground(background); return button;
+        style(button, selected, true); return button;
+    }
+    private void style(Button button, boolean selected, boolean enabled) {
+        button.setTextColor(!enabled ? 0xFFB0B0B0 : selected ? Color.BLACK : Color.WHITE);
+        GradientDrawable background = new GradientDrawable(); background.setColor(!enabled ? 0xFF383838 : selected ? 0xFF70E2C2 : 0xFF24332F);
+        background.setCornerRadius(dp(14)); button.setBackground(background);
     }
     private void label(LinearLayout parent, String value, int size) {
         TextView text = new TextView(this); text.setText(value); text.setTextSize(size); text.setTextColor(Color.WHITE);

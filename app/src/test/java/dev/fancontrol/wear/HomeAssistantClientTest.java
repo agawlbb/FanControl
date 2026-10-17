@@ -29,6 +29,14 @@ public class HomeAssistantClientTest {
         assertEquals("/api/states/fan.example", request.getPath());
         assertEquals("Bearer test-token", request.getHeader("Authorization"));
     }
+    @Test public void displayedOnIntentCannotBeInvertedByLaterServerState() throws Exception {
+        server.enqueue(new MockResponse().setBody(ON));
+        server.enqueue(new MockResponse().setBody("[]"));
+        server.enqueue(new MockResponse().setBody(ON));
+        assertTrue(client.command("turn_on").on());
+        server.takeRequest();
+        assertEquals("/api/services/fan/turn_on",server.takeRequest().getPath());
+    }
     @Test public void toggleRechecksStateAndReportsConfirmedResult() throws Exception {
         server.enqueue(new MockResponse().setBody(ON));
         server.enqueue(new MockResponse().setBody("[]"));

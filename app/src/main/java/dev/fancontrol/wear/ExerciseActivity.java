@@ -10,6 +10,7 @@ import android.widget.Button;
 /** Immediately acknowledges one vehicle tap; delivery belongs to the bounded service. */
 public final class ExerciseActivity extends Activity {
     private TextView status;
+    private TextView requested;
     private final android.os.Handler progress=new android.os.Handler(android.os.Looper.getMainLooper());
     private String spotify="";
     private boolean monitor;
@@ -25,7 +26,12 @@ public final class ExerciseActivity extends Activity {
         LinearLayout root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setGravity(android.view.Gravity.CENTER);
         root.setPadding(24,40,24,24);
         status=new TextView(this); status.setText("Button pressed; preparing command"); status.setTextColor(android.graphics.Color.WHITE); status.setGravity(android.view.Gravity.CENTER); root.addView(status);
-        setContentView(root);
+        requested=new TextView(this); requested.setTextSize(28); requested.setGravity(android.view.Gravity.CENTER); requested.setEnabled(false);
+        requested.setTypeface(android.graphics.Typeface.DEFAULT_BOLD); requested.setPadding(8,16,8,16);
+        requested.setTextColor(0xFFB0B0B0); requested.setBackgroundColor(0xFF383838);
+        root.addView(requested,new LinearLayout.LayoutParams(-1,android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.removeView(status); root.addView(status);
+        android.widget.ScrollView scroll=new android.widget.ScrollView(this); scroll.setFillViewport(true); scroll.addView(root); setContentView(scroll);
         Button cancel=new Button(this); cancel.setText("Cancel pending command");
         cancel.setOnClickListener(view -> ExerciseStopService.cancel(this)); root.addView(cancel);
         if(saved!=null) {
@@ -35,6 +41,7 @@ public final class ExerciseActivity extends Activity {
         ExerciseLaunch.Grant grant=ExerciseLaunch.consume(getIntent().getStringExtra("exercise_grant"));
         if(grant==null || !VehicleCommandAttempt.supported(grant.panel(),grant.action())) { status.setText("Open a current vehicle button"); return; }
         watchId=grant.watchId(); panelId=grant.panel().id();
+        requested.setText(CommandFeedback.title(grant.action()));
         root.post(() -> root.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM));
         if(grant.action().equals("stop_exercise")) spotify=WatchSpotify.pause(this); // Exactly once, outside retries.
         try {
@@ -54,6 +61,13 @@ public final class ExerciseActivity extends Activity {
     }
     private void poll() {
         if(!monitor) return;
+        VehicleFeedback feedback=ExerciseStopService.feedback();
+        if(feedback!=null && feedback.watchId().equals(watchId) && feedback.panel().id().equals(panelId)) {
+            requested.setText(feedback.title());
+            requested.setEnabled(feedback.confirmed());
+            requested.setTextColor(feedback.confirmed()?android.graphics.Color.BLACK:0xFFB0B0B0);
+            requested.setBackgroundColor(feedback.confirmed()?0xFF70E2C2:0xFF383838);
+        }
         status.setText(ExerciseStopService.status()+(spotify.isEmpty()?"":"; "+spotify));
         String launch=ExerciseStopService.takeSpotifyGrant();
         ConnectionSettings settings=new SecureSettings(this).load();

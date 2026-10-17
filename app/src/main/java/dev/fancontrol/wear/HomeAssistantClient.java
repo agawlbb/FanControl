@@ -36,7 +36,8 @@ public final class HomeAssistantClient {
         if (!current.available()) throw new IOException("Fan unavailable");
         JSONObject data = new JSONObject().put("entity_id", settings.entityId());
         String service;
-        if (action.equals("toggle")) service = current.on() ? "turn_off" : "turn_on";
+        if (action.equals("turn_on") || action.equals("turn_off")) service = action;
+        else if (action.equals("toggle")) service = current.on() ? "turn_off" : "turn_on";
         else if (action.matches("speed[1-6]") || action.equals("slower") || action.equals("faster")) {
             if (!current.speedSupported()) throw new IOException("Speed control unsupported");
             service = "set_percentage";

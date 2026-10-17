@@ -119,13 +119,19 @@ public final class ExerciseTileService extends TileService {
                 }
             }
             LayoutElementBuilders.Column.Builder column=new LayoutElementBuilders.Column.Builder().setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER);
+            VehicleFeedback feedback=selected==null?null:ExerciseStopService.feedback(selected,watchId);
+            boolean waiting=feedback!=null && feedback.pending();
             column.addContent(text("Exercise",20));
             for(int i=0;i<2;i++) {
                 String command=i==0 ? "start_exercise" : "stop_exercise";
-                boolean enabled=selected!=null;
+                boolean enabled=selected!=null && !waiting;
                 ModifiersBuilders.Modifiers.Builder modifiers=new ModifiersBuilders.Modifiers.Builder().setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(enabled?0xFF245C4F:0xFF242A28)).build());
                 if(enabled) modifiers.setClickable(action(getPackageName(),selected,command,watchId));
-                column.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(160)).setHeight(dp(52)).setModifiers(modifiers.build()).addContent(text(i==0?"Start exercise":"Stop exercise",18)).build());
+                String label=i==0?"Start exercise":"Stop exercise";
+                if(waiting) label=feedback.label(command,label);
+                column.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(160)).setHeight(dp(52)).setModifiers(modifiers.build())
+                        .addContent(new LayoutElementBuilders.Text.Builder().setText(label).setMaxLines(2).setFontStyle(new LayoutElementBuilders.FontStyle.Builder()
+                                .setSize(sp(18)).setColor(ColorBuilders.argb(waiting?0xFFB0B0B0:0xFFFFFFFF)).build()).build()).build());
                 column.addContent(new LayoutElementBuilders.Spacer.Builder().setHeight(dp(4)).build());
             }
             column.addContent(text(message,11));

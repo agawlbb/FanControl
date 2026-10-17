@@ -15,10 +15,11 @@ final class VehicleCommandAttempt {
     VehicleCommandAttempt(PanelDefinition panel, String action, String identity, long issued) {
         if (!supported(panel, action)) throw new IllegalArgumentException("Unsupported vehicle action");
         this.panel = panel; this.action = action; this.identity = identity; this.issued = issued;
+        if (action.equals("climate_on") || action.equals("climate_off")) desiredClimate = action.equals("climate_on");
     }
     static boolean supported(PanelDefinition panel, String action) {
         return panel.vehicle() && (panel.exercise() ? java.util.List.of("start_exercise", "stop_exercise").contains(action)
-                : java.util.List.of("climate", "leave").contains(action));
+                : java.util.List.of("climate", "climate_on", "climate_off", "leave").contains(action));
     }
     boolean spotifyReady() { return action.equals("start_exercise") && acknowledged; }
     private JSONObject body(String command) throws Exception {
@@ -52,7 +53,7 @@ final class VehicleCommandAttempt {
             dispatched = true; // A script may have executed even if its response is lost.
             request.send(body("leave")); acknowledged = true; return true;
         }
-        if (action.equals("climate")) {
+        if (java.util.List.of("climate", "climate_on", "climate_off").contains(action)) {
             if (desiredClimate == null) desiredClimate = !state.getBoolean("climate_on");
             if (dispatched && state.getBoolean("climate_on") == desiredClimate) return true;
             if (!state.optBoolean("climate_available")) return false;

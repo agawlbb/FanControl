@@ -39,9 +39,9 @@ final class DeviceControllers {
         }
         public Snapshot command(String action) throws Exception {
             WorkMorningState before = state();
-            boolean desired = !before.climateOn();
+            boolean desired = action.equals("climate_on") || action.equals("climate") && !before.climateOn();
             String command;
-            if (action.equals("climate") && before.climateAvailable()) command = desired ? "climate_on" : "climate_off";
+            if (List.of("climate", "climate_on", "climate_off").contains(action) && before.climateAvailable()) command = desired ? "climate_on" : "climate_off";
             else if (action.equals("leave") && before.scriptAvailable()) command = "leave";
             else throw new IllegalArgumentException("Panel action unavailable");
             WorkMorningState result = WorkMorningState.parse(client.request(new org.json.JSONObject().put("action", "panel_command")
@@ -65,14 +65,22 @@ final class DeviceControllers {
             String value = state.getString("state"); boolean available = !value.equals("unavailable") && !value.equals("unknown");
             boolean activate = device.domain().equals("script") || device.domain().equals("scene");
             return new Snapshot(activate ? available ? "Ready" : "Unavailable" : value.equals("on") ? "On" : value.equals("off") ? "Off" : "Unavailable",
-                    List.of(new Control(activate ? "activate" : "toggle", activate ? "Run" : value.equals("on") ? "Turn off" : "Turn on", available, false)));
+                    List.of(new Control(activate ? "activate" : "toggle", activate ? "Run" : value.equals("on") ? "ON" : "OFF", available, value.equals("on"))));
         }
         public Snapshot command(String action) throws Exception {
             Snapshot current = read();
             if (!current.controls().get(0).enabled()) throw new IllegalStateException("Device unavailable");
-            String expected = current.controls().get(0).action(); if (!action.equals(expected)) throw new IllegalArgumentException("Unknown action");
-            String service = action.equals("activate") ? "turn_on" : current.status().equals("On") ? "turn_off" : "turn_on";
-            transport.callService(device.domain(), service, new org.json.JSONObject().put("entity_id", device.entityId())); return read();
+            String expected = current.controls().get(0).action();
+            if (!action.equals(expected) && !(expected.equals("toggle") && List.of("turn_on", "turn_off").contains(action))) throw new IllegalArgumentException("Unknown action");
+            String service = List.of("turn_on", "turn_off").contains(action) ? action : action.equals("activate") ? "turn_on" : current.status().equals("On") ? "turn_off" : "turn_on";
+            transport.callService(device.domain(), service, new org.json.JSONObject().put("entity_id", device.entityId()));
+            if (action.equals("activate")) return new Snapshot("Requested", List.of(new Control("activate", "REQUESTED", true, false)));
+            for (int attempt = 0; attempt < 6; attempt++) {
+                if (attempt > 0) Thread.sleep(350);
+                Snapshot confirmed = read();
+                if (confirmed.status().equals(service.equals("turn_on") ? "On" : "Off")) return confirmed;
+            }
+            throw new java.io.IOException("Waiting for device confirmation");
         }
         public void cancel() { transport.cancel(); }
     }
@@ -85,7 +93,7 @@ final class DeviceControllers {
         public void cancel() { client.cancel(); }
         static Snapshot snapshot(FanState state) {
             ArrayList<Control> controls = new ArrayList<>();
-            controls.add(new Control("toggle", state.on() ? "Turn off" : "Turn on", state.available(), false));
+            controls.add(new Control("toggle", state.on() ? "ON" : "OFF", state.available(), state.on()));
             for (int speed = 1; speed <= 6; speed++) controls.add(new Control("speed" + speed, Integer.toString(speed),
                     state.available() && state.speedSupported(), state.on() && state.speed() == speed));
             return new Snapshot(state.label(), controls);
