@@ -15,6 +15,9 @@ public final class ExerciseStopService extends Service {
     private static volatile String spotifyGrant="";
     private static volatile VehicleFeedback feedback;
     static VehicleFeedback feedback() { return feedback; }
+    static synchronized void observed(VehicleFeedback beforeRead) {
+        if (beforeRead != null && beforeRead.confirmed() && feedback == beforeRead) feedback = null;
+    }
     static VehicleFeedback feedback(PanelDefinition panel,String watchId) {
         VehicleFeedback value=feedback; return value!=null && value.matches(panel,watchId) ? value : null;
     }
@@ -29,9 +32,15 @@ public final class ExerciseStopService extends Service {
     private volatile String operation;
     private PowerManager.WakeLock wakeLock;
     private volatile boolean commandConfirmed;
-    static void begin(Context context, ExerciseLaunch.Grant grant) {
-        context.startForegroundService(new Intent(context,ExerciseStopService.class).putExtra("grant",
-                ExerciseLaunch.issue(grant.panel(),grant.action(),grant.watchId())));
+    static synchronized void begin(Context context, ExerciseLaunch.Grant grant) {
+        if (feedback != null && feedback.pending()
+                && !(grant.action().equals("start_exercise") && feedback.action().equals("stop_exercise"))) return;
+        VehicleFeedback previous = feedback;
+        feedback = new VehicleFeedback(grant.panel(),grant.watchId(),grant.action(),true,false);
+        try {
+            context.startForegroundService(new Intent(context,ExerciseStopService.class).putExtra("grant",
+                    ExerciseLaunch.issue(grant.panel(),grant.action(),grant.watchId())));
+        } catch (RuntimeException failure) { feedback = previous; throw failure; }
     }
     static void cancel(Context context) { ExerciseStopService service=running; if(service!=null) service.cancelPending(); }
     @Override public void onCreate() {
@@ -57,6 +66,7 @@ public final class ExerciseStopService extends Service {
         }
         int ticket=generation.incrementAndGet(); grant=next; operation=java.util.UUID.randomUUID().toString();
         commandConfirmed=false; feedback=new VehicleFeedback(next.panel(),next.watchId(),next.action(),true,false); publish();
+        if(next.action().equals("stop_exercise")) WatchSpotify.pause(this);
         long issued=System.currentTimeMillis(), deadline=SystemClock.elapsedRealtime()+VehicleCommandAttempt.WINDOW_MS;
         spotifyGrant=""; latestStatus="Button pressed; command queued while vehicle wakes";
         startForeground(NOTICE,notification(latestStatus,true,false));

@@ -26,6 +26,7 @@ public final class ControlsActivity extends Activity {
     private final Map<Integer, DeviceController.Snapshot> snapshots = new HashMap<>();
     private final Map<Integer, String> messages = new HashMap<>();
     private final Map<Integer, DeviceController.Snapshot> requested = new HashMap<>();
+    private final Map<Integer, VehicleFeedback> feedbackAtRead = new HashMap<>();
     private final Map<String, Page> attached = new HashMap<>();
     private ConnectionSettings settings;
     private VisibleDeviceSession session;
@@ -67,11 +68,16 @@ public final class ControlsActivity extends Activity {
                     if (settings.devices().get(update.page()).panel() != null && settings.devices().get(update.page()).panel().vehicle() && update.snapshot() == null)
                         snapshots.remove(update.page());
                     if (update.snapshot() == null && update.error() == null) {
+                        PanelDefinition panel = settings.devices().get(update.page()).panel();
+                        feedbackAtRead.put(update.page(), panel == null ? null : ExerciseStopService.feedback(panel, settings.watchId()));
                         loading = update.page(); messages.put(update.page(), "Updating…");
                     } else {
                         loading = -1;
                         requested.remove(update.page());
-                        if (update.snapshot() != null) snapshots.put(update.page(), update.snapshot());
+                        if (update.snapshot() != null) {
+                            snapshots.put(update.page(), update.snapshot());
+                            ExerciseStopService.observed(feedbackAtRead.remove(update.page()));
+                        }
                         else snapshots.remove(update.page());
                         messages.put(update.page(), update.error() == null ? "" : update.error());
                     }
@@ -187,7 +193,10 @@ public final class ControlsActivity extends Activity {
                     Button exercise = button(vehiclePending ? vehicleFeedback.label(action, label) : label, false);
                     exercise.setEnabled(!vehiclePending && position == selected && resumed && pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE);
                     style(exercise, false, exercise.isEnabled());
-                    exercise.setOnClickListener(v -> ExerciseActivity.open(ControlsActivity.this, device.panel().id(), action));
+                    exercise.setOnClickListener(v -> {
+                        PanelCommands.start(ControlsActivity.this, device.panel(), action, settings.watchId());
+                        render();
+                    });
                     root.addView(exercise, new LinearLayout.LayoutParams(dp(160), dp(48)));
                 }
                 return;
@@ -199,7 +208,7 @@ public final class ControlsActivity extends Activity {
                 top.addView(battery, new LinearLayout.LayoutParams(dp(78), dp(64)));
                 DeviceController.Control climate = snapshot == null ? new DeviceController.Control("climate", "", false, false) : snapshot.controls().get(0);
                 String climateText = snapshot == null ? "?" : snapshot.readings().getOrDefault("climate", "?");
-                if (vehiclePending && vehicleFeedback.action().startsWith("climate_")) climateText = vehicleFeedback.action().equals("climate_on") ? "ON" : "OFF";
+                if (vehicleFeedback != null) climateText = vehicleFeedback.climateState(climateText);
                 addButton(top, new DeviceController.Control("climate", device.panel().climateLabel() + "\n" + climateText, climate.enabled(), climateText.equals("ON")), 78, 64);
                 DeviceController.Control script = snapshot == null ? new DeviceController.Control("leave", "", false, false) : snapshot.controls().get(1);
                 addButton(root, new DeviceController.Control("leave", vehiclePending ? vehicleFeedback.label("leave", device.panel().scriptLabel()) : pending && script.label().equals("REQUESTED") ? "REQUESTED" : device.panel().scriptLabel(), script.enabled(), false), 160, 48);
@@ -236,7 +245,10 @@ public final class ControlsActivity extends Activity {
             button.setContentDescription(control.label() + (control.selected() ? ", selected" : ""));
             button.setOnClickListener(view -> {
                 if (getBindingAdapterPosition() != selected) return;
-                if (vehicle) ExerciseActivity.open(ControlsActivity.this, device.panel().id(), CommandFeedback.vehicleAction(control.action(), control.selected()));
+                if (vehicle) {
+                    PanelCommands.start(ControlsActivity.this, device.panel(), CommandFeedback.vehicleAction(control.action(), control.selected()), settings.watchId());
+                    render();
+                }
                 else {
                     String action = CommandFeedback.action(snapshots.get(position), control.action());
                     DeviceController.Snapshot projection = CommandFeedback.requested(snapshots.get(position), action);

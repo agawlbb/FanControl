@@ -24,7 +24,10 @@ public final class ExerciseTileService extends TileService {
             return current;
         }
     }
-    @Override protected ListenableFuture<TileBuilders.Tile> onTileRequest(RequestBuilders.TileRequest request) { return Futures.immediateFuture(session().tile()); }
+    @Override protected ListenableFuture<TileBuilders.Tile> onTileRequest(RequestBuilders.TileRequest request) {
+        PanelCommands.click(this, request.getCurrentState().getLastClickableId());
+        return Futures.immediateFuture(session().tile());
+    }
     @Override protected ListenableFuture<ResourceBuilders.Resources> onTileResourcesRequest(RequestBuilders.ResourcesRequest request) {
         return Futures.immediateFuture(new ResourceBuilders.Resources.Builder().setVersion("1").build());
     }
@@ -44,9 +47,8 @@ public final class ExerciseTileService extends TileService {
     }
     static ModifiersBuilders.Clickable action(String packageName, PanelDefinition panel, String action, String watchId) {
         String token = ExerciseLaunch.issue(panel, action, watchId);
-        return new ModifiersBuilders.Clickable.Builder().setId(token).setOnClick(new ActionBuilders.LaunchAction.Builder()
-                .setAndroidActivity(new ActionBuilders.AndroidActivity.Builder().setPackageName(packageName).setClassName(ExerciseActivity.class.getName())
-                        .addKeyToExtraMapping("exercise_grant", new ActionBuilders.AndroidStringExtra.Builder().setValue(token).build()).build()).build()).build();
+        return new ModifiersBuilders.Clickable.Builder().setId(PanelCommands.PREFIX + token)
+                .setOnClick(new ActionBuilders.LoadAction.Builder().build()).build();
     }
     private static final class Session extends android.content.ContextWrapper {
         final InteractionGate gate = new InteractionGate();

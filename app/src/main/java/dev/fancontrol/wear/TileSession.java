@@ -100,6 +100,7 @@ final class TileSession extends android.content.ContextWrapper {
 
     protected ListenableFuture<TileBuilders.Tile> onTileRequest(RequestBuilders.TileRequest request) {
         String click = request.getCurrentState().getLastClickableId();
+        if (PanelCommands.click(this, click)) return Futures.immediateFuture(tile());
         if (BuildConfig.DEBUG) android.util.Log.d("FanTile", "request: click=" + (click == null || click.isEmpty() ? "none" : click.split(":")[0]) + " busy=" + commandBusy);
         SharedPreferences handled = getSharedPreferences("actions", MODE_PRIVATE);
         // Click IDs are unique per layout. Wear may repeat a request containing the last click.
@@ -240,9 +241,11 @@ final class TileSession extends android.content.ContextWrapper {
             boolean entry = visible && entryGate.claim(TileTarget.key(settings));
             PanelDefinition panel = settings.devices().get(0).panel();
             action = VisibleEntryGate.safeAction(action, panel != null && panel.vehicle(), !entry);
+            VehicleFeedback beforeRead = panel == null ? null : ExerciseStopService.feedback(panel,settings.watchId());
             DeviceController.Snapshot state = action.equals("refresh") ? (entry ? client.enter() : client.read()) : client.command(action);
             if (ticket == generation.get()) {
                 new StateCache(this).saveSnapshot(state);
+                ExerciseStopService.observed(beforeRead);
                 if (settings.devices().get(0).domain().equals("fan")) fanState.confirm(state);
                 boolean fan = settings.devices().get(0).domain().equals("fan");
                 fresh = !fan || fanState.current() != null;
@@ -344,7 +347,7 @@ final class TileSession extends android.content.ContextWrapper {
         VehicleFeedback feedback = vehicle ? ExerciseStopService.feedback(panel, settings.watchId()) : null;
         boolean waiting = feedback != null && feedback.pending();
         if (vehicle) enabled = !waiting;
-        if (waiting && feedback.action().startsWith("climate_")) state = feedback.action().equals("climate_on") ? "ON" : "OFF";
+        if (feedback != null) state = feedback.climateState(state);
         boolean on = state.equals("ON");
         int color = enabled ? on ? 0xFF001F16 : WHITE : 0xFFB0B0B0;
         ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder()

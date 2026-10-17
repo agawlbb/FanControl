@@ -5,4 +5,8 @@ record VehicleFeedback(PanelDefinition panel, String watchId, String action, boo
     String title() { return CommandFeedback.title(action); }
     String label(String action, String fallback) { return this.action.equals(action) ? title() : fallback; }
     boolean matches(PanelDefinition panel, String watchId) { return this.panel.equals(panel) && this.watchId.equals(watchId); }
+    String climateState(String observed) {
+        if (!(pending || confirmed)) return observed;
+        return action.equals("climate_on") ? "ON" : action.equals("climate_off") ? "OFF" : observed;
+    }
 }
