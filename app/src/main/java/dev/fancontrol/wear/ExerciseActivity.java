@@ -23,6 +23,21 @@ public final class ExerciseActivity extends Activity {
     }
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
+        if (saved == null) {
+            ExerciseLaunch.Grant start = ExerciseLaunch.consume(getIntent().getStringExtra("exercise_grant"));
+            if (start != null && start.action().equals("start_exercise")) {
+                ConnectionSettings current = new SecureSettings(this).load();
+                if (current != null && current.watchId().equals(start.watchId())
+                        && current.devices().stream().anyMatch(d -> start.panel().equals(d.panel()))) {
+                    ExerciseStopService.begin(this,start);
+                    Intent spotify = getPackageManager().getLaunchIntentForPackage("com.spotify.music");
+                    if (spotify != null) try { startActivity(spotify); } catch (RuntimeException ignored) { }
+                }
+                finish(); return;
+            }
+            // Preserve a non-Start grant for the legacy entry point below.
+            if (start != null) getIntent().putExtra("exercise_grant",ExerciseLaunch.issue(start.panel(),start.action(),start.watchId()));
+        } else { finish(); return; } // A restored handoff never replays a command.
         LinearLayout root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setGravity(android.view.Gravity.CENTER);
         root.setPadding(24,40,24,24);
         status=new TextView(this); status.setText("Button pressed; preparing command"); status.setTextColor(android.graphics.Color.WHITE); status.setGravity(android.view.Gravity.CENTER); root.addView(status);

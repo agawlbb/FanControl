@@ -194,7 +194,8 @@ public final class ControlsActivity extends Activity {
                     exercise.setEnabled(!vehiclePending && position == selected && resumed && pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE);
                     style(exercise, false, exercise.isEnabled());
                     exercise.setOnClickListener(v -> {
-                        PanelCommands.start(ControlsActivity.this, device.panel(), action, settings.watchId());
+                        if (action.equals("start_exercise")) ExerciseActivity.open(ControlsActivity.this,device.panel().id(),action);
+                        else PanelCommands.start(ControlsActivity.this, device.panel(), action, settings.watchId());
                         render();
                     });
                     root.addView(exercise, new LinearLayout.LayoutParams(dp(160), dp(48)));

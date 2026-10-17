@@ -47,6 +47,10 @@ public final class ExerciseTileService extends TileService {
     }
     static ModifiersBuilders.Clickable action(String packageName, PanelDefinition panel, String action, String watchId) {
         String token = ExerciseLaunch.issue(panel, action, watchId);
+        if (action.equals("start_exercise")) return new ModifiersBuilders.Clickable.Builder().setId(token)
+                .setOnClick(new ActionBuilders.LaunchAction.Builder().setAndroidActivity(new ActionBuilders.AndroidActivity.Builder()
+                        .setPackageName(packageName).setClassName(ExerciseActivity.class.getName())
+                        .addKeyToExtraMapping("exercise_grant",new ActionBuilders.AndroidStringExtra.Builder().setValue(token).build()).build()).build()).build();
         return new ModifiersBuilders.Clickable.Builder().setId(PanelCommands.PREFIX + token)
                 .setOnClick(new ActionBuilders.LoadAction.Builder().build()).build();
     }

@@ -80,6 +80,7 @@ public final class ExerciseStopService extends Service {
         VehicleCommandAttempt attempt=new VehicleCommandAttempt(target.panel(),target.action(),id,issued);
         int failures=0;
         boolean spotifyPublished=false;
+        boolean musicAttempted=false;
         while(ticket==generation.get() && SystemClock.elapsedRealtime()<deadline) {
             try {
                 ConnectionSettings settings=new SecureSettings(this).load();
@@ -94,6 +95,11 @@ public final class ExerciseStopService extends Service {
                 ConnectionSettings updated=client.configuration();
                 PanelDefinition selected=updated.devices().stream().filter(d -> d.panel()!=null && d.panel().id().equals(target.panel().id())).map(DeviceDefinition::panel).findFirst().orElse(null);
                 if(!target.panel().equals(selected)) { finish(ticket,"Command cancelled: panel changed",false); return; }
+                if(target.action().equals("start_exercise") && !musicAttempted) {
+                    musicAttempted=true; // Never restart a playlist in a vehicle retry or after an ambiguous response.
+                    try { client.request(new JSONObject().put("action","panel_command").put("panel_id",target.panel().id()).put("command","start_music")); }
+                    catch(Exception ignored) { } // Music availability must not prevent locking the car.
+                }
                 boolean complete=attempt.step(client::request, () -> ticket==generation.get() && SystemClock.elapsedRealtime()<deadline);
                 if(ticket!=generation.get()) return;
                 if(SystemClock.elapsedRealtime()>=deadline) { timeout(ticket); return; }
