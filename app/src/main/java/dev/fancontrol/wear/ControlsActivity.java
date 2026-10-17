@@ -86,6 +86,7 @@ public final class ControlsActivity extends Activity {
     @Override protected void onResume() {
         super.onResume(); resumed = true;
         configurationReady = false;
+        for (Page page : attached.values()) page.render(); // Stored approved roles can accept taps before HA replies.
         if (session != null && !settings.equals(new SecureSettings(this).load())) { session.suspend(); recreate(); return; }
         if (session != null && settings.integration()) {
             session.suspend();
@@ -161,7 +162,7 @@ public final class ControlsActivity extends Activity {
                 label(root, snapshot == null ? "Updating" : snapshot.status(), 12);
                 for (String action : java.util.List.of("start_exercise", "stop_exercise")) {
                     Button exercise = button(action.equals("start_exercise") ? "Start exercise" : "Stop exercise", false);
-                    exercise.setEnabled(position == selected && (action.equals("stop_exercise") || snapshot != null && snapshot.controls().stream().anyMatch(c -> c.action().equals(action) && c.enabled()) && loading != position));
+                    exercise.setEnabled(position == selected && resumed && pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE);
                     exercise.setOnClickListener(v -> ExerciseActivity.open(ControlsActivity.this, device.panel().id(), action));
                     root.addView(exercise, new LinearLayout.LayoutParams(dp(160), dp(48)));
                 }
@@ -200,9 +201,15 @@ public final class ControlsActivity extends Activity {
         private void addButton(LinearLayout parent, DeviceController.Control control, int width, int height) {
             Button button = button(control.label(), control.selected());
             int position = getBindingAdapterPosition();
-            button.setEnabled(control.enabled() && position == selected && loading != position);
+            boolean vehicle = device.panel() != null && device.panel().vehicle();
+            button.setEnabled(position == selected && resumed && pager.getScrollState() == ViewPager2.SCROLL_STATE_IDLE
+                    && (vehicle || control.enabled() && loading != position));
             button.setContentDescription(control.label() + (control.selected() ? ", selected" : ""));
-            button.setOnClickListener(view -> { if (getBindingAdapterPosition() == selected) session.command(control.action()); });
+            button.setOnClickListener(view -> {
+                if (getBindingAdapterPosition() != selected) return;
+                if (vehicle) ExerciseActivity.open(ControlsActivity.this, device.panel().id(), control.action());
+                else session.command(control.action());
+            });
             LinearLayout.LayoutParams size = new LinearLayout.LayoutParams(dp(width), dp(height));
             size.setMargins(dp(2), dp(2), dp(2), dp(2)); parent.addView(button, size);
         }

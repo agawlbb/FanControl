@@ -30,10 +30,12 @@ final class DeviceControllers {
         public Snapshot read() throws Exception { return state().snapshot(); }
         public Snapshot enter() throws Exception {
             if (!panel.vehicle()) return read();
-            return VehicleEntry.await(() -> {
+            try {
                 client.request(new org.json.JSONObject().put("action", "panel_command")
                         .put("panel_id", panel.id()).put("command", "wake"));
-            }, this::state, () -> cancelled, () -> System.nanoTime() / 1_000_000L, Thread::sleep).snapshot();
+            } catch (Exception ignored) { } // Readiness is display state, not permission to accept a tap.
+            if (cancelled) throw new java.io.IOException("Cancelled");
+            return read();
         }
         public Snapshot command(String action) throws Exception {
             WorkMorningState before = state();

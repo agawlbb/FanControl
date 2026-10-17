@@ -122,7 +122,7 @@ public final class ExerciseTileService extends TileService {
             column.addContent(text("Exercise",20));
             for(int i=0;i<2;i++) {
                 String command=i==0 ? "start_exercise" : "stop_exercise";
-                boolean enabled=selected!=null && (i==1 || state!=null && state.controls().size()>i && state.controls().get(i).enabled());
+                boolean enabled=selected!=null;
                 ModifiersBuilders.Modifiers.Builder modifiers=new ModifiersBuilders.Modifiers.Builder().setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(enabled?0xFF245C4F:0xFF242A28)).build());
                 if(enabled) modifiers.setClickable(action(getPackageName(),selected,command,watchId));
                 column.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(160)).setHeight(dp(52)).setModifiers(modifiers.build()).addContent(text(i==0?"Start exercise":"Stop exercise",18)).build());

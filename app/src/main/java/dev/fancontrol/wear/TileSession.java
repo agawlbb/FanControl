@@ -270,8 +270,7 @@ final class TileSession extends android.content.ContextWrapper {
             for (int i=0;i<2;i++) {
                 String action = i == 0 ? "start_exercise" : "stop_exercise";
                 ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder();
-                if (i==1 || visible && fresh && !commandBusy && controls.size()>i && controls.get(i).enabled())
-                    modifiers.setClickable(ExerciseTileService.action(getPackageName(), panel, action, settings.watchId()));
+                modifiers.setClickable(ExerciseTileService.action(getPackageName(), panel, action, settings.watchId()));
                 content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(160)).setHeight(dp(55))
                         .setModifiers(modifiers.build()).addContent(text(i == 0 ? "Start exercise" : "Stop exercise", 18, WHITE)).build());
             }
@@ -284,7 +283,8 @@ final class TileSession extends android.content.ContextWrapper {
             top.addContent(climateButton(panel.climateLabel(), climate, available && !commandBusy));
             content.addContent(top.build());
             content.addContent(spacer(8));
-            content.addContent(button(panel.scriptLabel(), "leave", 160, 56,
+            if (panel.vehicle()) content.addContent(vehicleButton(panel.scriptLabel(), panel, "leave", 160, 56));
+            else content.addContent(button(panel.scriptLabel(), "leave", 160, 56,
                     controls.size() > 1 && controls.get(1).enabled() && !commandBusy, false, "Run configured script", 18));
         } else {
         String power = !configured ? "SET UP" : fan && !available ? "UNKNOWN" : controls.isEmpty() ? "REFRESH" : !available ? "UNKNOWN" : fan ? on ? "ON" : "OFF" : controls.get(0).label();
@@ -322,13 +322,17 @@ final class TileSession extends android.content.ContextWrapper {
     }
 
     private LayoutElementBuilders.Box climateButton(String label, String state, boolean enabled) {
+        ConnectionSettings settings = new SecureSettings(this).load();
+        PanelDefinition panel = settings == null ? null : settings.devices().get(0).panel();
+        boolean vehicle = panel != null && panel.vehicle();
+        if (vehicle) enabled = true;
         boolean on = state.equals("ON");
         int color = on ? 0xFF001F16 : enabled ? WHITE : 0xFF87918D;
         ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder()
                 .setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(on ? MINT : 0xFF24332F))
                         .setCorner(new ModifiersBuilders.Corner.Builder().setRadius(dp(16)).build()).build())
                 .setSemantics(new ModifiersBuilders.Semantics.Builder().setContentDescription(label + " " + state).build());
-        if (enabled) modifiers.setClickable(click("climate"));
+        if (enabled) modifiers.setClickable(vehicle ? ExerciseTileService.action(getPackageName(), panel, "climate", settings.watchId()) : click("climate"));
         return new LayoutElementBuilders.Box.Builder().setWidth(dp(78)).setHeight(dp(72)).setModifiers(modifiers.build())
                 .addContent(new LayoutElementBuilders.Column.Builder().setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
                         .addContent(text(label, 12, color)).addContent(text(state, 24, color)).build()).build();
@@ -338,6 +342,15 @@ final class TileSession extends android.content.ContextWrapper {
         return new LayoutElementBuilders.Text.Builder().setText(value).setMaxLines(1)
                 .setFontStyle(new LayoutElementBuilders.FontStyle.Builder().setSize(sp(size))
                         .setColor(ColorBuilders.argb(color)).build()).build();
+    }
+
+    private LayoutElementBuilders.Box vehicleButton(String label, PanelDefinition panel, String action, int width, int height) {
+        ConnectionSettings settings = new SecureSettings(this).load();
+        return new LayoutElementBuilders.Box.Builder().setWidth(dp(width)).setHeight(dp(height))
+                .setModifiers(new ModifiersBuilders.Modifiers.Builder().setBackground(new ModifiersBuilders.Background.Builder()
+                        .setColor(ColorBuilders.argb(0xFF24332F)).setCorner(new ModifiersBuilders.Corner.Builder().setRadius(dp(16)).build()).build())
+                        .setClickable(ExerciseTileService.action(getPackageName(), panel, action, settings.watchId())).build())
+                .addContent(text(label, 18, WHITE)).build();
     }
 
     private LayoutElementBuilders.Spacer spacer(int height) {

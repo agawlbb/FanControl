@@ -18,13 +18,9 @@ final class ExerciseController implements DeviceController {
     private JSONObject state() throws Exception { return request("panel_state", null); }
     public Snapshot read() throws Exception { return snapshot(state(), ""); }
     public Snapshot enter() throws Exception {
-        final JSONObject[] latest = {null};
-        VehicleEntry.await(() -> request("panel_command", "wake"), () -> {
-            latest[0] = state();
-            boolean ready = Boolean.TRUE.equals(latest[0].opt("vehicle_ready"));
-            return new WorkMorningState(ready ? "0" : "?", false, ready, false);
-        }, () -> cancelled, () -> System.nanoTime()/1_000_000L, Thread::sleep);
-        return snapshot(latest[0], "");
+        try { request("panel_command", "wake"); } catch (Exception ignored) { }
+        if (cancelled) throw new java.io.IOException("Cancelled");
+        return read();
     }
     public Snapshot command(String action) throws Exception {
         if (!List.of("start_exercise", "stop_exercise").contains(action)) throw new IllegalArgumentException("Unsupported Exercise action");
