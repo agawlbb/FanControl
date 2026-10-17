@@ -70,7 +70,7 @@ public final class ControlsActivity extends Activity {
                     if (update.snapshot() == null && update.error() == null) {
                         PanelDefinition panel = settings.devices().get(update.page()).panel();
                         feedbackAtRead.put(update.page(), panel == null ? null : ExerciseStopService.feedback(panel, settings.watchId()));
-                        loading = update.page(); messages.put(update.page(), "Updating…");
+                        loading = update.page(); messages.put(update.page(), "");
                     } else {
                         loading = -1;
                         requested.remove(update.page());
@@ -184,10 +184,10 @@ public final class ControlsActivity extends Activity {
             if (pending) snapshot = requested.get(position);
             VehicleFeedback vehicleFeedback = device.panel() == null ? null : ExerciseStopService.feedback(device.panel(), settings.watchId());
             boolean vehiclePending = vehicleFeedback != null && vehicleFeedback.pending();
-            label(root, device.title(), 14);
+            if (device.panel() == null || !device.panel().exercise()) label(root, device.title(), 14);
             String message = messages.getOrDefault(position, "");
             if (device.panel() != null && device.panel().exercise()) {
-                label(root, snapshot == null ? "Updating" : snapshot.status(), 12);
+                if (snapshot != null) label(root, snapshot.status(), 12);
                 for (String action : java.util.List.of("start_exercise", "stop_exercise")) {
                     String label = action.equals("start_exercise") ? "Start exercise" : "Stop exercise";
                     Button exercise = button(vehiclePending ? vehicleFeedback.label(action, label) : label, false);

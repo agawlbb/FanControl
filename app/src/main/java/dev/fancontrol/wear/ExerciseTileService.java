@@ -84,7 +84,7 @@ public final class ExerciseTileService extends TileService {
         }
         synchronized void refresh(boolean entry) {
             if (!visible || !getSystemService(android.os.PowerManager.class).isInteractive()) { leave(); return; }
-            int ticket=generation.incrementAndGet(); snapshot=null; message=entry ? "Waking vehicle" : "Updating"; publish();
+            int ticket=generation.incrementAndGet(); snapshot=null; message=entry ? "Waking vehicle" : ""; publish();
             worker.execute(() -> {
                 try {
                     if (!visible || ticket!=generation.get()) return;
@@ -123,7 +123,6 @@ public final class ExerciseTileService extends TileService {
             LayoutElementBuilders.Column.Builder column=new LayoutElementBuilders.Column.Builder().setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER);
             VehicleFeedback feedback=selected==null?null:ExerciseStopService.feedback(selected,watchId);
             boolean waiting=feedback!=null && feedback.pending();
-            column.addContent(text("Exercise",20));
             for(int i=0;i<2;i++) {
                 String command=i==0 ? "start_exercise" : "stop_exercise";
                 boolean enabled=selected!=null && !waiting;
@@ -136,7 +135,7 @@ public final class ExerciseTileService extends TileService {
                                 .setSize(sp(18)).setColor(ColorBuilders.argb(waiting?0xFFB0B0B0:0xFFFFFFFF)).build()).build()).build());
                 column.addContent(new LayoutElementBuilders.Spacer.Builder().setHeight(dp(4)).build());
             }
-            column.addContent(text(message,11));
+            if (!message.isEmpty()) column.addContent(text(message,11));
             return new TileBuilders.Tile.Builder().setResourcesVersion("1").setTileTimeline(new TimelineBuilders.Timeline.Builder().addTimelineEntry(new TimelineBuilders.TimelineEntry.Builder()
                     .setLayout(new LayoutElementBuilders.Layout.Builder().setRoot(column.build()).build()).build()).build()).build();
         }

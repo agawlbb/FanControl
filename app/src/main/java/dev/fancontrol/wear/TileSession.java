@@ -87,7 +87,7 @@ final class TileSession extends android.content.ContextWrapper {
                 if (changed) {
                     requestedState = null;
                     clearSpeed(); sendingSpeed = -1; commandBusy = false;
-                    stopOperation(); fanState.clear(); new StateCache(this).clear(); message = "Updating…";
+                    stopOperation(); fanState.clear(); new StateCache(this).clear(); message = "";
                 }
                 TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); // Publish the new layout before slow device reads.
                 if (changed) runOperation("refresh", "");
@@ -191,7 +191,7 @@ final class TileSession extends android.content.ContextWrapper {
     private ListenableFuture<Void> refreshOnView() {
         if (visible && (active != null || configuration != null)) return Futures.immediateVoidFuture();
         BackgroundConfigurationJob.cancelActive();
-        if (!visible) { fanState.clear(); message = "Updating…"; TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
+        if (!visible) { fanState.clear(); message = ""; TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
         visible = true; watchSelection();
         if (!commandBusy && !speedSelection.pending()) return runOperation("refresh", "");
         return Futures.immediateVoidFuture();
@@ -249,7 +249,7 @@ final class TileSession extends android.content.ContextWrapper {
                 if (settings.devices().get(0).domain().equals("fan")) fanState.confirm(state);
                 boolean fan = settings.devices().get(0).domain().equals("fan");
                 fresh = !fan || fanState.current() != null;
-                message = fan && !fresh ? "Fan unavailable" : action.equals("leave") ? "Script requested" : "Updated";
+                message = fan && !fresh ? "Fan unavailable" : action.equals("leave") ? "Script requested" : "";
             }
         } catch (Exception error) {
             if (BuildConfig.DEBUG) android.util.Log.d("FanTile", "operation failed: " + error.getClass().getSimpleName());
@@ -285,7 +285,6 @@ final class TileSession extends android.content.ContextWrapper {
         if (panel != null && panel.exercise()) {
             VehicleFeedback feedback = ExerciseStopService.feedback(panel, settings.watchId());
             boolean waiting = feedback != null && feedback.pending();
-            content.addContent(text("Exercise", 20, WHITE));
             for (int i=0;i<2;i++) {
                 String action = i == 0 ? "start_exercise" : "stop_exercise";
                 ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder();
@@ -324,7 +323,7 @@ final class TileSession extends android.content.ContextWrapper {
         content.addContent(spacer(6));
         content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(150)).setHeight(dp(22))
                 .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? click("refresh") : setupClick()).build())
-                .addContent(text(speedSelection.pending() ? "Sending in 1 second" : commandBusy ? "Updating…" : configured ? fresh ? message : message.equals("Last known state") ? fan ? "Unknown · refresh" : "Last known · refresh" : message : "Open app to set up", 11, WHITE)).build());
+                .addContent(text(speedSelection.pending() ? "Sending in 1 second" : commandBusy ? "" : configured ? fresh ? message : message.equals("Last known state") ? fan ? "Unknown · refresh" : "Last known · refresh" : message : "Open app to set up", 11, WHITE)).build());
         content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(120)).setHeight(dp(18))
                 .setModifiers(new ModifiersBuilders.Modifiers.Builder().setClickable(configured ? controlsClick() : setupClick()).build())
                 .addContent(text("More controls", 10, WHITE)).build());
