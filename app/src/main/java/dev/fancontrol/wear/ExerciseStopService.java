@@ -32,7 +32,6 @@ public final class ExerciseStopService extends Service {
     private volatile ExerciseLaunch.Grant grant;
     private volatile String operation;
     private PowerManager.WakeLock wakeLock;
-    private volatile boolean commandConfirmed;
     static synchronized void begin(Context context, ExerciseLaunch.Grant grant) {
         if (feedback != null && feedback.pending()
                 && !(grant.action().equals("start_exercise") && feedback.action().equals("stop_exercise"))) return;
@@ -52,7 +51,7 @@ public final class ExerciseStopService extends Service {
         failures.enableVibration(true); manager.createNotificationChannel(failures);
     }
     @Override public IBinder onBind(Intent intent) { return null; }
-    @Override public int onStartCommand(Intent intent,int flags,int startId) {
+    @Override public synchronized int onStartCommand(Intent intent,int flags,int startId) {
         if(intent==null) { stopSelf(); return START_NOT_STICKY; }
         if("cancel".equals(intent.getAction())) { cancelPending(); return START_NOT_STICKY; }
         ExerciseLaunch.Grant next=ExerciseLaunch.consume(intent.getStringExtra("grant"));
@@ -66,7 +65,7 @@ public final class ExerciseStopService extends Service {
             } else { progress("A command is pending; cancel it before sending another"); return START_NOT_STICKY; }
         }
         int ticket=generation.incrementAndGet(); grant=next; operation=java.util.UUID.randomUUID().toString();
-        commandConfirmed=false; feedback=new VehicleFeedback(next.panel(),next.watchId(),next.action(),true,false); publish();
+        feedback=new VehicleFeedback(next.panel(),next.watchId(),next.action(),true,false); publish();
         if(next.action().equals("stop_exercise")) WatchSpotify.pause(this);
         long issued=System.currentTimeMillis(), deadline=SystemClock.elapsedRealtime()+VehicleCommandAttempt.WINDOW_MS;
         spotifyGrant=""; latestStatus="Button pressed; command queued while vehicle wakes";
@@ -74,7 +73,8 @@ public final class ExerciseStopService extends Service {
         wakeLock=getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"FanControl:VehicleCommand");
         wakeLock.acquire(VehicleCommandAttempt.WINDOW_MS+5000);
         handler.postDelayed(() -> timeout(ticket),VehicleCommandAttempt.WINDOW_MS);
-        worker.execute(() -> deliver(ticket,next,operation,issued,deadline));
+        String operationId=operation;
+        worker.execute(() -> deliver(ticket,next,operationId,issued,deadline));
         return START_NOT_STICKY;
     }
     private void deliver(int ticket,ExerciseLaunch.Grant target,String id,long issued,long deadline) {
@@ -106,14 +106,13 @@ public final class ExerciseStopService extends Service {
                 if(SystemClock.elapsedRealtime()>=deadline) { timeout(ticket); return; }
                 if(attempt.spotifyReady() && !spotifyPublished) { spotifyGrant=target.watchId()+":"+target.panel().id(); spotifyPublished=true; }
                 if(complete) {
-                    commandConfirmed=true;
-                    finish(ticket,target.action().equals("leave") ? "Script request accepted by Home Assistant" : "Vehicle command confirmed",false); return;
+                    finish(ticket,target.action().equals("leave") ? "Script request accepted by Home Assistant" : "Vehicle command confirmed",true); return;
                 }
-                progress("Command received; waiting for vehicle, retrying");
+                progress(ticket,"Command received; waiting for vehicle, retrying");
             } catch(InterruptedException cancelled) { return; }
             catch(Exception retryable) {
                 if(ticket!=generation.get()) return;
-                progress("Command pending; retrying until the one-minute limit");
+                progress(ticket,"Command pending; retrying until the one-minute limit");
             } finally { active=null; }
             long delay=Math.min(10000,2000L << Math.min(failures++,3));
             long until=Math.min(deadline,SystemClock.elapsedRealtime()+delay);
@@ -126,12 +125,12 @@ public final class ExerciseStopService extends Service {
         if(ticket!=generation.get() || grant==null) return;
         generation.incrementAndGet(); IntegrationClient client=active; if(client!=null) client.cancel();
         cancelServerStop(grant,operation);
-        end("Not confirmed after 1 minute. Check the vehicle before trying again",true);
+        end("Not confirmed after 1 minute. Check the vehicle before trying again",true,false);
     }
     private synchronized void cancelPending() {
         if(grant==null) return;
         generation.incrementAndGet(); IntegrationClient client=active; if(client!=null) client.cancel();
-        cancelServerStop(grant,operation); end("Command cancelled; an in-flight action may finish",false);
+        cancelServerStop(grant,operation); end("Command cancelled; an in-flight action may finish",false,false);
     }
     private void cancelServerStop(ExerciseLaunch.Grant target,String id) {
         if(target==null || !target.action().equals("stop_exercise")) return;
@@ -151,12 +150,16 @@ public final class ExerciseStopService extends Service {
                 PendingIntent.getService(this,0,new Intent(this,ExerciseStopService.class).setAction("cancel"),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT)).build());
         return builder.build();
     }
+    private synchronized void progress(int ticket,String message) { if(ticket==generation.get()) progress(message); }
     private synchronized void progress(String message) { if(grant==null) return; latestStatus=message; getSystemService(NotificationManager.class).notify(NOTICE,notification(message,true,false)); }
-    private synchronized void finish(int ticket,String message,boolean alert) { if(ticket==generation.get()) end(message,alert); }
-    private void end(String message,boolean alert) {
+    // Commit only this operation's result under the same lock as replacement and cancellation.
+    private synchronized void finish(int ticket,String message,boolean confirmed) {
+        if(ticket==generation.get() && grant!=null) end(message,false,confirmed);
+    }
+    private void end(String message,boolean alert,boolean confirmed) {
         generation.incrementAndGet(); handler.removeCallbacksAndMessages(null); latestStatus=message;
         ExerciseLaunch.Grant target=grant;
-        if(target!=null) feedback=new VehicleFeedback(target.panel(),target.watchId(),target.action(),false,commandConfirmed);
+        if(target!=null) feedback=new VehicleFeedback(target.panel(),target.watchId(),target.action(),false,confirmed);
         publish();
         stopForeground(STOP_FOREGROUND_REMOVE);
         getSystemService(NotificationManager.class).notify(NOTICE,notification(message,false,alert));
@@ -169,7 +172,7 @@ public final class ExerciseStopService extends Service {
         androidx.wear.tiles.TileService.getUpdater(getApplicationContext()).requestUpdate(ExerciseTileService.class);
         androidx.wear.tiles.TileService.getUpdater(getApplicationContext()).requestUpdate(DrivingTileService.class);
     }
-    @Override public void onDestroy() {
+    @Override public synchronized void onDestroy() {
         generation.incrementAndGet(); handler.removeCallbacksAndMessages(null); IntegrationClient client=active; if(client!=null) client.cancel();
         if(wakeLock!=null && wakeLock.isHeld()) wakeLock.release();
         worker.shutdown(); if(running==this) running=null; super.onDestroy();
