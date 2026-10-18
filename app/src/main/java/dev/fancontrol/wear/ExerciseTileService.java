@@ -17,7 +17,9 @@ import static androidx.wear.protolayout.DimensionBuilders.sp;
 
 /** Separate Exercise tile. Renderer prefetch only draws; visible entry owns all I/O. */
 public final class ExerciseTileService extends TileService {
-    private static Session current;
+    private static volatile Session current;
+    static void pauseForActivity() { Session value=current; if(value!=null) value.leave(); }
+    static boolean isVisible() { Session value=current; return value!=null&&value.visible; }
     private synchronized Session session() {
         synchronized (ExerciseTileService.class) {
             if (current == null) current = new Session(getApplicationContext());
@@ -78,7 +80,7 @@ public final class ExerciseTileService extends TileService {
         }
         void publish() { TileService.getUpdater(getApplicationContext()).requestUpdate(ExerciseTileService.class); }
         synchronized void enter() {
-            if (visible || !getSystemService(android.os.PowerManager.class).isInteractive()) return;
+            if (visible || !VisibleEntryGate.tileMayConnect(getSystemService(android.os.PowerManager.class).isInteractive(),FanControlApplication.activityVisible())) return;
             visible=true; refresh(true);
         }
         synchronized void leave() {
@@ -87,7 +89,7 @@ public final class ExerciseTileService extends TileService {
             snapshot=null; panel=null; message="Open to connect"; publish();
         }
         synchronized void refresh(boolean entry) {
-            if (!visible || !getSystemService(android.os.PowerManager.class).isInteractive()) { leave(); return; }
+            if (!visible || !VisibleEntryGate.tileMayConnect(getSystemService(android.os.PowerManager.class).isInteractive(),FanControlApplication.activityVisible())) { leave(); return; }
             int ticket=generation.incrementAndGet(); snapshot=null; message=entry ? "Waking vehicle" : ""; publish();
             worker.execute(() -> {
                 try {
@@ -105,8 +107,9 @@ public final class ExerciseTileService extends TileService {
                     // Configuration polls cannot wake newly selected targets: require another visible entry.
                     boolean changed = panel!=null && !panel.equals(selected);
                     if(changed) throw new IllegalStateException();
+                    VehicleFeedback beforeRead=ExerciseStopService.feedback(selected,settings.watchId());
                     DeviceController.Snapshot result=entry ? active.enter() : active.read();
-                    if(ticket==generation.get() && visible) { panel=selected; watchId=settings.watchId(); snapshot=result; message=result.status(); }
+                    if(ticket==generation.get() && visible) { panel=selected; watchId=settings.watchId(); snapshot=result; message=result.status(); ExerciseStopService.observed(beforeRead); }
                 } catch(Exception ignored) {
                     if(ticket==generation.get()) { snapshot=null; message="Unavailable; reopen tile"; }
                 } finally {
@@ -130,13 +133,15 @@ public final class ExerciseTileService extends TileService {
             for(int i=0;i<2;i++) {
                 String command=i==0 ? "start_exercise" : "stop_exercise";
                 boolean enabled=selected!=null && !waiting;
-                ModifiersBuilders.Modifiers.Builder modifiers=new ModifiersBuilders.Modifiers.Builder().setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(enabled?0xFF245C4F:0xFF242A28)).build());
+                boolean unconfirmed=!enabled || feedback!=null && feedback.unconfirmed(command);
+                boolean confirmed=feedback!=null && feedback.selected(command);
+                ModifiersBuilders.Modifiers.Builder modifiers=new ModifiersBuilders.Modifiers.Builder().setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(CommandFeedback.background(unconfirmed,confirmed))).build());
                 if(enabled) modifiers.setClickable(action(getPackageName(),selected,command,watchId));
                 String label=i==0?"Start exercise":"Stop exercise";
-                if(waiting) label=feedback.label(command,label);
+                if(feedback!=null) label=feedback.label(command,label);
                 column.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(160)).setHeight(dp(52)).setModifiers(modifiers.build())
-                        .addContent(new LayoutElementBuilders.Text.Builder().setText(label).setMaxLines(2).setFontStyle(new LayoutElementBuilders.FontStyle.Builder()
-                                .setSize(sp(18)).setColor(ColorBuilders.argb(waiting?0xFFB0B0B0:0xFFFFFFFF)).build()).build()).build());
+                        .addContent(new LayoutElementBuilders.Text.Builder().setText(label).setMaxLines(3).setFontStyle(new LayoutElementBuilders.FontStyle.Builder()
+                                .setSize(sp(unconfirmed && !waiting ? 14 : 18)).setColor(ColorBuilders.argb(CommandFeedback.foreground(unconfirmed,confirmed))).build()).build()).build());
                 column.addContent(new LayoutElementBuilders.Spacer.Builder().setHeight(dp(4)).build());
             }
             if (!message.isEmpty()) column.addContent(text(message,11));

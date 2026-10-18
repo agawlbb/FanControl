@@ -6,6 +6,24 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class CommandFeedbackTest {
+    @Test public void requestedColorsAlwaysOverrideSelectedColorsUntilConfirmation() {
+        for (boolean selected : new boolean[]{false,true}) {
+            assertEquals(0xFF383838,CommandFeedback.background(true,selected));
+            assertEquals(0xFFB0B0B0,CommandFeedback.foreground(true,selected));
+            assertNotEquals(CommandFeedback.background(true,selected),CommandFeedback.background(false,selected));
+        }
+        assertEquals(0xFF70E2C2,CommandFeedback.background(false,true));
+    }
+    @Test public void everyOrdinaryCommandProjectsDisabledControlsWithoutMutatingObservedState() {
+        DeviceController.Snapshot fan=DeviceControllers.Fan.snapshot(new FanState(true,2,true,true));
+        for (String action : List.of("turn_on","turn_off","speed1","speed2","speed3","speed4","speed5","speed6")) {
+            DeviceController.Snapshot projection=CommandFeedback.requested(fan,action);
+            assertEquals(action,projection.readings().get("pending_action"));
+            assertTrue(projection.controls().stream().noneMatch(DeviceController.Control::enabled));
+            assertTrue(fan.controls().get(0).enabled());
+            assertEquals("On · Speed 2",fan.status());
+        }
+    }
     @Test public void offToOnIsImmediateButAllProjectedControlsRemainDisabled() {
         DeviceController.Snapshot actual = DeviceControllers.Fan.snapshot(new FanState(false,0,true,true));
         String action = CommandFeedback.action(actual,"toggle");

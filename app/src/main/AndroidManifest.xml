@@ -33,6 +33,10 @@
         <service android:name=".SpotifyNotificationAccess" android:label="Fan Control watch Spotify pause" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
         </service>
+        <service android:name=".DrivingTileService" android:exported="true" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER" android:label="Driving">
+            <intent-filter><action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" /></intent-filter>
+            <meta-data android:name="androidx.wear.tiles.PREVIEW" android:resource="@drawable/driving_tile_preview" />
+        </service>
         <service android:name=".ExerciseTileService" android:exported="true" android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER" android:label="Exercise">
             <intent-filter><action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" /></intent-filter>
         </service>

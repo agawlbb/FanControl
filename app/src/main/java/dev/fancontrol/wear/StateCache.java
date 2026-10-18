@@ -25,7 +25,7 @@ final class StateCache {
             for (int i=0;i<array.length();i++) { org.json.JSONObject item=array.getJSONObject(i); controls.add(new DeviceController.Control(item.getString("action"), item.getString("label"), item.getBoolean("enabled"), item.getBoolean("selected"))); }
             java.util.Map<String,String> readings = new java.util.HashMap<>();
             org.json.JSONObject values = json.optJSONObject("readings");
-            if (values != null) for (String key : java.util.List.of("battery", "climate"))
+            if (values != null) for (String key : java.util.List.of("battery", "climate", "garage", "trunk", "garage_open_available", "garage_close_available", "trunk_open_available", "trunk_close_available"))
                 if (values.has(key)) readings.put(key, values.getString(key));
             return new DeviceController.Snapshot(json.getString("status"), controls, readings);
         } catch(Exception ignored) { return null; }

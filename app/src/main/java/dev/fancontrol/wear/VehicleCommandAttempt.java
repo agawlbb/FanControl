@@ -10,7 +10,7 @@ final class VehicleCommandAttempt {
     private final PanelDefinition panel;
     private final String action, identity;
     private final long issued;
-    private boolean woke, dispatched, acknowledged;
+    private boolean dispatched, acknowledged;
     private Boolean desiredClimate;
     VehicleCommandAttempt(PanelDefinition panel, String action, String identity, long issued) {
         if (!supported(panel, action)) throw new IllegalArgumentException("Unsupported vehicle action");
@@ -18,6 +18,7 @@ final class VehicleCommandAttempt {
         if (action.equals("climate_on") || action.equals("climate_off")) desiredClimate = action.equals("climate_on");
     }
     static boolean supported(PanelDefinition panel, String action) {
+        if (panel.driving()) return java.util.List.of("garage_open","garage_close","trunk_open","trunk_close","climate_on").contains(action);
         return (panel.exercise() ? java.util.List.of("start_exercise", "stop_exercise").contains(action)
                 : java.util.List.of("climate", "climate_on", "climate_off", "leave").contains(action));
     }
@@ -25,7 +26,10 @@ final class VehicleCommandAttempt {
     boolean spotifyReady() { return action.equals("start_exercise") && acknowledged; }
     private JSONObject body(String command) throws Exception {
         JSONObject body = new JSONObject().put("action", command == null ? "panel_state" : "panel_command").put("panel_id", panel.id());
-        if (command != null) body.put("command", command);
+        if (command != null) {
+            body.put("command", command);
+            if (panel.driving()) body.put("panel_config", panel.toJson());
+        }
         return body;
     }
     /** True means observed target state, or script dispatch acknowledgment (not script completion). */
@@ -36,10 +40,6 @@ final class VehicleCommandAttempt {
         });
     }
     boolean step(Request request) throws Exception {
-        if (!woke && panel.vehicle()) {
-            woke = true;
-            try { request.send(body("wake")); } catch (Exception ignored) { } // A lost wake response does not reject the tap.
-        }
         if (action.equals("stop_exercise")) {
             JSONObject result = request.send(body(action).put("operation_id", identity).put("issued_at_ms", issued).put("panel_config", panel.toJson()));
             String status = result.optString("operation_status");
@@ -48,6 +48,16 @@ final class VehicleCommandAttempt {
             return false;
         }
         JSONObject state = request.send(body(null));
+        if (panel.driving() && (action.startsWith("garage_") || action.startsWith("trunk_"))) {
+            String role=action.startsWith("garage_")?"garage":"trunk";
+            String desired=action.endsWith("_open")?"open":"closed";
+            boolean available=state.optBoolean(action+"_available");
+            if (available && desired.equals(state.optString(role+"_state"))) return true;
+            if (dispatched || !available) return false;
+            dispatched=true; // Covers dispatch at most once, even when a response is lost.
+            JSONObject result=request.send(body(action));
+            return result.optBoolean(action+"_available") && desired.equals(result.optString(role+"_state"));
+        }
         if (!ready(state)) return false;
         if (action.equals("leave")) {
             if (dispatched || !state.optBoolean("script_available")) return false;
@@ -56,11 +66,11 @@ final class VehicleCommandAttempt {
         }
         if (java.util.List.of("climate", "climate_on", "climate_off").contains(action)) {
             if (desiredClimate == null) desiredClimate = !state.getBoolean("climate_on");
-            if (dispatched && state.getBoolean("climate_on") == desiredClimate) return true;
+            if (dispatched && state.optBoolean("climate_available") && state.getBoolean("climate_on") == desiredClimate) return true;
             if (!state.optBoolean("climate_available")) return false;
             dispatched = true;
             JSONObject result = request.send(body(desiredClimate ? "climate_on" : "climate_off"));
-            return ready(result) && result.getBoolean("climate_on") == desiredClimate;
+            return ready(result) && result.optBoolean("climate_available") && result.getBoolean("climate_on") == desiredClimate;
         }
         if (dispatched && state.optBoolean("locked")) { acknowledged = true; return true; }
         if (!state.optBoolean("start_available")) return false;

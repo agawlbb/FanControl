@@ -16,7 +16,8 @@ public final class ExerciseStopService extends Service {
     private static volatile VehicleFeedback feedback;
     static VehicleFeedback feedback() { return feedback; }
     static synchronized void observed(VehicleFeedback beforeRead) {
-        if (beforeRead != null && beforeRead.confirmed() && feedback == beforeRead) feedback = null;
+        // A subsequent read replaces terminal presentation; an old in-flight read cannot clear a newer result.
+        if (beforeRead != null && !beforeRead.pending() && feedback == beforeRead) feedback = null;
     }
     static VehicleFeedback feedback(PanelDefinition panel,String watchId) {
         VehicleFeedback value=feedback; return value!=null && value.matches(panel,watchId) ? value : null;
@@ -166,6 +167,7 @@ public final class ExerciseStopService extends Service {
     private void publish() {
         androidx.wear.tiles.TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class);
         androidx.wear.tiles.TileService.getUpdater(getApplicationContext()).requestUpdate(ExerciseTileService.class);
+        androidx.wear.tiles.TileService.getUpdater(getApplicationContext()).requestUpdate(DrivingTileService.class);
     }
     @Override public void onDestroy() {
         generation.incrementAndGet(); handler.removeCallbacksAndMessages(null); IntegrationClient client=active; if(client!=null) client.cancel();

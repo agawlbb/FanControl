@@ -6,6 +6,7 @@ import java.util.List;
 /** Add one domain adapter here when implementing another type of device. */
 final class DeviceControllers {
     static DeviceController create(ConnectionSettings connection, DeviceDefinition device) {
+        if (connection.integration() && device.panel()!=null && device.panel().driving()) return new DrivingController(connection,device.panel());
         if (connection.integration() && device.panel() != null && device.panel().exercise()) return new ExerciseController(connection, device.panel());
         if (connection.integration() && device.panel() != null) return new WorkMorning(connection, device.panel());
         if (device.domain().equals("fan")) return new Fan(new HomeAssistantClient(connection.forFan(device)));
@@ -74,7 +75,7 @@ final class DeviceControllers {
             if (!action.equals(expected) && !(expected.equals("toggle") && List.of("turn_on", "turn_off").contains(action))) throw new IllegalArgumentException("Unknown action");
             String service = List.of("turn_on", "turn_off").contains(action) ? action : action.equals("activate") ? "turn_on" : current.status().equals("On") ? "turn_off" : "turn_on";
             transport.callService(device.domain(), service, new org.json.JSONObject().put("entity_id", device.entityId()));
-            if (action.equals("activate")) return new Snapshot("Requested", List.of(new Control("activate", "REQUESTED", true, false)));
+            if (action.equals("activate")) return new Snapshot("Request accepted", List.of(new Control("activate", "REQUESTED", true, true)));
             for (int attempt = 0; attempt < 6; attempt++) {
                 if (attempt > 0) Thread.sleep(350);
                 Snapshot confirmed = read();

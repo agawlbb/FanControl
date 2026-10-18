@@ -26,6 +26,7 @@ import static androidx.wear.protolayout.DimensionBuilders.sp;
 
 final class TileSession extends android.content.ContextWrapper {
     private static volatile TileSession instance;
+    static void pauseForActivity() { TileSession value=instance; if(value!=null) value.leave(); }
     static boolean isVisible() { TileSession current = instance; return current != null && current.visible; }
     static synchronized TileSession get(android.content.Context context) {
         if (instance == null) instance = new TileSession(context.getApplicationContext());
@@ -189,6 +190,9 @@ final class TileSession extends android.content.ContextWrapper {
     }
     private void leave() { if (requestedState != null) new StateCache(this).clear(); requestedState = null; entryGate.leave(); handler.removeCallbacks(checkSelection); if (selectionSession != null) selectionSession.close(); clearSpeed(); sendingSpeed = -1; fanState.clear(); visible = false; handler.removeCallbacks(poll); commandBusy = false; stopOperation(); TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
     private ListenableFuture<Void> refreshOnView() {
+        if(!VisibleEntryGate.tileMayConnect(getSystemService(android.os.PowerManager.class).isInteractive(),FanControlApplication.activityVisible())) {
+            leave(); return Futures.immediateVoidFuture();
+        }
         if (visible && (active != null || configuration != null)) return Futures.immediateVoidFuture();
         BackgroundConfigurationJob.cancelActive();
         if (!visible) { fanState.clear(); message = ""; TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class); }
@@ -238,7 +242,7 @@ final class TileSession extends android.content.ContextWrapper {
             if (BuildConfig.DEBUG) android.util.Log.d("FanTile", "operation: " + action);
             client = DeviceControllers.create(settings, settings.devices().get(0)); active = client;
             if (ticket != generation.get()) { client.cancel(); return; }
-            boolean entry = visible && entryGate.claim(TileTarget.key(settings));
+            boolean entry = visible && VisibleEntryGate.tileMayConnect(getSystemService(android.os.PowerManager.class).isInteractive(),FanControlApplication.activityVisible()) && entryGate.claim(TileTarget.key(settings));
             PanelDefinition panel = settings.devices().get(0).panel();
             action = VisibleEntryGate.safeAction(action, panel != null && panel.vehicle(), !entry);
             VehicleFeedback beforeRead = panel == null ? null : ExerciseStopService.feedback(panel,settings.watchId());
@@ -282,16 +286,20 @@ final class TileSession extends android.content.ContextWrapper {
         boolean on = state != null && state.status().startsWith("On");
         boolean available = pending || !controls.isEmpty() && controls.get(0).enabled();
         PanelDefinition panel = configured ? settings.devices().get(0).panel() : null;
-        if (panel != null && panel.exercise()) {
+        if (panel != null && panel.driving()) {
+            content.addContent(DrivingTileLayout.content(getPackageName(),panel,settings.watchId(),state,ExerciseStopService.feedback(panel,settings.watchId())));
+        } else if (panel != null && panel.exercise()) {
             VehicleFeedback feedback = ExerciseStopService.feedback(panel, settings.watchId());
             boolean waiting = feedback != null && feedback.pending();
             for (int i=0;i<2;i++) {
                 String action = i == 0 ? "start_exercise" : "stop_exercise";
+                boolean unconfirmed = feedback != null && feedback.unconfirmed(action);
+                boolean selected = feedback != null && feedback.selected(action);
                 ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder();
-                modifiers.setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(waiting ? 0xFF383838 : 0xFF24332F)).build());
+                modifiers.setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(CommandFeedback.background(unconfirmed, selected))).build());
                 if (!waiting) modifiers.setClickable(ExerciseTileService.action(getPackageName(), panel, action, settings.watchId()));
                 content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(160)).setHeight(dp(55))
-                        .setModifiers(modifiers.build()).addContent(text(waiting ? feedback.label(action, i == 0 ? "Start exercise" : "Stop exercise") : i == 0 ? "Start exercise" : "Stop exercise", 18, waiting ? 0xFFB0B0B0 : WHITE)).build());
+                        .setModifiers(modifiers.build()).addContent(text(feedback != null ? feedback.label(action, i == 0 ? "Start exercise" : "Stop exercise") : i == 0 ? "Start exercise" : "Stop exercise", unconfirmed && !waiting ? 14 : 18, CommandFeedback.foreground(unconfirmed, selected), 3)).build());
             }
         } else if (panel != null) {
             String climate = state == null ? "?" : state.readings().getOrDefault("climate", "?");
@@ -318,7 +326,7 @@ final class TileSession extends android.content.ContextWrapper {
                             available && !commandBusy && !speedSelection.pending() ? WHITE : 0xFFB0B0B0)).build());
             row.addContent(button("+", "faster", 54, 58, enabled && speed < 6, false, "Faster", 34));
             content.addContent(row.build());
-        } else content.addContent(text(state == null ? "State unknown" : state.status(), 20, WHITE));
+        } else content.addContent(text(state == null ? "State unknown" : state.status(), 20, pending ? CommandFeedback.GRAY : WHITE));
         }
         content.addContent(spacer(6));
         content.addContent(new LayoutElementBuilders.Box.Builder().setWidth(dp(150)).setHeight(dp(22))
@@ -348,19 +356,24 @@ final class TileSession extends android.content.ContextWrapper {
         if (vehicle) enabled = !waiting;
         if (feedback != null) state = feedback.climateState(state);
         boolean on = state.equals("ON");
-        int color = enabled ? on ? 0xFF001F16 : WHITE : 0xFFB0B0B0;
+        boolean unconfirmed = !enabled || feedback != null && feedback.unconfirmed("climate");
+        int color = CommandFeedback.foreground(unconfirmed, on);
         ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder()
-                .setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(!enabled ? 0xFF383838 : on ? MINT : 0xFF24332F))
+                .setBackground(new ModifiersBuilders.Background.Builder().setColor(ColorBuilders.argb(CommandFeedback.background(unconfirmed, on)))
                         .setCorner(new ModifiersBuilders.Corner.Builder().setRadius(dp(16)).build()).build())
                 .setSemantics(new ModifiersBuilders.Semantics.Builder().setContentDescription(label + " " + state).build());
         if (enabled) modifiers.setClickable(vehicle ? ExerciseTileService.action(getPackageName(), panel, CommandFeedback.vehicleAction("climate", on), settings.watchId()) : click("climate"));
         return new LayoutElementBuilders.Box.Builder().setWidth(dp(78)).setHeight(dp(72)).setModifiers(modifiers.build())
                 .addContent(new LayoutElementBuilders.Column.Builder().setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
-                        .addContent(text(label, 12, color)).addContent(text(state, 24, color)).build()).build();
+                        .addContent(text(label, 12, color)).addContent(text(state, 24, color))
+                        .addContent(text(feedback != null && !feedback.pending() && !feedback.confirmed() && feedback.appliesTo("climate") ? "Not confirmed" : "", 10, color)).build()).build();
     }
 
     private LayoutElementBuilders.Text text(String value, int size, int color) {
-        return new LayoutElementBuilders.Text.Builder().setText(value).setMaxLines(1)
+        return text(value, size, color, 1);
+    }
+    private LayoutElementBuilders.Text text(String value, int size, int color, int lines) {
+        return new LayoutElementBuilders.Text.Builder().setText(value).setMaxLines(lines)
                 .setFontStyle(new LayoutElementBuilders.FontStyle.Builder().setSize(sp(size))
                         .setColor(ColorBuilders.argb(color)).build()).build();
     }
@@ -369,12 +382,14 @@ final class TileSession extends android.content.ContextWrapper {
         ConnectionSettings settings = new SecureSettings(this).load();
         VehicleFeedback feedback = ExerciseStopService.feedback(panel, settings.watchId());
         boolean waiting = feedback != null && feedback.pending();
-        if (waiting) label = feedback.label(action, label);
+        if (feedback != null) label = feedback.label(action, label);
+        boolean unconfirmed = feedback != null && feedback.unconfirmed(action);
+        boolean selected = feedback != null && feedback.selected(action);
         ModifiersBuilders.Modifiers.Builder modifiers = new ModifiersBuilders.Modifiers.Builder().setBackground(new ModifiersBuilders.Background.Builder()
-                .setColor(ColorBuilders.argb(waiting ? 0xFF383838 : 0xFF24332F)).setCorner(new ModifiersBuilders.Corner.Builder().setRadius(dp(16)).build()).build());
+                .setColor(ColorBuilders.argb(CommandFeedback.background(unconfirmed, selected))).setCorner(new ModifiersBuilders.Corner.Builder().setRadius(dp(16)).build()).build());
         if (!waiting) modifiers.setClickable(ExerciseTileService.action(getPackageName(), panel, action, settings.watchId()));
         return new LayoutElementBuilders.Box.Builder().setWidth(dp(width)).setHeight(dp(height))
-                .setModifiers(modifiers.build()).addContent(text(label, 18, waiting ? 0xFFB0B0B0 : WHITE)).build();
+                .setModifiers(modifiers.build()).addContent(text(label, 18, CommandFeedback.foreground(unconfirmed, selected), 2)).build();
     }
 
     private LayoutElementBuilders.Spacer spacer(int height) {

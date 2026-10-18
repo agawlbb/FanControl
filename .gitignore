@@ -15,3 +15,23 @@ secrets*
 *.hprof
 captures/
 artifacts/
+
+# The HA integration is maintained and published as a separate repository.
+/ha-integration/
+
+# Local analysis, home configuration, credentials and diagnostic exports.
+__pycache__/
+.pytest_cache/
+.venv/
+*.key
+*.pfx
+*.pkcs12
+*.log
+*.dump
+*.har
+.storage/
+configuration.yaml
+secrets.yaml
+google-services.json
+key.properties
+keystore.properties

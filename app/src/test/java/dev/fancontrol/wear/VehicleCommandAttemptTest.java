@@ -9,6 +9,19 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class VehicleCommandAttemptTest {
+    @Test public void unavailableClimateCannotConfirmAnOffIntentEvenWhenItsBooleanMatches() throws Exception {
+        PanelDefinition plain=new PanelDefinition("plain","Plain","sensor.battery","climate.car","script.leave","Climate","Leave");
+        VehicleCommandAttempt attempt=new VehicleCommandAttempt(plain,"climate_off","id",0);
+        assertFalse(attempt.step(body -> new JSONObject().put("climate_available",!body.has("command")).put("climate_on",false)));
+        assertFalse(attempt.step(body -> {
+            assertFalse(body.has("command"));
+            return new JSONObject().put("climate_available",false).put("climate_on",false);
+        }));
+        assertTrue(attempt.step(body -> {
+            assertFalse(body.has("command"));
+            return new JSONObject().put("climate_available",true).put("climate_on",false);
+        }));
+    }
     private PanelDefinition morning() {
         return new PanelDefinition("morning","Morning","sensor.battery","climate.car","script.leave","Climate","Leave","button.wake","binary_sensor.awake");
     }
@@ -26,12 +39,12 @@ public class VehicleCommandAttemptTest {
             return state(ready[0],command.equals("climate_on"));
         };
         assertFalse(attempt.step(request)); ready[0]=true; assertTrue(attempt.step(request));
-        assertEquals(List.of("wake","","","climate_on"),commands);
+        assertEquals(List.of("","","climate_on"),commands);
     }
-    @Test public void lostWakeResponseStillAllowsPendingCommand() throws Exception {
+    @Test public void scriptDispatchDoesNotRequestWake() throws Exception {
         VehicleCommandAttempt attempt=new VehicleCommandAttempt(morning(),"leave","id",0);
         assertTrue(attempt.step(body -> {
-            if(body.optString("command").equals("wake")) throw new IOException();
+            assertNotEquals("wake",body.optString("command"));
             return state(true,false);
         }));
     }
@@ -127,7 +140,7 @@ public class VehicleCommandAttemptTest {
             }, () -> now[0]<VehicleCommandAttempt.WINDOW_MS);
             fail();
         } catch(InterruptedException expected) { }
-        assertEquals(List.of("wake",""),commands);
+        assertEquals(List.of(""),commands);
     }
     @Test public void cancelledRequestCannotSendWakeOrCommand() throws Exception {
         VehicleCommandAttempt attempt=new VehicleCommandAttempt(exercise(),"stop_exercise","id",0);

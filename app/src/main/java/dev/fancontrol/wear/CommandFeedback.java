@@ -6,6 +6,14 @@ import java.util.List;
 
 /** A requested state is presentation only. It is never stored in the confirmed cache. */
 final class CommandFeedback {
+    static final int GRAY = 0xFFB0B0B0, GRAY_BACKGROUND = 0xFF383838;
+    static final int CONFIRMED = 0xFF70E2C2, NORMAL = 0xFF24332F;
+    static int background(boolean unconfirmed, boolean selected) {
+        return unconfirmed ? GRAY_BACKGROUND : selected ? CONFIRMED : NORMAL;
+    }
+    static int foreground(boolean unconfirmed, boolean selected) {
+        return unconfirmed ? GRAY : selected ? 0xFF001F16 : 0xFFF4F7F6;
+    }
     static String vehicleAction(String action, boolean climateOn) {
         return action.equals("climate") ? climateOn ? "climate_off" : "climate_on" : action;
     }
@@ -17,6 +25,10 @@ final class CommandFeedback {
     }
     static String title(String action) {
         return switch(action) {
+            case "garage_open" -> "Garage OPEN";
+            case "garage_close" -> "Garage CLOSED";
+            case "trunk_open" -> "Trunk OPEN";
+            case "trunk_close" -> "Trunk CLOSED";
             case "climate_on" -> "Climate ON";
             case "climate_off" -> "Climate OFF";
             case "start_exercise" -> "LOCKED";

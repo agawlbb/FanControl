@@ -1,5 +1,7 @@
 # Fan Control
 
+Licensed under GNU AGPL-3.0-only. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
+
 A standalone Wear OS 3+ app for Home Assistant controls. Pair locally through the [Fan Control HA integration](https://github.com/agawlbb/FanControlHA), without typing a password or access token on the watch. No phone companion or hosted website is required for integration pairing.
 
 ## Setup with Home Assistant
@@ -14,13 +16,13 @@ HA's Configure screen manages devices, addresses and revocation. Each watch also
 
 Fans support power and six speeds, preserving **16%, 33%, 50%, 66%, 83%, 100%**. Lights, switches and input booleans support power; scenes and scripts have Run. Only explicitly approved devices and supported commands can be accessed. Other domains have no network control adapter.
 
-The fan tile has a large power toggle and **− / current speed / +** controls. Speed taps accumulate locally and send one absolute speed one second after the last tap; the displayed draft is labelled as pending. Leaving before the quiet window expires discards it. On opening, the fan tile shows gray UNKNOWN power and ? speed with controls disabled until a successful available fan response arrives. Failed or unavailable responses return the fan to this unknown state; saved fan state is never used as current tile state. Tap **More controls** or **Open device controls** for vertical swipe pages. The active tile device is the first page; other devices follow. Native tiles use the system's horizontal carousel, so vertical paging lives in the full-screen controls activity. Neighbouring pages render without connecting; only a visible settled page reads state. Starting a swipe or leaving cancels previous work.
+The fan tile has a large power toggle and **− / current speed / +** controls. Speed taps accumulate locally and send one absolute speed one second after the last tap; the displayed draft is labelled as pending. Leaving before the quiet window expires discards it. On opening, the fan tile shows gray UNKNOWN power and ? speed with controls disabled until a successful available fan response arrives. Failed or unavailable responses return the fan to this unknown state; saved fan state is never used as current tile state. Tap **More controls** or **Open device controls** to open the HA-selected device. The watch does not offer panel switching; leaving cancels previous work.
 
 ## Configurable watch panels
 
 In **Settings → Devices & services → Fan Control → Configure → Manage watch panels**, choose a watch and **Add Work Morning panel**. Select a battery percentage sensor, a climate power entity (or switch/input boolean), and a script using HA entity pickers. Panel names and button labels are editable; no personal entity IDs are compiled into the watch. Battery sensors must use `%`; climate entities must support HA power on/off. Missing sensor values show `?%`, unavailable climate controls are disabled, and running scripts cannot be started again from the panel.
 
-The Work Morning layout places battery percentage on the left and the climate toggle on the right of its top row, with a full-width script button in the bottom row. A script response confirms dispatch, not that the entire script completed. Existing fan controls and their speed mapping remain unchanged. Configured panels also appear in the app's vertical swipe pages.
+The Work Morning layout places battery percentage on the left and the climate toggle on the right of its top row, with a full-width script button in the bottom row. A script response confirms dispatch, not that the entire script completed. Existing fan controls and their speed mapping remain unchanged. The app shows only the HA-selected panel.
 
 Choose **Select active panel** in the panel manager, or use the watch's new **Tile panel** select entity in an automation with `select.select_option`. Its options are `devices` and your stable panel IDs (default `work_morning`). Alternatively call **Fan Control: Set active watch panel** (`fan_control.set_active_panel`) with the Watch ID and Panel ID. `devices` restores the active device controls. The existing **Tile device** selector and `fan_control.set_active_device` also restore device controls when selecting a device.
 
@@ -50,7 +52,7 @@ Paired messages use AES-256-GCM with fresh IVs and authenticated watch ID, times
 
 Saved addresses, credentials, names and entity IDs are encrypted using Android Keystore. Backups/transfers are disabled; setup screenshots are blocked. Credentials and responses are not logged. Tile caches hold generic states and control labels. **Forget connection** clears watch settings; revoke access in HA as well.
 
-Repositories contain no personal addresses, installed entity IDs, tokens, signing keys or watch configuration. Test values are synthetic. Local configuration, output and tooling are ignored; commits use a generic identity. GitHub ownership/activity remain visible if repositories become public.
+Test values are synthetic. Local configuration, output and tooling are ignored; commits use a generic identity. GitHub ownership/activity remain visible if repositories become public. See [Security reports and publication](SECURITY.md) before sharing source or workspace files; ignored local backups can contain private data.
 
 
 ## Build and validation
@@ -107,7 +109,68 @@ Scripts are dispatched at most once. If a script response is lost, the watch kee
 
 ## Requested-state feedback
 
+This is a required interaction rule for all current and future watch commands;
+see [AGENTS.md](AGENTS.md). Pending/requested outcomes use gray text and gray
+backgrounds. A matching confirmed result changes to normal state colors, with
+mint highlighting for a selected/acknowledged action. Clickability alone is not
+confirmation. Panel timeout/cancellation results retain gray requested feedback
+with **Not confirmed** until a subsequent state read replaces it; ordinary device
+failures return to unknown/error rather than displaying a guessed success.
+
 Power, fan speed, climate, script/scene, and Exercise actions immediately display their requested state in gray. Pending action buttons are disabled until a confirmed response arrives; normal colors return only for a confirmed result. A requested snapshot is never written into the confirmed cache, and failed/cancelled requests do not leave guessed state marked as current. Ordinary power/climate taps resolve an absolute on/off intent from the displayed state so a later server read cannot invert what the watch said it requested. Fan speed drafts remain adjustable during the one-second selection window, with gray requested speed; controls disable when the request is sent.
 
 Panel commands use inline pending labels on their existing buttons in both tiles and app pages, including while the car wakes. Work Morning panels use this path even without optional wake roles. ON/OFF intents are fixed at the tap; tapping unknown climate requests ON. Existing one-minute delivery/alert behavior is retained. Scripts and scenes display REQUESTED, not COMPLETED: the available confirmation is HA dispatch acknowledgment. Exercise setup requires Fan Control HA integration 0.3.0 or later; after an integration update, reload the HA browser page and use Configure → Manage watch panels → choose watch → Add Exercise panel.
 Exercise music (watch 1.4.6 / integration 0.3.1): edit the Exercise panel in HA to optionally select a Spotify media player and playlist URL or URI. Sharing parameters are discarded. An optional exact source name is selected only when available; blank uses Spotify's active device and may play elsewhere. Start opens the installed watch Spotify app and sends one separate HA music request, with shuffle disabled before and after playlist playback. Music is never replayed by vehicle retries and failure does not prevent locking. No Spotify credentials are stored on the watch. Opening the watch app does not guarantee that Spotify changes its active output; playback and shuffle still require real-device verification.
+
+
+## Driving tile (watch 1.5.0 / integration 0.4.0)
+
+In Fan Control's native HA Configure flow, choose Manage watch panels, select
+the watch and Add Driving panel. Select distinct garage and trunk `cover`
+entities with explicit open/close support, the vehicle's climate entity, wake
+button and online binary sensor. Add the separate **Driving** tile on the watch.
+It requires exactly one Driving panel; multiple candidates remain disabled.
+The panel can be selected in HA as the
+main tile's active panel. Entity choices stay in HA; none are compiled in.
+
+Garage and trunk are open/close toggles; Climate ON always requests ON. On each
+visible entry the watch requests vehicle wake once; refresh, prefetch, background
+configuration checks and hidden rendering never wake a vehicle. Command delivery and retries never send wake; only a currently displayed vehicle page does.
+
+Before a current trunk state is available, the trunk displays **CLOSED in gray**
+and is immediately tappable: its first tap fixes an **OPEN** request. This is a
+presentation assumption, never a confirmed or cached closed state. A later read
+cannot flip that tap into Close. A confirmed OPEN trunk offers Close next; a
+confirmed CLOSED trunk offers Open. Moving states remain gray. Garage also begins CLOSED in gray and accepts an immediate explicit Open tap;
+it can operate while the vehicle is offline. Vehicle trunk/climate dispatch
+waits for the selected online sensor. HA observations can still be cached by
+the upstream integration and do not independently prove physical freshness.
+
+Every command immediately displays its requested outcome in gray and disables
+conflicting controls. Matching available HA state changes it to confirmed
+colors. Delivery is bounded to one minute with progress/Cancel and an unconfirmed
+timeout alert. Garage/trunk commands are sent at most once per tap, including
+after an ambiguous response; subsequent attempts only read for confirmation.
+Climate keeps its absolute ON intent. No `cover.toggle` is used. Cancel cannot
+recall an already-dispatched action. Role changes and expired one-use buttons
+cannot redirect old commands to another cover or vehicle. No operation resumes
+after reboot. Install both updated components before configuring this panel.
+
+## Panel colors and vertical navigation (watch 1.5.1 / integration 0.4.1)
+
+Garage and trunk both start CLOSED in gray when no current state is known;
+the first tap fixes an OPEN request immediately. Neither assumption is cached
+or treated as a confirmed observation. Select **Car identification color** in
+HA when adding/editing Work Morning, Exercise or Driving panels. Each vehicle
+panel shows that RGB color in its top bar; it never replaces command feedback
+colors. Existing panels use mint until a color is saved.
+
+The color bar identifies the car and has no tap action. Full-screen controls show only the HA-selected device/panel. Watch-side page switching is disabled; change the active selection in HA.
+
+Only a currently displayed, settled vehicle page sends its wake request on
+entry. Hidden pages, page prefetch, refreshes, configuration/background reads,
+command delivery and screen-off retries never send wake. A previously dispatched
+wake cannot be recalled if the user leaves before its network response arrives.
+
+
+Driving-only identification bars: show the configured colored stripe only for Driving panels, on native tiles and full-screen controls. Fan, Work Morning and Exercise must not display identification bars. HA-only selection remains unchanged.

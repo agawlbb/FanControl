@@ -42,6 +42,12 @@ public class VehicleEntryTest {
         assertEquals("climate", VisibleEntryGate.safeAction("climate", true, true));
         assertEquals("toggle", VisibleEntryGate.safeAction("toggle", false, false));
     }
+    @Test public void tileCannotEnterWhileScreenOffOrAnAppActivityCoversIt() {
+        assertTrue(VisibleEntryGate.tileMayConnect(true,false));
+        assertFalse(VisibleEntryGate.tileMayConnect(false,false));
+        assertFalse(VisibleEntryGate.tileMayConnect(true,true));
+        assertFalse(VisibleEntryGate.tileMayConnect(false,true));
+    }
     @Test public void duplicateVisibleCallbacksAndPollsDoNotReenter() {
         VisibleEntryGate gate = new VisibleEntryGate();
         assertTrue(gate.claim("one")); assertFalse(gate.claim("one"));

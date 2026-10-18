@@ -5,6 +5,7 @@ final class VisibleEntryGate {
     static String safeAction(String action, boolean vehicle, boolean ready) {
         return vehicle && !ready ? "refresh" : action;
     }
+    static boolean tileMayConnect(boolean screenOn, boolean activityVisible) { return screenOn && !activityVisible; }
     private String target;
     synchronized boolean claim(String next) {
         if (next.equals(target)) return false;

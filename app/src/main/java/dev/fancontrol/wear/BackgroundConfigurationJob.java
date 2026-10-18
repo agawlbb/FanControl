@@ -38,7 +38,10 @@ public final class BackgroundConfigurationJob extends JobService {
                 .retryOnConnectionFailure(false).followRedirects(false).followSslRedirects(false)
                 .connectionPool(new ConnectionPool(0, 1, TimeUnit.SECONDS)).build()),
                 FanControlApplication::foreground,
-                () -> TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class));
+                () -> {
+                    TileService.getUpdater(getApplicationContext()).requestUpdate(FanTileService.class);
+                    TileService.getUpdater(getApplicationContext()).requestUpdate(DrivingTileService.class);
+                });
         check = task; running = task;
         worker.execute(() -> {
             task.run();
