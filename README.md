@@ -1,5 +1,7 @@
 # Fan Control
 
+> **Wear OS maintenance paused — October 20, 2026.** The Wear OS app is no longer actively maintained as of this date. Wear OS code changes and builds are paused unless explicitly requested by the maintainer. Existing Wear OS source and releases remain available, but updates and fixes should not be expected during the pause. This pause applies only to Wear OS; Apple Watch and the shared Home Assistant integration are outside its scope.
+
 Licensed under GNU AGPL-3.0-only. See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
 
 A standalone Wear OS 3+ app for Home Assistant controls. Pair locally through the [Fan Control HA integration](https://github.com/agawlbb/FanControlHA), without typing a password or access token on the watch. No phone companion or hosted website is required for integration pairing.
