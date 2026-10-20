@@ -1,3 +1,7 @@
+# Wear OS development pause — October 20, 2026
+
+Wear OS development and maintenance are paused. Do not modify Wear OS code or run Wear OS builds, tests, lint, or validation unless the user explicitly requests it. This instruction takes precedence over the validation requirement below while development is paused. Apple Watch and shared Home Assistant integration development are outside this pause. Documentation updates recording this status are permitted.
+
 # Watch command feedback
 
 This is a required interaction rule for every current and future watch command,
