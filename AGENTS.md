@@ -1,3 +1,18 @@
+# Workspace scope — October 21, 2026
+
+The root Wear OS project is archived and excluded from ordinary work. The active
+projects are `apple-watch/` and `ha-integration/`, each with its own Git repository.
+For requests about FanControl, security, updates, GitHub, synchronization or
+repository status, use only those two active repositories by default.
+
+Do not inspect, search, edit, build, test, validate, synchronize, commit, clean up,
+or report on the archived root project, its source, dependencies, Git status or
+uncommitted files unless the user explicitly requests work on Wear OS. Do not
+mention it in routine progress updates or final reports. Scope searches and Git
+commands to the active project directories; do not run root repository status.
+Preserve archived files silently. These scope rules supersede older instructions
+to validate or check every watch surface.
+
 # Wear OS development pause — October 20, 2026
 
 Wear OS development and maintenance are paused. Do not modify Wear OS code or run Wear OS builds, tests, lint, or validation unless the user explicitly requests it. This instruction takes precedence over the validation requirement below while development is paused. Apple Watch and shared Home Assistant integration development are outside this pause. Documentation updates recording this status are permitted.
@@ -65,3 +80,14 @@ delivery/retries, offscreen pages, prefetch and background work must not wake.
 
 
 Driving-only identification bars: show the configured colored stripe only for Driving panels, on native tiles and full-screen controls. Fan, Work Morning and Exercise must not display identification bars. HA-only selection remains unchanged.
+
+
+Confirmed Stop Exercise selects Driving (HA 0.4.2): after the authenticated
+Stop operation confirms unlock, climate on and target temperature, HA selects
+this watch's unique Driving panel matching climate, wake and online roles.
+This works on the immediate response or background continuation and does not
+depend on location. Pending, failed, expired, cancelled, stale and ambiguous
+operations must not select another car. Duplicate completed polls must not
+reapply selection over a later manual choice. Selection sends no vehicle wake
+or other physical command. All watch surfaces share the HA completion path.
+Deployment validation: 163 integration tests and Python compilation passed.

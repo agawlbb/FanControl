@@ -56,7 +56,7 @@ final class IntegrationClient implements VisibleConfigurationSession.Client {
         try (Response response = call.execute()) {
             if (!response.isSuccessful()) throw new Rejected(response.code());
             if (response.body() == null) throw new IOException("Empty response");
-            String raw = response.body().string(); if (raw.length() > 24576) throw new IOException("Invalid response");
+            String raw = BoundedResponse.read(response.body());
             JSONObject envelope = new JSONObject(raw);
             byte[] responseIv = Base64.getDecoder().decode(envelope.getString("iv"));
             if (responseIv.length != 12) throw new IOException("Invalid response");

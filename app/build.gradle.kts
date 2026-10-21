@@ -20,9 +20,9 @@ dependencies {
     implementation("androidx.wear.tiles:tiles:1.6.2")
     implementation("androidx.wear.protolayout:protolayout:1.4.2")
     implementation("androidx.viewpager2:viewpager2:1.1.0")
-    implementation("com.google.guava:guava:33.4.8-android")
+    implementation("com.google.guava:guava:33.7.2-android")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.json:json:20250517")
+    testImplementation("org.json:json:20260814")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }

@@ -61,7 +61,7 @@ final class HomeAssistantTransport {
                 default -> "Home Assistant error";
             });
             if (response.body() == null) throw new IOException("Empty response");
-            return response.body().string();
+            return BoundedResponse.read(response.body());
         } finally { active = null; }
     }
 }

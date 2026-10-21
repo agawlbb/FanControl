@@ -48,8 +48,7 @@ final class PairingClient {
         try (Response response = call.execute()) {
             if (!response.isSuccessful() || response.body() == null)
                 throw new IllegalStateException(response.code() == 410 ? "Pairing expired" : response.code() == 429 ? "Too many attempts" : "Pairing unavailable");
-            String json = response.body().string();
-            if (json.length() > 24576) throw new IllegalStateException("Invalid pairing response");
+            String json = BoundedResponse.read(response.body());
             return new JSONObject(json);
         } finally { active = null; }
     }
