@@ -353,3 +353,8 @@ HA 0.8.0 was deployed and verified on October 24, 2026; see
 ## On Duty panel and readable iPhone messages — 0.12.0
 
 See [On Duty implementation and activation](ON-DUTY.md).
+
+## VPS test environments
+
+See [local testing](TESTING-LOCAL.md) for the lightweight unit environment and
+separate, hash-locked Python 3.14 Home Assistant runtime harness.

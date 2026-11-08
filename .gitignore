@@ -36,3 +36,5 @@ fan_control_music/
 *.[aA][aA][cC]
 
 *.p8
+
+.venv-ha/
