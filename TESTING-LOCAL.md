@@ -18,7 +18,10 @@ cd /home/debian/projects/fancontrol/ha-integration
 
 The runtime check boots a temporary loopback-only HA instance with synthetic
 users/entities; it neither connects to a home nor calls a physical device.
-Its temporary configuration is removed when the check finishes.
+Its temporary configuration is removed when the check finishes. Integration and
+network dependencies are preinstalled by the lock; runtime package installation
+is disabled so HA cannot replace the security overrides while booting. Run the
+dependency validator both before and after runtime checks.
 
 To recreate this environment on the VPS:
 

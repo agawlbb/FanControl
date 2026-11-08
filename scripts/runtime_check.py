@@ -19,6 +19,9 @@ async def main():
         source = Path(__file__).resolve().parents[1] / "custom_components"
         shutil.copytree(source, Path(directory) / "custom_components", ignore=shutil.ignore_patterns("__pycache__"))
         hass = HomeAssistant(directory)
+        # Dependencies are provisioned before this isolated test. Never let HA's
+        # installer replace the patched CI-only Pillow/uv overrides at runtime.
+        hass.config.skip_pip = True
         try:
             # Bootstrap initializes auth, loaders, and the config-entry manager as on HA startup.
             loader.async_setup(hass)

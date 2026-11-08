@@ -1,3 +1,5 @@
 homeassistant==2026.10.2
 uv==0.13.4
 pip==26.2.2
+httpx[http2]==0.28.1
+ifaddr==0.2.0
