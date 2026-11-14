@@ -304,8 +304,7 @@ import FanControlCore
         // Persisted snapshots can arrive during a command. Never clear or
         // recolor that intent; apply selection on its next safe entry.
         guard feedback == nil, speedDraft == nil else { return }
-        if showingPodcast, connection?.entity == saved.entity, connection?.revision == saved.revision,
-           connection?.watch_id == saved.watch_id, connection?.token == saved.token {
+        if showingPodcast, connection?.sameTarget(as: saved) == true, connection?.revision == saved.revision {
             connection = saved
             return
         }
@@ -333,8 +332,8 @@ import FanControlCore
         }
     }
 
-    func paired(_ value: Connection) { if connection?.watch_id != value.watch_id || connection?.token != value.token { CommandDelivery.shared.clear() }; connection = value; WatchCompanion.shared.provision(); enter() }
-    func forget() { WatchPodcast.shared.clear(); CommandDelivery.shared.clear(); defaultTile.clear(); leave(); showingSettings = false; ExercisePlayer.shared.forget(); ObservationCache.shared.clear(); PushDiagnostics.shared.clear(); Vault.clear(); connection = nil; observed = [:]; feedback = nil }
+    func paired(_ value: Connection) { if connection?.watch_id != value.watch_id || connection?.token != value.token { CommandDelivery.shared.clear(); WatchPodcast.shared.clear() }; connection = value; WatchCompanion.shared.provision(); enter() }
+    func forget() { WatchPodcast.shared.clear(); CommandDelivery.shared.clear(); defaultTile.clear(); leave(); showingSettings = false; sessionTarget = nil; ExercisePlayer.shared.forget(); ObservationCache.shared.clear(); PushDiagnostics.shared.clear(); Vault.clear(); connection = nil; observed = [:]; feedback = nil }
 }
 
 

@@ -274,7 +274,9 @@ import FanControlCore
             downloaded.insert(id)
             if id == queue.currentID && !playing { status = "Ready" }
             changed()
-        } catch { status = "Download not completed. Retry on iPhone."; changed() }
+        } catch {
+            if queue.window.contains(where: { $0.id == id }) { status = "Download not completed. Retry on iPhone."; changed() }
+        }
     }
     func downloadFailed(id: String, taskID: Int) {
         guard tasks[id]?.taskIdentifier == taskID else { return }

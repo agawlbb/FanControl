@@ -20,12 +20,12 @@ import FanControlCore
     }
     func receive(_ message: [String: Any], live: Bool = false) {
         guard let c = Vault.load(), message["podcast_watch_id"] as? String == c.watch_id else { return }
+        resetScope(c.watch_id)
         if let index = message["podcast_index"] as? Int {
             UserDefaults.standard.set(index, forKey: "podcastIndex")
         }
         guard let data = message["podcast"] as? Data,
               let next = try? JSONDecoder().decode(PodcastSnapshot.self, from: data) else { return }
-        resetScope(c.watch_id)
         guard pending == nil, next.sequence > (snapshot?.sequence ?? -1) else { return }
         snapshot = next
         if pending == nil { confirmed = live && visible }
