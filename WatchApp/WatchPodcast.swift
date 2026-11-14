@@ -109,7 +109,12 @@ struct PodcastPlaybackView: View {
                     .font(.caption).monospacedDigit()
                 HStack {
                     Button { podcast.send(.backward15) } label: { Image(systemName: "gobackward.15") }.accessibilityLabel("Back 15 seconds")
-                    Button(podcast.displayedPlaying ? "Pause" : "Play") { podcast.send(podcast.displayedPlaying ? .pause : .playCurrent) }
+                    Button { podcast.send(podcast.displayedPlaying ? .pause : .playCurrent) } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: podcast.displayedPlaying ? "pause.fill" : "play.fill")
+                            Text(podcast.displayedPlaying ? "Playing" : podcast.snapshot == nil ? "Play" : "Paused").font(.caption2)
+                        }
+                    }.accessibilityLabel(podcast.displayedPlaying ? "Pause" : "Play")
                     Button { podcast.send(.forward15) } label: { Image(systemName: "goforward.15") }.accessibilityLabel("Forward 15 seconds")
                 }
                 Button(podcast.pending?.action == .complete ? "Complete" : "Mark Complete") { podcast.send(.complete) }

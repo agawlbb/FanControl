@@ -33,6 +33,7 @@ final class PodcastTests: XCTestCase {
         for title in ["A Brief Transmission", "Vegan Bacon", "011011000110111101100111", "STLV FOMO 2025", "Star Trek V: The Final Frontier - Pod Crawl Special Edition"] {
             XCTAssertNil(PodcastEpisode.category(title: title, kind: "full"))
         }
+        XCTAssertNil(PodcastEpisode.category(title: "Voyager Season 2 Wrap Up", kind: "full"))
         XCTAssertNil(PodcastEpisode.category(title: "Voyager Season 2", kind: "trailer"))
         XCTAssertNil(PodcastEpisode.category(title: "SUPPLEMENTAL 86: Voyager Season 2", kind: "full"))
     }

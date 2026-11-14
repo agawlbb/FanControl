@@ -19,7 +19,8 @@ public struct PodcastEpisode: Codable, Equatable, Identifiable, Sendable {
         let lower = title.lowercased()
         guard !["bonus", "trailer"].contains(kind.lowercased()), !lower.contains("supplemental") else { return nil }
         for series in seriesOrder where series != "Films" && lower.contains(series.lowercased()) {
-            guard let range = lower.range(of: #"season\s+([0-9]+)"#, options: .regularExpression),
+            guard lower.range(of: #"episodes?\s+[0-9]+"#, options: .regularExpression) != nil,
+                  let range = lower.range(of: #"season\s+([0-9]+)"#, options: .regularExpression),
                   let season = Int(lower[range].split(whereSeparator: { !$0.isNumber }).joined()), season > 0 else { continue }
             return (series, season)
         }

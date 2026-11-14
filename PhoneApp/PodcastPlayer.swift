@@ -113,7 +113,11 @@ import FanControlCore
             let episodes = try PodcastFeed.parse(data)
             try Task.checkCancellation()
             // Keep a current episode even if a publisher temporarily truncates the feed.
+            let previous = queue.currentID
             queue.merge(episodes)
+            if previous != queue.currentID {
+                status = downloaded.contains(queue.currentID ?? "") ? "Ready" : "Waiting for Wi-Fi"
+            }
             if loadedID == nil { position = queue.currentID.flatMap { queue.history[$0]?.position } ?? 0 }
             replenish(); changed()
         } catch {
