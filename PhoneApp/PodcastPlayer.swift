@@ -31,7 +31,16 @@ import FanControlCore
     private var remoteTargets: [(MPRemoteCommand, Any)] = []
     private var ticks = 0
     private var recovering = true
-    var backgroundCompletion: (() -> Void)?
+    private var backgroundCompletion: (() -> Void)?
+    private var eventsFinished = false
+    func backgroundEvents(completion: @escaping () -> Void) {
+        backgroundCompletion = completion; completeBackgroundEvents()
+    }
+    func downloadsFinishedEvents() { eventsFinished = true; completeBackgroundEvents() }
+    private func completeBackgroundEvents() {
+        guard eventsFinished, validating.isEmpty, let completion = backgroundCompletion else { return }
+        backgroundCompletion = nil; eventsFinished = false; completion()
+    }
     static let sessionID = "dev.fancontrol.watch.podcast.downloads"
     private let defaults = UserDefaults.standard
     private let directory: URL
@@ -88,6 +97,8 @@ import FanControlCore
         defaults.set(cellularID, forKey: "podcastCellularID")
     }
     func snapshot() -> PodcastSnapshot {
+        savePosition()
+        playing = player.timeControlStatus == .playing
         sequence += 1; defaults.set(sequence, forKey: "podcastSequence")
         return PodcastSnapshot(episode: queue.current, revision: queue.revision, sequence: sequence, position: position, duration: duration,
                                playing: playing, downloaded: downloaded.contains(queue.currentID ?? ""), status: status)
@@ -135,6 +146,9 @@ import FanControlCore
         case .complete: finish(); accepted = true
         case .seek:
             if let target = command.position { accepted = await seek(target) }
+        case .backward15, .forward15:
+            savePosition()
+            accepted = await seek(max(0, position + (command.action == .forward15 ? 15 : -15)))
         case .state: break
         }
         // Selection cannot change while busy, except intentional completion/end-of-file.
@@ -244,7 +258,10 @@ import FanControlCore
     func receivedFile(_ location: URL, id: String, taskID: Int, response: URLResponse?) async {
         guard tasks[id]?.taskIdentifier == taskID else { try? FileManager.default.removeItem(at: location); return }
         tasks.removeValue(forKey: id); validating.insert(id)
-        defer { validating.remove(id); try? FileManager.default.removeItem(at: location) }
+        defer {
+            validating.remove(id); try? FileManager.default.removeItem(at: location)
+            completeBackgroundEvents()
+        }
         do {
             guard let response = response as? HTTPURLResponse, response.statusCode == 200,
                   (response.mimeType?.lowercased().hasPrefix("audio/") == true || response.mimeType == "application/octet-stream") else { throw PodcastError.unavailable }
@@ -277,7 +294,15 @@ import FanControlCore
             remoteTargets.append((command, token))
         }
         add(center.playCommand, action: .play); add(center.pauseCommand, action: .pause)
-        add(center.skipForwardCommand, action: .seek, offset: 15); add(center.skipBackwardCommand, action: .seek, offset: -15)
+        add(center.skipForwardCommand, action: .forward15); add(center.skipBackwardCommand, action: .backward15)
+        let toggle = center.togglePlayPauseCommand.addTarget { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.perform(self.playing ? .pause : .play)
+            }
+            return .success
+        }
+        remoteTargets.append((center.togglePlayPauseCommand, toggle))
     }
     private func nowPlaying() {
         guard let episode = queue.current else { MPNowPlayingInfoCenter.default().nowPlayingInfo = nil; return }
@@ -302,8 +327,7 @@ private final class PodcastDownloadDelegate: NSObject, URLSessionDownloadDelegat
     }
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         Task { @MainActor in
-            let completion = PodcastPlayer.shared.backgroundCompletion
-            PodcastPlayer.shared.backgroundCompletion = nil; completion?()
+            PodcastPlayer.shared.downloadsFinishedEvents()
         }
     }
 }

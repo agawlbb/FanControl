@@ -91,4 +91,48 @@ final class PodcastTests: XCTestCase {
         XCTAssertEqual(PodcastTile.order(devices: ["a"], index: 99), ["a", PodcastTile.id])
         XCTAssertEqual(CompanionSettings(order: order).ordered(["a", "b"]), ["a", "b"])
     }
+    func testFeedbackRequiresMatchingEvidenceAndNeverPromotesFailuresOrOldTargets() {
+        var queue = PodcastQueue(); queue.merge((1...3).map(episode)); queue.select("e1")
+        let command = PodcastCommand(action: .play, episodeID: "e1", revision: queue.revision)
+        func result(playing: Bool, accepted: Bool = true, revision: UUID? = nil, episodeID: Int = 1, commandID: UUID? = nil) -> PodcastReply {
+            PodcastReply(commandID: commandID ?? command.id, accepted: accepted,
+                         snapshot: PodcastSnapshot(episode: episode(episodeID), revision: revision ?? queue.revision, sequence: 1,
+                                                   position: 15, duration: 100, playing: playing, downloaded: true, status: ""))
+        }
+        XCTAssertTrue(result(playing: true).confirms(command))
+        XCTAssertFalse(result(playing: false).confirms(command), "Acknowledgment does not prove playback")
+        XCTAssertFalse(result(playing: true, accepted: false).confirms(command))
+        XCTAssertFalse(result(playing: true, revision: UUID()).confirms(command))
+        XCTAssertFalse(result(playing: true, episodeID: 2).confirms(command))
+        XCTAssertFalse(result(playing: true, commandID: UUID()).confirms(command))
+        XCTAssertFalse(result(playing: true).confirms(command, now: command.issued.addingTimeInterval(11)))
+    }
+    func testCompleteFeedbackRequiresStoppedPlaybackAndChangedEpisode() {
+        var queue = PodcastQueue(); queue.merge((1...2).map(episode)); queue.select("e1")
+        let command = PodcastCommand(action: .complete, episodeID: "e1", revision: queue.revision)
+        let same = PodcastSnapshot(episode: queue.current, revision: queue.revision, sequence: 1, position: 0, duration: 0, playing: false, downloaded: true, status: "")
+        XCTAssertFalse(PodcastReply(commandID: command.id, accepted: true, snapshot: same).confirms(command))
+        queue.complete()
+        var next = PodcastSnapshot(episode: queue.current, revision: queue.revision, sequence: 2, position: 0, duration: 0, playing: false, downloaded: true, status: "")
+        XCTAssertTrue(PodcastReply(commandID: command.id, accepted: true, snapshot: next).confirms(command))
+        next.playing = true
+        XCTAssertFalse(PodcastReply(commandID: command.id, accepted: true, snapshot: next).confirms(command))
+    }
+    func testPodcastDefaultTilePersistsAndHonorsHAConfigurationChanges() throws {
+        let suite = "podcast-navigation-" + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let json = """
+        {"url":"https://example.com","token":"\(String(repeating: "a", count: 64))","watch_id":"\(String(repeating: "b", count: 32))","entity":"fan.room","devices":[{"entity":"fan.room","title":"Room"}]}
+        """
+        var connection = try JSONDecoder().decode(Connection.self, from: Data(json.utf8)).validated()
+        let tile = DefaultWatchTile(defaults: defaults)
+        tile.save(PodcastTile.id, connection: connection)
+        XCTAssertEqual(DefaultWatchTile(defaults: defaults).load(connection), PodcastTile.id)
+        connection.companion_settings = CompanionSettings(order: ["fan.room"])
+        XCTAssertEqual(tile.load(connection), PodcastTile.id)
+        connection.revision = 2
+        XCTAssertNil(tile.load(connection))
+    }
+
 }

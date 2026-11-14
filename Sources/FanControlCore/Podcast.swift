@@ -111,7 +111,7 @@ public struct PodcastQueue: Codable, Sendable {
     }
 }
 
-public enum PodcastAction: String, Codable, Sendable { case playCurrent, play, pause, seek, complete, state }
+public enum PodcastAction: String, Codable, Sendable { case playCurrent, play, pause, seek, backward15, forward15, complete, state }
 public struct PodcastCommand: Codable, Equatable, Sendable {
     public let id: UUID
     public let action: PodcastAction
@@ -164,5 +164,30 @@ public enum PodcastTile {
     public static func time(_ seconds: Double) -> String {
         let value = seconds.isFinite ? Int(max(0, min(seconds, 99_999_999))) : 0
         return String(format: "%d:%02d", value / 60, value % 60)
+    }
+}
+
+public extension PodcastReply {
+    // Delivery alone is never playback evidence. Bind the result to this exact
+    // command and episode/queue, including completion's intentional queue change.
+    func confirms(_ command: PodcastCommand, now: Date = Date()) -> Bool {
+        guard commandID == command.id, accepted,
+              now.timeIntervalSince(command.issued) <= 10,
+              snapshot.at.timeIntervalSince(command.issued) >= -2 else { return false }
+        if command.action == .state { return true }
+        if command.action == .playCurrent { return snapshot.episode != nil && snapshot.playing }
+        if command.action == .complete {
+            return !snapshot.playing && snapshot.revision != command.revision && snapshot.episode?.id != command.episodeID
+        }
+        guard snapshot.episode?.id == command.episodeID, snapshot.revision == command.revision else { return false }
+        switch command.action {
+        case .play: return snapshot.playing
+        case .pause: return !snapshot.playing
+        case .seek:
+            guard let position = command.position else { return false }
+            return abs(snapshot.position - min(position, max(0, snapshot.duration - 0.05))) < 1
+        case .backward15, .forward15: return snapshot.position.isFinite
+        default: return false
+        }
     }
 }

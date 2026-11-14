@@ -14,11 +14,11 @@ struct PodcastView: View {
                     Text(episode.title).font(.headline)
                     Text("\(PodcastTile.time(player.position)) / \(PodcastTile.time(player.duration))").monospacedDigit()
                     HStack {
-                        Button { player.perform(.seek, position: max(0, player.position - 15)) } label: { Image(systemName: "gobackward.15") }.accessibilityLabel("Back 15 seconds")
+                        Button { player.perform(.backward15) } label: { Image(systemName: "gobackward.15") }.accessibilityLabel("Back 15 seconds")
                         Spacer()
                         Button(player.playing ? "Pause" : "Play") { player.perform(player.playing ? .pause : .play) }
                         Spacer()
-                        Button { player.perform(.seek, position: player.position + 15) } label: { Image(systemName: "goforward.15") }.accessibilityLabel("Forward 15 seconds")
+                        Button { player.perform(.forward15) } label: { Image(systemName: "goforward.15") }.accessibilityLabel("Forward 15 seconds")
                     }.buttonStyle(.borderless).disabled(player.busy)
                     Button("Mark Complete") { player.perform(.complete) }.disabled(player.busy)
                 }

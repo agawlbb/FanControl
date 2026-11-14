@@ -54,7 +54,9 @@ import FanControlCore
         resetScope(c.watch_id)
         let session = WCSession.default
         error = ""; confirmed = false
-        let command = PodcastCommand(action: action, episodeID: snapshot?.episode?.id, revision: snapshot?.revision, position: position)
+        let projection = action == .backward15 ? max(0, (snapshot?.position ?? 0) - 15)
+            : action == .forward15 ? min(snapshot?.duration ?? .greatestFiniteMagnitude, (snapshot?.position ?? 0) + 15) : position
+        let command = PodcastCommand(action: action, episodeID: snapshot?.episode?.id, revision: snapshot?.revision, position: projection)
         guard session.activationState == .activated, session.isReachable,
               let raw = try? JSONEncoder().encode(command) else {
             error = "Not confirmed. Open Fan Control on iPhone and retry."; return
@@ -74,8 +76,8 @@ import FanControlCore
                 // Never roll back a newer phone observation with an older receipt.
                 guard reply.snapshot.sequence >= (self.snapshot?.sequence ?? -1) else { self.confirmed = false; self.error = "Not confirmed. Retry."; return }
                 self.snapshot = reply.snapshot
-                self.confirmed = reply.accepted
-                self.error = reply.error ?? ""
+                self.confirmed = reply.confirms(command)
+                self.error = self.confirmed ? "" : reply.error ?? "Not confirmed. Retry."
                 if let data = try? JSONEncoder().encode(reply.snapshot) { UserDefaults.standard.set(data, forKey: "podcastSnapshot") }
             }
         }, errorHandler: { _ in Task { @MainActor in self.fail(command.id, scope: c.watch_id) } })
@@ -106,9 +108,9 @@ struct PodcastPlaybackView: View {
                 Text("\(PodcastTile.time(podcast.displayedPosition)) · −\(PodcastTile.time(max(0, (podcast.snapshot?.duration ?? 0) - (podcast.snapshot?.position ?? 0))))")
                     .font(.caption).monospacedDigit()
                 HStack {
-                    Button { podcast.send(.seek, position: max(0, (podcast.snapshot?.position ?? 0) - 15)) } label: { Image(systemName: "gobackward.15") }.accessibilityLabel("Back 15 seconds")
+                    Button { podcast.send(.backward15) } label: { Image(systemName: "gobackward.15") }.accessibilityLabel("Back 15 seconds")
                     Button(podcast.displayedPlaying ? "Pause" : "Play") { podcast.send(podcast.displayedPlaying ? .pause : .playCurrent) }
-                    Button { podcast.send(.seek, position: (podcast.snapshot?.position ?? 0) + 15) } label: { Image(systemName: "goforward.15") }.accessibilityLabel("Forward 15 seconds")
+                    Button { podcast.send(.forward15) } label: { Image(systemName: "goforward.15") }.accessibilityLabel("Forward 15 seconds")
                 }
                 Button(podcast.pending?.action == .complete ? "Complete" : "Mark Complete") { podcast.send(.complete) }
                 if !podcast.error.isEmpty {

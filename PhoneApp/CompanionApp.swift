@@ -39,7 +39,7 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCe
     }
     func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
         guard identifier == PodcastPlayer.sessionID else { completionHandler(); return }
-        PodcastPlayer.shared.backgroundCompletion = completionHandler
+        PodcastPlayer.shared.backgroundEvents(completion: completionHandler)
     }
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
