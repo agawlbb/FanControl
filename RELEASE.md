@@ -1,3 +1,28 @@
+# Mission Log phone player — 0.12.0 (28), November 14, 2026
+
+Release authorized by the user. Prepared on `feature/iphone-podcast-player`,
+containing implementation source `60943d0ca77aaad2cffaf1d1736abd9166267f2f`.
+Publication is pending signed build, upload, Apple processing and assignment to
+the existing Internal TestFlight group.
+
+- iPhone-owned offline podcast playback and saved progress/completion history.
+- Episode picker grouped by Star Trek series/season, with films and played indicators.
+- Five-episode Wi-Fi download window; starting the last downloaded episode allows
+  its immediate successor to download over cellular.
+- Permanent watch Podcast tile with Play/Pause, ±15 seconds and Mark Complete.
+  Driving's Podcast button opens the tile and starts/resumes phone playback.
+- Natural/manual completion stops playback and prepares the next regular episode
+  without autoplay. Supplementals and unrelated specials are excluded.
+
+The implementation passed 95 Swift core tests and phone/watch SDK source typechecks:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43650303565
+No HA update is needed. Paired-device checks remain for locked-phone startup,
+background downloads, car Bluetooth output, interruptions and watch rendering.
+Automated validation does not prove audible playback or physical-device behavior.
+The branch awaits approval to merge.
+
+---
+
 # Tap Delete after swiping — 0.11.1 (27), November 6, 2026
 
 Swipe left on an iPhone message to reveal the native red **Delete** action.
