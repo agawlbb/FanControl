@@ -47,6 +47,7 @@ import FanControlCore
         session.delegate = self; session.activate()
     }
     func foreground() {
+        Task { await PodcastPlayer.shared.refresh() }
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.arguments.contains("--preview-companion") { return }
         #endif
@@ -127,6 +128,7 @@ import FanControlCore
         center.removeDeliveredNotifications(withIdentifiers: removed)
     }
     func background() {
+        PodcastPlayer.shared.suspend()
         foregroundWork?.cancel(); foregroundWork = nil
         let request = BGAppRefreshTaskRequest(identifier: PhoneDelegate.refreshID)
         request.earliestBeginDate = Date().addingTimeInterval(15 * 60)
@@ -144,7 +146,7 @@ import FanControlCore
                 _ = try await Integration(c).request(["action": "companion_unlink"])
                 guard connection?.token == c.token else { return }
                 foregroundWork?.cancel(); connection = nil; snapshot = nil; outbox = []; events = []; watchSequence = 0; refreshedAt = nil
-                clearMessages(); PhoneLibrary.shared.targetChanged()
+                clearMessages(); PhoneLibrary.shared.targetChanged(); PodcastPlayer.shared.pairingChanged()
                 Vault.clear()
                 for key in ["phoneSnapshot", "phoneReceipts", "phoneEvents", "phoneMessages", "phoneMessageDismissals"] { defaults.removeObject(forKey: key) }
                 for transfer in session.outstandingFileTransfers { transfer.cancel() }
@@ -209,6 +211,16 @@ import FanControlCore
             }
         }
     }
+    @Published var podcastIndex: Int? = UserDefaults.standard.object(forKey: "podcastIndex") as? Int
+    var orderedTiles: [String] { PodcastTile.order(devices: orderedDevices.map(\.entity), index: podcastIndex) }
+    func moveTiles(_ indices: IndexSet, to destination: Int) {
+        var tiles = orderedTiles; tiles.move(fromOffsets: indices, toOffset: destination)
+        podcastIndex = tiles.firstIndex(of: PodcastTile.id)
+        defaults.set(podcastIndex, forKey: "podcastIndex")
+        let devices = tiles.filter { $0 != PodcastTile.id }
+        if devices != orderedDevices.map(\.entity) { settings.order = devices; saveSettings() }
+        publish()
+    }
     var orderedDevices: [Device] {
         guard let c = connection else { return [] }
         return settings.ordered(c.devices.map(\.entity)).compactMap { id in c.devices.first { $0.entity == id } }
@@ -222,11 +234,20 @@ import FanControlCore
         if let snapshot, let raw = try? JSONEncoder().encode(snapshot) { value["snapshot"] = raw }
         if let manifest = PhoneLibrary.shared.manifest, manifest.watchID == connection?.watch_id,
            let raw = try? JSONEncoder().encode(manifest) { value["playlist"] = raw }
+        if let c = connection {
+            value["podcast"] = try? JSONEncoder().encode(PodcastPlayer.shared.snapshot())
+            value["podcast_watch_id"] = c.watch_id
+            value["podcast_index"] = podcastIndex ?? orderedDevices.count
+        }
         return value
     }
     func publish() {
         guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled, connection != nil else { return }
-        do { try session.updateApplicationContext(payload()) }
+        do {
+            let value = payload()
+            try session.updateApplicationContext(value)
+            if session.isReachable { session.sendMessage(value, replyHandler: nil, errorHandler: { _ in }) }
+        }
         catch { self.error = "Watch update pending" }
     }
     func record(_ phase: String, updateID: String? = nil) {
@@ -250,7 +271,7 @@ import FanControlCore
             do {
                 if connection?.token != c.token {
                     snapshot = nil; outbox = []; events = []; watchSequence = 0; refreshedAt = nil
-                    clearMessages(); PhoneLibrary.shared.targetChanged()
+                    clearMessages(); PhoneLibrary.shared.targetChanged(); PodcastPlayer.shared.pairingChanged()
                     for key in ["phoneSnapshot", "phoneReceipts", "phoneEvents", "phoneMessages", "phoneMessageDismissals"] { defaults.removeObject(forKey: key) }
                 }
                 try Vault.save(c); connection = c; settings = c.companion_settings ?? CompanionSettings(); error = ""
@@ -286,7 +307,7 @@ import FanControlCore
     nonisolated func sessionDidDeactivate(_ session: WCSession) {
         Task { @MainActor in
             Vault.clear(); self.connection = nil; self.snapshot = nil; self.outbox = []; self.settings = CompanionSettings()
-            self.events = []; self.watchSequence = 0; self.refreshedAt = nil; PhoneLibrary.shared.targetChanged()
+            self.events = []; self.watchSequence = 0; self.refreshedAt = nil; PhoneLibrary.shared.targetChanged(); PodcastPlayer.shared.pairingChanged()
             self.clearMessages(); self.defaults.removeObject(forKey: "phoneMessages"); self.defaults.removeObject(forKey: "phoneMessageDismissals"); self.defaults.removeObject(forKey: "phoneSnapshot"); self.defaults.removeObject(forKey: "phoneReceipts"); self.defaults.removeObject(forKey: "phoneEvents")
             session.activate()
         }
@@ -294,6 +315,15 @@ import FanControlCore
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) { Task { @MainActor in self.receive(userInfo) } }
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
         Task { @MainActor in
+            if let raw = message["podcast_command"] as? Data {
+                guard message["watch_id"] as? String == self.connection?.watch_id,
+                      let command = try? JSONDecoder().decode(PodcastCommand.self, from: raw) else { replyHandler([:]); return }
+                let original = self.connection
+                let reply = await PodcastPlayer.shared.handle(command)
+                guard self.connection?.watch_id == original?.watch_id, self.connection?.token == original?.token else { replyHandler([:]); return }
+                replyHandler(["podcast_reply": (try? JSONEncoder().encode(reply)) ?? Data()])
+                return
+            }
             replyHandler(self.payload()) // Return cache promptly; fetch HA separately.
             if message["action"] as? String == "latest" { _ = await self.refresh() }
         }

@@ -21,9 +21,13 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCe
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         _ = PhoneModel.shared
+        _ = PodcastPlayer.shared
         BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.refreshID, using: .main) { task in
             Task { @MainActor in
-                let work = Task { await PhoneModel.shared.refresh() }
+                let work = Task {
+                    await PodcastPlayer.shared.refresh()
+                    return await PhoneModel.shared.refresh()
+                }
                 task.expirationHandler = { work.cancel() }
                 let success = await work.value
                 PhoneModel.shared.background()
@@ -32,6 +36,10 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCe
         }
         application.registerForRemoteNotifications()
         return true
+    }
+    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
+        guard identifier == PodcastPlayer.sessionID else { completionHandler(); return }
+        PodcastPlayer.shared.backgroundCompletion = completionHandler
     }
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {

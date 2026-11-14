@@ -34,8 +34,9 @@ import FanControlCore
     private var wakeAfter: ContinuousClock.Instant?
     @Published private var sessionTarget: String?
     @Published private(set) var showingSettings = false
+    var showingPodcast: Bool { sessionTarget == PodcastTile.id && !showingSettings }
     var device: Device? {
-        guard !showingSettings else { return nil }
+        guard !showingSettings, !showingPodcast else { return nil }
         return connection?.devices.first { $0.entity == (sessionTarget ?? connection?.entity) }
     }
     var busy: Bool { commandPending }
@@ -48,6 +49,7 @@ import FanControlCore
     }
     func leave(resetReceipts: Bool = true) {
         if resetReceipts { actionReceipts.clear() }
+        if showingPodcast { WatchPodcast.shared.leave() }
         visible = false; generation = UUID(); work?.cancel(); command?.cancel(); speedDraft = nil
         commandPending = false; activeIntent = nil
         if feedback?.phase == .pending { feedback?.phase = .unconfirmed }
@@ -69,6 +71,7 @@ import FanControlCore
             }
         }
         observed = connection.flatMap { c in device.map { ObservationCache.shared.load(c, $0) } } ?? [:]
+        if showingPodcast { WatchPodcast.shared.enter(); return }
         WatchCompanion.shared.requestLatest()
         // Settings is local navigation, with no device reads, entry wake or controls.
         if showingSettings { observed = [:]; return }
@@ -150,17 +153,28 @@ import FanControlCore
 
     func swipe(_ direction: Int) {
         guard let c = connection else { return }
-        let current: WatchPage = showingSettings ? .settings : .device(sessionTarget ?? c.entity)
-        let next = WatchPage.next(current, entities: (c.companion_settings ?? CompanionSettings()).ordered(c.devices.map(\.entity)), direction: direction)
+        let current: WatchPage = showingSettings ? .settings : showingPodcast ? .podcast : .device(sessionTarget ?? c.entity)
+        let index = UserDefaults.standard.object(forKey: "podcastIndex") as? Int
+        let order = PodcastTile.order(devices: (c.companion_settings ?? CompanionSettings()).ordered(c.devices.map(\.entity)), index: index)
+        let next = WatchPage.next(current, entities: order, direction: direction)
         leave(resetReceipts: false); observed = [:]; feedback = nil
         switch next {
         case .settings: showingSettings = true
+        case .podcast:
+            showingSettings = false; sessionTarget = PodcastTile.id
+            defaultTile.save(PodcastTile.id, connection: c)
         case .device(let entity):
             showingSettings = false; sessionTarget = entity
             defaultTile.save(entity, connection: c)
         }
         wakeAfter = .now.advanced(by: .milliseconds(1500))
         enter(resetSelection: false)
+    }
+    func openPodcast() {
+        guard visible, !busy else { return }
+        leave(resetReceipts: false); observed = [:]; feedback = nil
+        showingSettings = false; sessionTarget = PodcastTile.id; visible = true
+        WatchPodcast.shared.enter(play: true)
     }
     private func panelBody(_ p: Panel, command: String? = nil) -> [String: Any] {
         var body: [String: Any] = ["action": command == nil ? "panel_state" : "panel_command", "panel_id": p.id]
@@ -290,6 +304,11 @@ import FanControlCore
         // Persisted snapshots can arrive during a command. Never clear or
         // recolor that intent; apply selection on its next safe entry.
         guard feedback == nil, speedDraft == nil else { return }
+        if showingPodcast, connection?.entity == saved.entity, connection?.revision == saved.revision,
+           connection?.watch_id == saved.watch_id, connection?.token == saved.token {
+            connection = saved
+            return
+        }
         let prior = device
         let nextEntity = sessionTarget ?? saved.entity
         let next = saved.devices.first { $0.entity == nextEntity }
@@ -315,7 +334,7 @@ import FanControlCore
     }
 
     func paired(_ value: Connection) { if connection?.watch_id != value.watch_id || connection?.token != value.token { CommandDelivery.shared.clear() }; connection = value; WatchCompanion.shared.provision(); enter() }
-    func forget() { CommandDelivery.shared.clear(); defaultTile.clear(); leave(); showingSettings = false; ExercisePlayer.shared.forget(); ObservationCache.shared.clear(); PushDiagnostics.shared.clear(); Vault.clear(); connection = nil; observed = [:]; feedback = nil }
+    func forget() { WatchPodcast.shared.clear(); CommandDelivery.shared.clear(); defaultTile.clear(); leave(); showingSettings = false; ExercisePlayer.shared.forget(); ObservationCache.shared.clear(); PushDiagnostics.shared.clear(); Vault.clear(); connection = nil; observed = [:]; feedback = nil }
 }
 
 

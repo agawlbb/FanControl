@@ -33,13 +33,16 @@ struct CompanionView: View {
                         }
                     }
                     Section("Tiles") {
-                        ForEach(model.orderedDevices, id: \.entity) { device in
+                        ForEach(model.orderedTiles, id: \.self) { id in
                             HStack {
-                                Text(device.title)
+                                Text(id == PodcastTile.id ? "Podcast" : model.connection?.devices.first { $0.entity == id }?.title ?? id)
                                 Spacer()
-                                if device.entity == model.connection?.entity { Image(systemName: "checkmark").foregroundStyle(.mint).accessibilityLabel("Active panel") }
+                                if id == model.connection?.entity { Image(systemName: "checkmark").foregroundStyle(.mint).accessibilityLabel("Active panel") }
                             }
-                        }.onMove(perform: model.move).moveDisabled(model.saving)
+                        }.onMove(perform: model.moveTiles).moveDisabled(model.saving)
+                    }
+                    Section("Podcast") {
+                        NavigationLink("Mission Log episodes and player") { PodcastView() }
                     }
                     Section("Exercise music") {
                         ForEach(library.tracks, id: \.fileName) { track in Text((track.name as NSString).deletingPathExtension) }

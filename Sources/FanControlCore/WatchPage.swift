@@ -4,9 +4,10 @@ import Foundation
 public enum WatchPage: Equatable, Sendable {
     case device(String)
     case settings
+    case podcast
 
     public static func next(_ current: Self, entities: [String], active: String? = nil, direction: Int) -> Self {
-        let pages = entities.map { Self.device($0) }
+        let pages = entities.map { $0 == PodcastTile.id ? Self.podcast : Self.device($0) }
         guard !pages.isEmpty else { return current }
         let index = pages.firstIndex(of: current) ?? 0
         let delta = direction >= 0 ? 1 : -1

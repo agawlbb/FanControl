@@ -10,6 +10,8 @@ struct ControlsView: View {
         Group {
           if scenePhase != .active || !entryReady {
             Color.black
+          } else if model.showingPodcast {
+            PodcastPlaybackView()
           } else if !model.showingSettings, model.device?.panel?.type == "exercise" {
             GeometryReader { geometry in
                 VStack(spacing: 4) {
@@ -132,7 +134,8 @@ struct ControlsView: View {
                 cover("trunk", "Trunk")
                 climate(p)
                 actionControl("honk", "Honk Horn")
-                actionControl("podcast", "Podcast")
+                Button("Podcast", action: model.openPodcast)
+                    .foregroundStyle(.gray).tint(Color.gray.opacity(0.25)).disabled(model.busy)
             }
         } else if p.type == "exercise" {
             actionControl("start_exercise", "Start exercise", compact: true)

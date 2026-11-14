@@ -116,7 +116,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
-        UIBackgroundModes: [fetch, remote-notification]
+        UIBackgroundModes: [audio, fetch, remote-notification]
         BGTaskSchedulerPermittedIdentifiers: [dev.fancontrol.watch.phone.refresh]
         FanControlAPNSEnvironment: $(APNS_ENVIRONMENT)
         NSLocalNetworkUsageDescription: Connect to your Home Assistant.

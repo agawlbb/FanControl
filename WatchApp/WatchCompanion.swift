@@ -21,7 +21,7 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
         }
         guard session.activationState == .activated, session.isReachable else { return }
         session.sendMessage(["action": "latest"], replyHandler: { message in
-            Task { @MainActor in self.receive(message) }
+            Task { @MainActor in self.receive(message, live: true) }
         }, errorHandler: { _ in })
     }
     func provision() {
@@ -44,7 +44,8 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
             } catch { /* Companion can retry Link; direct watch commands remain independent. */ }
         }
     }
-    private func receive(_ message: [String: Any]) {
+    private func receive(_ message: [String: Any], live: Bool = false) {
+        WatchPodcast.shared.receive(message, live: live)
         if message["action"] as? String == "link", let c = Vault.load() {
             UserDefaults.standard.removeObject(forKey: "companionGranted." + c.watch_id); provision()
         }
@@ -79,7 +80,7 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
     }
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) { Task { @MainActor in self.receive(applicationContext) } }
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) { Task { @MainActor in self.receive(userInfo) } }
-    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) { Task { @MainActor in self.receive(message) } }
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) { Task { @MainActor in self.receive(message, live: true) } }
     nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
         // The URL is temporary and must be copied before this delegate returns.
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
