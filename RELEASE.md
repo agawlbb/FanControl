@@ -31,7 +31,8 @@ https://github.com/agawlbb/FanControlWatch/actions/runs/43650303565
 No HA update is needed. Paired-device checks remain for locked-phone startup,
 background downloads, car Bluetooth output, interruptions and watch rendering.
 Automated validation does not prove audible playback or physical-device behavior.
-The branch awaits approval to merge.
+The user approved merging this release into main and removing its task branch on
+November 15, 2026. The immutable release tag preserves the signed source.
 
 ---
 
