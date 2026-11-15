@@ -19,8 +19,22 @@ The generated tone initializes AVAudioPlayer and decodes PCM through AVAudioFile
 on macOS without playing sound. The user's specific watch failure remains
 unconfirmed; this release improves file preparation and preserves native evidence.
 
-Release-source validation and signed TestFlight publication are pending. No main
-merge was requested. No HA deployment is needed. Physical-watch checks remain
+Published to the existing **Internal** TestFlight group. Apple build
+`1fccc5ea-55a1-4aaf-95e2-ab88977b4e81` is `VALID`, not expired and
+`IN_BETA_TESTING`, marketing version 0.12.6, without non-exempt encryption.
+Update both the iPhone and watch apps through TestFlight.
+
+Signed source: `cf93d19e18236e20423715f1452d6e99874384db` on the existing
+`fix/music-sync-and-settings` branch. All **125 core tests** and both app SDK
+source typechecks passed for the exact release source:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43730563882
+Signed archive/export, signatures and production APNs entitlement checks, upload,
+Apple processing and Internal TestFlight access passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43730564602
+Immutable release tag: `v0.12.6-build34` at the signed source. Apple processing
+evidence is retained in the release artifact and this record. The branch and its
+checkout claim remain available for related follow-ups. Main remains unchanged
+pending explicit merge approval. No HA deployment is needed. Physical-watch checks remain
 for the supplied MP3 on the speaker/headphones, interruptions and offline playback.
 Both apps need updating after publication. This authorization is for this release.
 

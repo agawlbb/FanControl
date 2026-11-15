@@ -309,3 +309,12 @@ The generated matching-profile MP3 successfully initialized AVAudioPlayer and
 decoded PCM through AVAudioFile on macOS, without playing sound. The user's
 recording was decoded/inspected locally only, not sent to CI. The specific
 watch-only cause is not reproduced or confirmed. No app release was started.
+
+The user explicitly requested releasing the playback checks/format hints/native
+error handling. Version 0.12.6 (34), signed source
+`cf93d19e18236e20423715f1452d6e99874384db`, passed all 125 release-source core
+tests and both SDK typechecks in run 43730563882. Signed release, Apple processing
+and existing Internal TestFlight access passed in run 43730564602. Apple build
+`1fccc5ea-55a1-4aaf-95e2-ab88977b4e81` is VALID and IN_BETA_TESTING.
+Tag: `v0.12.6-build34`. Physical-watch playback remains unconfirmed. Main is
+unchanged and related work remains on the same claimed combined branch.
