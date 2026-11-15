@@ -25,8 +25,6 @@ import FanControlCore
     private var wantsPlayback = false
     private var speakerChosen = false
     private var activation = UUID()
-    private var syncTask: Task<Void, Never>?
-    private var syncGeneration = UUID()
     private var routeObserver: NSObjectProtocol?
     private var interruptionObserver: NSObjectProtocol?
     private let session = AVAudioSession.sharedInstance()
@@ -81,7 +79,7 @@ import FanControlCore
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
     }
     func forget() {
-        syncGeneration = UUID(); syncTask?.cancel(); syncTask = nil; syncing = false; stop()
+        syncing = false; stop()
         // Delete persisted copies even if no library was loaded this launch.
         try? FileManager.default.removeItem(at: musicDirectory)
         UserDefaults.standard.removeObject(forKey: "exerciseHeadsetUID")
@@ -161,52 +159,15 @@ import FanControlCore
         }
     }
     func sync(_ c: Connection) {
-        guard !syncing else { return }
-        load(c); stop(); syncing = true; status = "Syncing music…"
-        let syncTicket = UUID(); syncGeneration = syncTicket
-        let destination = root(c)
-        syncTask = Task {
-            let staging = destination.appendingPathComponent(UUID().uuidString)
-            defer { if syncGeneration == syncTicket { syncing = false; syncTask = nil } }
-            do {
-                let client = Integration(c)
-                let result = try await client.request(["action": "exercise_music_list"])
-                let list = try JSONDecoder().decode([ExerciseTrack].self, from: JSONSerialization.data(withJSONObject: result["tracks"] ?? []))
-                guard (1...25).contains(list.count), Set(list.map(\.name)).count == list.count else { throw ControlError.invalidResponse }
-                try list.forEach { try $0.validate() }
-                guard list.reduce(0, { $0 + $1.size }) <= 200 * 1024 * 1024 else { throw ControlError.invalidResponse }
-                try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
-                for (number, track) in list.enumerated() {
-                    status = "Syncing \(number + 1)/\(list.count)"
-                    let file = staging.appendingPathComponent(track.fileName)
-                    FileManager.default.createFile(atPath: file.path, contents: nil)
-                    let output = try FileHandle(forWritingTo: file)
-                    do {
-                        var offset = 0; var digest = SHA256()
-                        while offset < track.size {
-                            try Task.checkCancellation()
-                            let response = try await client.request(["action": "exercise_music_chunk", "name": track.name, "offset": offset])
-                            guard response["offset"] as? Int == offset, let raw = response["data"] as? String,
-                                  let data = Data(base64Encoded: raw), !data.isEmpty, data.count <= 196608,
-                                  offset + data.count <= track.size else { throw ControlError.invalidResponse }
-                            try output.write(contentsOf: data); digest.update(data: data); offset += data.count
-                        }
-                        guard digest.finalize().map({ String(format: "%02x", $0) }).joined() == track.sha256 else { throw ControlError.invalidResponse }
-                        try output.close()
-                    } catch { try? output.close(); throw error }
-                }
-                try Task.checkCancellation()
-                guard syncTicket == syncGeneration else { throw CancellationError() }
-                let library = Library(directory: staging.lastPathComponent, tracks: list)
-                try JSONEncoder().encode(library).write(to: destination.appendingPathComponent("playlist.json"), options: .atomic)
-                let old = folder; tracks = list; folder = staging
-                if let old, old != staging { try? FileManager.default.removeItem(at: old) }
-                status = "\(list.count) tracks ready offline"
-            } catch {
-                try? FileManager.default.removeItem(at: staging)
-                if !Task.isCancelled, syncTicket == syncGeneration { status = "Music sync failed; previous tracks kept" }
-            }
+        guard WCSession.default.activationState == .activated,
+              WCSession.default.isCompanionAppInstalled else {
+            status = "Open the iPhone app to sync music"
+            return
         }
+        // The iPhone library is authoritative. HA's legacy playlist can contain
+        // different tracks and must never replace the phone's imported music.
+        WCSession.default.transferUserInfo(["music_sync_requested": true, "watch_id": c.watch_id])
+        status = "Music sync requested from iPhone"
     }
     func receive(_ manifest: OfflinePlaylist) {
         guard let c = Vault.load(), manifest.watchID == c.watch_id,
@@ -259,7 +220,11 @@ import FanControlCore
     private func commitIncoming(_ manifest: OfflinePlaylist, connection c: Connection) throws {
         let destination = root(c)
         let staging = destination.appendingPathComponent(manifest.id.uuidString)
-        guard manifest.tracks.allSatisfy({ FileManager.default.fileExists(atPath: staging.appendingPathComponent($0.fileName).path) }) else { return }
+        let received = manifest.tracks.filter { FileManager.default.fileExists(atPath: staging.appendingPathComponent($0.fileName).path) }.count
+        guard received == manifest.tracks.count else {
+            status = "Received \(received)/\(manifest.tracks.count) tracks from iPhone"
+            return
+        }
         let library = Library(directory: manifest.id.uuidString, tracks: manifest.tracks)
         try JSONEncoder().encode(library).write(to: destination.appendingPathComponent("playlist.json"), options: .atomic)
         if !active { scope = nil; load(c) } else { reloadLibrary = true }
@@ -267,6 +232,7 @@ import FanControlCore
         for item in (try? FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)) ?? [] {
             if UUID(uuidString: item.lastPathComponent) != nil, item != staging, item != folder { try? FileManager.default.removeItem(at: item) }
         }
+        status = "\(manifest.tracks.count) tracks ready offline"
         WCSession.default.transferUserInfo(["playlist_saved": manifest.id.uuidString, "watch_id": c.watch_id])
     }
     #if DEBUG && targetEnvironment(simulator)

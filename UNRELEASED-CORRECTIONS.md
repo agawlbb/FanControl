@@ -72,3 +72,19 @@ Physical checks remain: cellular-only swipe/tap/immediate exit, sleeping car,
 notification permission/OS delivery, lost acknowledgment, opposite intents,
 configuration changes, HA restart and live state freshness. Automated tests do not
 prove physical car behavior or paired-watch rendering/background scheduling.
+
+## Watch music sync uses the iPhone library
+
+Task `fix/iphone-music-sync`, based on `d4d437532f77aa40006467dcb59518799fc8ba53`.
+The watch's two Sync exercise music controls now request the existing iPhone
+library transfer through WatchConnectivity. They no longer download the separate
+legacy HA playlist, whose track count could differ from the iPhone's imports.
+The watch reports received files against the iPhone manifest and reports ready
+only after the existing verified replacement commits. Requests preserve playback
+and the installed library while waiting for the phone; phone availability and OS
+transfer scheduling still apply. No HA change is required.
+
+Paired-device checks remaining: import one song, request sync from each watch
+settings surface, verify 1/1 and offline playback; delayed phone delivery, rejected
+wrong-watch request, reordered/empty playlist, interrupted transfer, and syncing
+while an existing library is playing. Release/install is still required.

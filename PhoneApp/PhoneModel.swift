@@ -296,6 +296,7 @@ import FanControlCore
             record("watch_saved", updateID: update)
             Task { await flushReceipts() }
         }
+        if value["music_sync_requested"] as? Bool == true { PhoneLibrary.shared.sync() }
         if let id = value["playlist_saved"] as? String { PhoneLibrary.shared.acknowledge(id) }
     }
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) { Task { @MainActor in self.reachable = session.isReachable; self.publish() } }
