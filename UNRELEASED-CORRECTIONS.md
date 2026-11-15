@@ -185,3 +185,12 @@ Regression cases cover first-chunk writes to nested missing staging directories,
 staging removed before the first reply, and rejecting later chunks without their
 prefix. Tests are first run against the existing writer to verify reproduction.
 No release or merge is authorized by this bug report.
+
+The unmodified writer reproduced NSCocoaErrorDomain 4 in both missing-staging
+cases on macOS run 43714828710. The screenshot does not identify why staging
+was missing on the physical watch. The first write now creates its parent path
+at the write boundary and atomically saves the actual first chunk, without an
+empty-file creation/reopen step. Later chunks still require their existing prefix
+and exact offset; length and whole-file SHA-256 verification remain unchanged.
+This changes no phone/watch configuration and does not touch the installed library.
+Physical-device confirmation and an explicitly requested app release remain needed.
