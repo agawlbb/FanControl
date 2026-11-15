@@ -26,51 +26,64 @@ import FanControlCore
 }
 
 struct PushDiagnosticsView: View {
-    @ObservedObject private var player = ExercisePlayer.shared
     let connection: Connection?
     @State private var events: [PushTraceEvent] = []
     @State private var commands: [String] = []
+    @State private var reporting = false
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Diagnostics").font(.headline)
-                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"))").font(.caption2)
-                if !player.syncFeedback.history.isEmpty {
-                    Text("Music sync").font(.headline)
-                    Text(player.syncFeedback.message).font(.caption2)
-                    ForEach(Array(player.syncFeedback.history.enumerated()), id: \.offset) { _, message in Text(message).font(.caption2) }
-                }
-                Text("Command receipt and notification times are separate from vehicle completion.").font(.caption)
-                Button("Refresh diagnostics") {
-                    Task {
-                        await CommandAlerts.shared.recover()
-                        events = PushDiagnostics.shared.history(connection)
-                        commands = CommandDelivery.shared.diagnostics()
-                    }
-                }
-                Button("Report pending receipts") {
-                    Task {
-                        if let connection { await PushDiagnostics.flush(connection) }
-                        events = PushDiagnostics.shared.history(connection)
-                    }
-                }
-                if !commands.isEmpty {
-                    Text("Command timings").font(.headline)
-                    ForEach(Array(commands.enumerated()), id: \.offset) { item in Text(item.element).font(.caption2) }
-                }
-                if commands.isEmpty { Text("No saved command timings.").font(.caption2) }
-                ForEach(events.reversed()) { event in
-                    VStack(alignment: .leading) {
-                        Text(event.phase.replacingOccurrences(of: "_", with: " "))
-                        Text(Date(timeIntervalSince1970: Double(event.at_ms) / 1000), style: .time)
-                        Text(event.update_id ?? "No correlated push")
-                        if !event.panel.isEmpty { Text(event.panel) }
-                        if let revision = event.revision { Text("Revision \(revision)") }
-                        Text(event.reported ? "Reported to HA" : "Stored on watch")
-                    }.font(.caption2)
-                    Divider()
+        List {
+            Section {
+                Button("Refresh", systemImage: "arrow.clockwise", action: refresh)
+                if let connection, !PushDiagnostics.shared.pending(connection).isEmpty {
+                    Button {
+                        guard !reporting else { return }
+                        reporting = true
+                        Task {
+                            defer { reporting = false }
+                            await PushDiagnostics.flush(connection)
+                            refresh()
+                        }
+                    } label: {
+                        HStack {
+                            Label("Send reports", systemImage: "arrow.up.circle")
+                            if reporting { Spacer(); ProgressView().frame(width: 16, height: 16) }
+                        }
+                    }.disabled(reporting)
                 }
             }
-        }.onAppear { events = PushDiagnostics.shared.history(connection); commands = CommandDelivery.shared.diagnostics() }
+            if commands.isEmpty && events.isEmpty {
+                Text("No recent activity").foregroundStyle(.secondary)
+            }
+            if !commands.isEmpty {
+                Section("Command activity") {
+                    ForEach(Array(commands.enumerated()), id: \.offset) { _, command in
+                        Text(command).font(.caption2.monospaced())
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            if !events.isEmpty {
+                Section("Updates") {
+                    ForEach(events.reversed()) { event in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(event.phase.replacingOccurrences(of: "_", with: " ").capitalized)
+                                .font(.footnote)
+                            Text(Date(timeIntervalSince1970: Double(event.at_ms) / 1000), format: .dateTime.month().day().hour().minute().second())
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Diagnostics")
+        .onAppear(perform: refresh)
+        .onReceive(NotificationCenter.default.publisher(for: .commandOutcomeSaved)) { _ in refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: .companionSnapshotSaved)) { _ in refresh() }
+    }
+
+    private func refresh() {
+        events = PushDiagnostics.shared.history(connection)
+        commands = CommandDelivery.shared.diagnostics()
     }
 }

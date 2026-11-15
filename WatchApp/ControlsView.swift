@@ -12,7 +12,9 @@ struct ControlsView: View {
             Color.black
           } else if model.showingPodcast {
             PodcastPlaybackView()
-          } else if !model.showingSettings, model.device?.panel?.type == "exercise" {
+          } else if model.showingSettings {
+            WatchSettingsView(model: model)
+          } else if model.device?.panel?.type == "exercise" {
             GeometryReader { geometry in
                 VStack(spacing: 4) {
                     actionControl("start_exercise", "Start exercise", compact: true)
@@ -25,17 +27,14 @@ struct ControlsView: View {
           } else {
            ScrollView {
             VStack(spacing: 10) {
-                if model.showingSettings {
-                    SettingsPage(model: model, openConnection: { setup = true })
-                } else if let d = model.device {
+                if let d = model.device {
                     if let p = d.panel, p.type == "driving" {
                         let rgb = p.color ?? [92, 225, 193]
                         Rectangle().fill(Color(red: Double(rgb[0])/255, green: Double(rgb[1])/255, blue: Double(rgb[2])/255)).frame(height: 5).accessibilityHidden(true)
                     }
                     if let p = d.panel, p.type != "fan" { panel(p) } else { device(d) }
                 } else if model.connection != nil {
-                    Text("Set up a panel in Home Assistant").font(.headline)
-                    Text("Fan Control → Configure → Manage watch panels. Select this watch, then add or activate a panel.").font(.caption)
+                    Text("No panel selected").font(.headline)
                 } else {
                     Image(systemName: "fan.fill").font(.largeTitle).foregroundStyle(.mint)
                     Text("Fan Control").font(.headline)
@@ -63,7 +62,7 @@ struct ControlsView: View {
         .onOpenURL { url in
             if url.scheme == "fancontrol", url.host == "active" { model.enter() }
         }
-        .sheet(isPresented: $setup, onDismiss: { model.enter(resetSelection: false); entryReady = scenePhase == .active }) { SetupView(model: model) }
+        .sheet(isPresented: $setup, onDismiss: { model.enter(resetSelection: false); entryReady = scenePhase == .active }) { WatchSettingsView(model: model) }
         .onAppear { model.enter(); entryReady = scenePhase == .active }
         .onDisappear { entryReady = false; model.leave() }
         .onChange(of: scenePhase) { _, phase in
@@ -178,91 +177,3 @@ struct ControlsView: View {
         return control(action, title + "\n" + ToggleIntent.coverPresentation(observed), known: observed == "open" || observed == "closed")
     }
 }
-
-private struct SettingsPage: View {
-    @ObservedObject var model: WatchModel
-    @ObservedObject private var player = ExercisePlayer.shared
-    let openConnection: () -> Void
-    @State private var diagnostics = false
-    var body: some View {
-        VStack(spacing: 10) {
-            Label("Settings", systemImage: "gearshape").font(.headline)
-            Button("Connection settings", action: openConnection)
-            Button("Push diagnostics") { diagnostics = true }
-            Button(player.syncing ? "Syncing music…" : "Sync exercise music") {
-                if let c = model.connection { player.sync(c) }
-            }.disabled(player.syncing || model.connection == nil)
-            if !player.syncFeedback.message.isEmpty { Text(player.syncFeedback.message).font(.caption2).foregroundStyle(.secondary) }
-        }.sheet(isPresented: $diagnostics) { PushDiagnosticsView(connection: model.connection) }
-    }
-}
-
-struct SetupView: View {
-    @ObservedObject var model: WatchModel
-    @ObservedObject private var player = ExercisePlayer.shared
-    @Environment(\.dismiss) private var dismiss
-    @State private var address = ""
-    @State private var status = "Enter your Home Assistant remote HTTPS address."
-    @State private var pairing: Task<Void, Never>?
-    @State private var connectionCheck: Task<Void, Never>?
-    @State private var connectionResult = ""
-    @State private var diagnostics = false
-    var body: some View {
-        ScrollView { VStack {
-            Text("Home Assistant").font(.headline)
-            if model.connection != nil {
-                Text("Paired. Configure devices and panels in Home Assistant.")
-                Text("Watch ID: \(model.connection!.watch_id)").font(.caption2)
-                Text("Remote HA address").font(.headline)
-                Text(model.connection?.remote_url.flatMap { $0.isEmpty ? nil : $0 } ?? "Not configured")
-                    .font(.caption2)
-                Button(connectionCheck == nil ? "Test remote connection" : "Connecting…") {
-                    guard let c = model.connection else { return }
-                    connectionResult = ""
-                    connectionCheck = Task {
-                        let result: String
-                        do {
-                            _ = try c.remoteAddress()
-                            // Authenticated configuration read only: no wake or command.
-                            let response = try await Integration(c).request(["action": "config"])
-                            guard response["devices"] is [[String: Any]], response["entity"] is String else {
-                                throw ControlError.invalidResponse
-                            }
-                            result = "Connected to Home Assistant."
-                        } catch { result = ConnectionCheck.failureMessage(error) }
-                        guard !Task.isCancelled else { return }
-                        connectionCheck = nil
-                        guard model.connection?.sameTarget(as: c) == true else { return }
-                        connectionResult = result
-                    }
-                }.disabled(connectionCheck != nil)
-                if !connectionResult.isEmpty { Text(connectionResult).font(.caption2) }
-                Button(player.syncing ? "Syncing music…" : "Sync exercise music") {
-                    if let c = model.connection { player.sync(c) }
-                }.disabled(player.syncing)
-                if !player.syncFeedback.message.isEmpty { Text(player.syncFeedback.message).font(.caption2) }
-                Button("Diagnostics") { diagnostics = true }
-                Button("Forget connection", role: .destructive) { model.forget(); dismiss() }
-            } else {
-                TextField("https://home.example", text: $address).textInputAutocapitalization(.never).autocorrectionDisabled()
-                Text(status).font(.caption2)
-                Button(pairing == nil ? "Pair" : "Cancel pairing") {
-                    if let pairing { pairing.cancel(); self.pairing = nil; status = "Pairing cancelled"; return }
-                    pairing = Task {
-                        do {
-                            let c = try await Pairing().run(address: address.trimmingCharacters(in: .whitespacesAndNewlines)) { status = $0 }
-                            guard !Task.isCancelled else { return }; model.paired(c); dismiss()
-                        } catch { if !Task.isCancelled { status = "Pairing not completed. Check address and try again." } }
-                        pairing = nil
-                    }
-                }
-            }
-            Link("Source · AGPL-3.0-only", destination: URL(string: "https://github.com/agawlbb/FanControlWatch")!).font(.caption2)
-        } }
-        .sheet(isPresented: $diagnostics) { PushDiagnosticsView(connection: model.connection) }
-        .onDisappear { pairing?.cancel(); connectionCheck?.cancel(); connectionCheck = nil }
-    }
-}
-
-
-

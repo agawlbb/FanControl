@@ -175,3 +175,26 @@ TestFlight assignment passed in run 43713373876. The user explicitly authorized
 continuing this already-started release and clarified that there is no standing
 release authorization. Underlying device transfer failure remains unconfirmed;
 the retained settings/phone error is needed for the next diagnosis.
+
+## Watch settings cleanup — November 15, 2026
+
+Task `fix/watch-settings-cleanup`, based on fetched main
+`dcd045a8ede6d515f3d8815735a88af7103a24fd`. The separate first-chunk storage
+fix remains preserved on `fix/music-first-chunk`; it is not part of this UI task.
+
+The long-press settings and existing settings preview now share a native List
+with connection, exercise music and support actions. Routine panel-configuration
+instructions are removed. Watch ID and remote address appear only after expanding
+Connection details. Sync music has one persistent result beside its own control;
+Diagnostics no longer duplicates music status/history or static command-timing
+explanations. Diagnostics shows actual recorded activity, a single empty state,
+local refresh, and Send reports only when there are pending receipts. New saved
+outcomes/snapshots refresh the displayed local history without network polling.
+Version/source remain available at the bottom. Forget connection requires a
+native destructive confirmation describing removal of pairing/downloaded music.
+
+The connection check still uses only the configured remote HTTPS address and an
+authenticated read-only config request, with cancellation/target guards. No HA
+control, vehicle wake, pairing format or music transfer behavior is changed.
+Core/SDK checks and physical-watch layout/navigation checks remain to be recorded.
+No app build, merge or release is authorized by this settings cleanup request.

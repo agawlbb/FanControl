@@ -33,8 +33,8 @@ Action buttons show gray Activated during handoff, restore their command name on
 handoff failure, and show teal Activated for five seconds after acknowledgment
 before restoring their normal name/appearance. Stale callbacks/timers must not
 affect newer taps or other targets. State controls still project absolute intent.
-The existing long-press connection screen displays the saved remote URL and offers
-a bounded authenticated read-only connection test. It never wakes a vehicle.
+The long-press settings screen keeps the saved remote URL under Connection details
+and offers a bounded authenticated read-only connection test. It never wakes a vehicle.
 Entry wake submits once; there is no watch-side readiness/status polling afterward.
 
 ## GitHub, branches and workspaces
