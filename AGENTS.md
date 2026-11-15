@@ -49,6 +49,13 @@ Entry wake submits once; there is no watch-side readiness/status polling afterwa
 - Commit and push completed work to the existing GitHub origin, merge accepted work into `main`, and verify the remote commit and a clean task working tree before reporting completion. Report blockers or unsynchronized work explicitly. Inspect push triggers before every push; GitHub publication does not itself authorize builds, releases, deployment or installation.
 - Temporary task branches must be removed both locally and remotely once their purpose is fulfilled and their changes are merged into the canonical default branch, or their work is explicitly abandoned by the user or the person responsible for that task. Verify the merge or abandonment decision first; preserve commit history, required recovery evidence and recoverable unique work before deletion. Stale or paused work is not abandoned. Never discard unmerged work without that decision, delete another task's branches, or purge recovery archives as routine cleanup.
 
+## Release authorization clarification — November 15, 2026
+
+A completed release request is not standing authorization for later releases.
+The user authorized finishing the already-started 0.12.3 (31) release only.
+Future releases require a new explicit user request; do not infer permission
+from earlier completed release requests or ordinary bug reports.
+
 Inspect push workflows first. Do not trigger releases, deployment, device installation
 or distributable builds without authorization. Never change branch protections
 without specific approval. Back up before deletion/history rewrite, exclude ignored

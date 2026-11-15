@@ -167,3 +167,11 @@ This fixes the feedback placement, unreadability and passive retry loop; it does
 not establish the underlying device transfer failure without its retained result.
 Physical checks remain for persistent settings errors, no sync messages on the
 Exercise panel, one-song delivery, wrist-down/background completion and playback.
+
+Persistent sync feedback was published as 0.12.3 (31), signed source
+`dc95fffc26053d8001ab07a6fc1dfdd8e8e5180b`. All 112 core tests and both SDK
+typechecks passed in run 43713182207. Signed release, Apple processing and Internal
+TestFlight assignment passed in run 43713373876. The user explicitly authorized
+continuing this already-started release and clarified that there is no standing
+release authorization. Underlying device transfer failure remains unconfirmed;
+the retained settings/phone error is needed for the next diagnosis.

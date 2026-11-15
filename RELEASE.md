@@ -1,7 +1,8 @@
 # Readable music sync failures — 0.12.3 (31), November 15, 2026
 
-Continues the user's authorized music-sync investigation and release instruction.
-Task `fix/music-sync-feedback` starts at main
+The user explicitly authorized finishing this already-started release. There is
+no standing authorization for subsequent releases; each needs a new explicit
+request. Task `fix/music-sync-feedback` starts at main
 `6ae6cffe31d7df59c77a2f2c848cad2a4af13f75`.
 
 - Sync progress and errors are separate from playback and appear by the existing
@@ -17,7 +18,18 @@ Task `fix/music-sync-feedback` starts at main
   distinct wording. Screen sleep or a lost live link pauses foreground work
   without treating it as an unexplained transfer failure.
 
-Core tests, platform typechecks and TestFlight publication are pending.
+Published to the existing **Internal** TestFlight group. Apple build
+`409315da-8af9-487a-972b-4aff3107bda6` is `VALID`, not expired and
+`IN_BETA_TESTING`, marketing version 0.12.3, without non-exempt encryption.
+
+Signed source, merged to main: `dc95fffc26053d8001ab07a6fc1dfdd8e8e5180b`.
+All **112 Swift core tests** and both app SDK typechecks passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43713182207
+Signed iPhone/watch archive/export, signatures and production APNs entitlement
+checks, upload, Apple processing and Internal-group assignment passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43713373876
+Immutable release tag: `v0.12.3-build31` at the signed source. Apple processing
+evidence is retained in the release workflow artifact and this record.
 This corrects the reported error placement, flashing and erased failure evidence.
 The underlying device audio-transfer failure is not yet established; the retained
 stage/code is needed to diagnose it. Physical checks remain for settings-only
