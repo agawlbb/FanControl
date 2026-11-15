@@ -141,3 +141,9 @@ request matching, direct single-song replies, invalid manifests and phone failur
 These changes address concrete code-path differences and lifecycle omissions;
 paired-device validation is still required to establish the reported failure's
 cause and confirm one-song transfer, wrist-down continuation and playback.
+
+The live music readiness correction was published as 0.12.2 (30), signed source
+`6bcbe32746a0cda8fffa2365e184dcb156af1daf`. All 106 core tests and both SDK
+typechecks passed in run 43663475154. Signed release, Apple processing and existing
+Internal TestFlight assignment passed in run 43663628978. Update both apps;
+paired-device confirmation of the reported failure remains outstanding.

@@ -15,7 +15,18 @@ WatchConnectivity errors remain distinct. Context publication failure does not
 prevent live publication. Hash verification, atomic replacement, active playback
 preservation and screen-off background file handling remain unchanged.
 
-Core tests, SDK typechecks and TestFlight publication are pending.
+Published to the existing **Internal** TestFlight group. Apple build
+`212dfd32-0dc9-4ab9-961e-a2fb7d95b326` is `VALID`, not expired and
+`IN_BETA_TESTING`, marketing version 0.12.2, without non-exempt encryption.
+
+Signed source, merged to main: `6bcbe32746a0cda8fffa2365e184dcb156af1daf`.
+All **106 Swift core tests** and both app SDK typechecks passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43663475154
+Signed iPhone/watch archive/export, signatures and production APNs entitlement
+checks, upload, Apple processing and Internal-group assignment passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43663628978
+Immutable release tag: `v0.12.2-build30` at the signed source. Apple processing
+evidence is retained in the release workflow artifact and this record.
 Physical-device checks remain for the reported 0% failure, late readiness,
 single-song transfer, wrist-down completion and offline playback. Working Podcast
 controls establish a live channel, but automated validation alone cannot establish
