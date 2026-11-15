@@ -49,6 +49,77 @@ final class OfflineMusicTransferTests: XCTestCase {
         XCTAssertThrowsError(try OfflineMusicTransfer.append(data.suffix(3), to: file, track: track(data), offset: OfflineMusicTransfer.chunkSize))
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
     }
+    func testResumesAtPhotographedOffsetAfterReopeningPartialFile() throws {
+        let root = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = root.appendingPathComponent("playlist/song.mp3.part")
+        let data = Data((0..<(OfflineMusicTransfer.chunkSize * 23 + 11)).map { UInt8($0 % 251) })
+        let song = track(data)
+        var offset = 0
+        for _ in 0..<21 {
+            let end = offset + OfflineMusicTransfer.chunkSize
+            XCTAssertFalse(try OfflineMusicTransfer.append(data.subdata(in: offset..<end), to: file, track: song, offset: offset))
+            offset = end
+        }
+        XCTAssertEqual(offset, 688128)
+        // Reopening the persisted prefix after a lost live request must not
+        // truncate it or request byte zero again.
+        offset = try OfflineMusicTransfer.resumeOffset(at: file, track: song)
+        XCTAssertEqual(offset, 688128)
+        while offset < data.count {
+            let count = try OfflineMusicTransfer.byteCount(track: song, offset: offset)
+            let complete = try OfflineMusicTransfer.append(data.subdata(in: offset..<(offset + count)), to: file, track: song, offset: offset)
+            offset += count
+            XCTAssertEqual(complete, offset == data.count)
+        }
+        XCTAssertEqual(try Data(contentsOf: file), data)
+        XCTAssertEqual(try OfflineMusicTransfer.resumeOffset(at: file, track: song), data.count)
+    }
+    func testIncompleteOrOversizedPrefixCannotResume() throws {
+        let root = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let file = root.appendingPathComponent("partial")
+        let song = track(Data(repeating: 1, count: OfflineMusicTransfer.chunkSize + 9))
+        XCTAssertEqual(try OfflineMusicTransfer.resumeOffset(at: file, track: song), 0)
+        try Data(repeating: 1, count: 13).write(to: file)
+        XCTAssertThrowsError(try OfflineMusicTransfer.resumeOffset(at: file, track: song))
+        try Data(repeating: 1, count: song.size + 1).write(to: file)
+        XCTAssertThrowsError(try OfflineMusicTransfer.resumeOffset(at: file, track: song))
+    }
+    func testCorruptFullPartialCannotBeInstalledOnResume() throws {
+        let file = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let data = Data(repeating: 1, count: 20)
+        try Data(repeating: 2, count: 20).write(to: file)
+        XCTAssertThrowsError(try OfflineMusicTransfer.resumeOffset(at: file, track: track(data)))
+    }
+    func testCorruptAlignedPrefixStillFailsWholeFileVerification() throws {
+        let file = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: file) }
+        let data = Data(repeating: 1, count: OfflineMusicTransfer.chunkSize + 9), song = track(data)
+        try Data(repeating: 2, count: OfflineMusicTransfer.chunkSize).write(to: file)
+        let offset = try OfflineMusicTransfer.resumeOffset(at: file, track: song)
+        XCTAssertThrowsError(try OfflineMusicTransfer.append(data.suffix(9), to: file, track: song, offset: offset))
+    }
+    func testBackgroundAudioCreatesMissingDestinationAndVerifies() throws {
+        let root = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = root.appendingPathComponent("Music/pairing/playlist/song.mp3")
+        let data = Data(repeating: 9, count: 117)
+        try OfflineMusicTransfer.saveVerified(data, to: file, track: track(data))
+        XCTAssertEqual(try Data(contentsOf: file), data)
+    }
+    func testInvalidBackgroundFileCannotReplaceInstalledAudio() throws {
+        let root = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let file = root.appendingPathComponent("song.mp3"), old = Data([1, 2, 3])
+        try old.write(to: file)
+        let requested = Data([4, 5, 6])
+        XCTAssertThrowsError(try OfflineMusicTransfer.saveVerified(Data([7, 8, 9]), to: file, track: track(requested)))
+        XCTAssertEqual(try Data(contentsOf: file), old)
+    }
     func testCorruptionNeverConfirmsTrack() throws {
         let data = Data(repeating: 1, count: 20), file = temporaryFile()
         defer { try? FileManager.default.removeItem(at: file) }

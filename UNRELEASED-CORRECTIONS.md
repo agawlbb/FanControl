@@ -238,3 +238,25 @@ was published to the existing Internal TestFlight group in successful signed
 release run 43718143480. Apple confirms VALID and IN_BETA_TESTING. Release tag:
 `v0.12.4-build32`. Both former branch heads remain in the combined history; their
 local/remote branch names were removed. Main is unchanged pending merge approval.
+
+## Resume interrupted audio and prepare background storage — November 15, 2026
+
+Continues on the existing claimed `fix/music-sync-and-settings` branch from
+`8580686eade453edb859c26d2e374e417959a51c`. Device evidence shows a live request
+failing with WCErrorDomain 7007 after byte 688128 and a background write failing
+with NSCocoaErrorDomain 4.
+
+A live notReachable error is now a pause, not a terminal failed transfer. Complete
+chunks remain in the manifest-scoped partial file and existing visible-entry or
+reachability callbacks resume at its saved chunk boundary. There is no new
+polling loop or playback/physical-command retry. Missing/invalid prefixes cannot
+be synthesized; whole-file SHA-256 remains required before installation. A fully
+received partial file is verified before recovery installs it.
+
+Background file delivery verifies the file, creates its destination parent at
+the actual write boundary and atomically saves it through the shared storage
+helper. Errors distinguish reading delivery, saving verified audio and installing
+the playlist. A corrupt background replacement cannot overwrite installed audio.
+Tests cover the photographed 688128-byte resume boundary, incomplete/oversized
+prefixes, corruption, and missing background destinations. Physical-watch transfer
+and wrist-down checks remain. No merge, app build or release was requested here.

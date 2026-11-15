@@ -297,8 +297,18 @@ import FanControlCore
                     let target = staging.appendingPathComponent(track.fileName)
                     if FileManager.default.fileExists(atPath: target.path) { continue }
                     let partial = staging.appendingPathComponent(track.fileName + ".part")
-                    defer { try? FileManager.default.removeItem(at: partial) }
-                    var offset = 0
+                    // Keep complete chunks through live-link loss and screen-off.
+                    // The manifest-specific path prevents reuse by another sync.
+                    stage = "Checking saved audio"
+                    var offset = try OfflineMusicTransfer.resumeOffset(at: partial, track: track)
+                    if offset == track.size {
+                        if !FileManager.default.fileExists(atPath: target.path) {
+                            try FileManager.default.moveItem(at: partial, to: target)
+                        }
+                        stage = "Installing verified playlist"
+                        try commitIncoming(manifest, connection: c)
+                        continue
+                    }
                     while offset < track.size {
                         try Task.checkCancellation()
                         guard musicPlaylist == manifest.id, Vault.load()?.token == c.token,
@@ -307,7 +317,7 @@ import FanControlCore
                             syncFeedback.pause(manifest.id, message: "Screen asleep; waiting for background transfer")
                             return
                         }
-                        guard WCSession.default.isReachable else {
+                        guard WCSession.default.activationState == .activated, WCSession.default.isReachable else {
                             syncFeedback.pause(manifest.id, message: "Phone link lost; waiting for background transfer")
                             return
                         }
@@ -320,6 +330,12 @@ import FanControlCore
                               reply["music_chunk"] as? String == manifest.id.uuidString,
                               reply["file"] as? String == track.fileName,
                               reply["offset"] as? Int == offset, let data = reply["data"] as? Data else { throw MusicFileFailure.mismatchedReply }
+                        if FileManager.default.fileExists(atPath: target.path) {
+                            // A verified background delivery won while this
+                            // read was in flight. Do not append to its old prefix.
+                            try? FileManager.default.removeItem(at: partial)
+                            break
+                        }
                         stage = "Saving audio chunk at byte \(offset)"
                         let complete = try OfflineMusicTransfer.append(data, to: partial, track: track, offset: offset)
                         offset += data.count
@@ -336,8 +352,14 @@ import FanControlCore
                 }
             } catch {
                 guard musicPlaylist == manifest.id, Vault.load()?.token == c.token else { return }
-                if error is CancellationError {
-                    syncFeedback.pause(manifest.id, message: "Live transfer paused; waiting for background transfer")
+                let transport = error as NSError
+                let linkLost = transport.domain == WCErrorDomain &&
+                    [WCError.Code.notReachable.rawValue, WCError.Code.sessionInactive.rawValue,
+                     WCError.Code.sessionNotActivated.rawValue].contains(transport.code)
+                if linkLost {
+                    syncFeedback.pause(manifest.id, message: "Phone connection paused. Downloaded audio kept; sync resumes when the link returns.")
+                } else if error is CancellationError {
+                    syncFeedback.pause(manifest.id, message: "Live transfer paused; downloaded audio kept")
                 } else { failTransfer(manifest.id, connection: c, stage: stage, error: error) }
             }
         }
@@ -361,13 +383,16 @@ import FanControlCore
         let destination = root(c)
         guard let pending = try? Data(contentsOf: destination.appendingPathComponent("incoming.json")),
               let current = try? JSONDecoder().decode(OfflinePlaylist.self, from: pending), current.id == manifest.id else { return }
+        var stage = "Reading delivered background audio"
         do {
             let data = try Data(contentsOf: file, options: .mappedIfSafe)
-            guard data.count == track.size, SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == track.sha256 else { throw MusicFileFailure.checksumMismatch }
             let target = destination.appendingPathComponent(manifest.id.uuidString).appendingPathComponent(track.fileName)
-            try data.write(to: target, options: .atomic)
+            stage = "Saving verified background audio"
+            try OfflineMusicTransfer.saveVerified(data, to: target, track: track)
+            try? FileManager.default.removeItem(at: target.appendingPathExtension("part"))
+            stage = "Installing background playlist"
             try commitIncoming(manifest, connection: c)
-        } catch { failTransfer(manifest.id, connection: c, stage: "Verifying background audio", error: error) }
+        } catch { failTransfer(manifest.id, connection: c, stage: stage, error: error) }
     }
     private func commitIncoming(_ manifest: OfflinePlaylist, connection c: Connection) throws {
         let destination = root(c)
