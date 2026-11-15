@@ -59,7 +59,7 @@ import FanControlCore
     private var interruptionObserver: NSObjectProtocol?
     private let session = AVAudioSession.sharedInstance()
 
-    private struct Library: Codable { let directory: String; let tracks: [ExerciseTrack] }
+    private typealias Library = OfflineMusicLibrary
     private var musicDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("ExerciseMusic")
@@ -113,6 +113,7 @@ import FanControlCore
         syncRequestTimeout?.cancel(); syncRequestTimeout = nil; syncAttempt = nil; syncConnection = nil
         musicTask?.cancel(); musicTask = nil; musicPlaylist = nil; syncRequestID = nil; syncing = false; stop()
         // Delete persisted copies even if no library was loaded this launch.
+        try? BackgroundMusicInbox(root: BackgroundMusicInbox.applicationRoot).removeAll()
         try? FileManager.default.removeItem(at: musicDirectory)
         UserDefaults.standard.removeObject(forKey: "exerciseHeadsetUID")
         scope = nil; tracks = []; folder = nil
@@ -388,17 +389,23 @@ import FanControlCore
                 errorHandler: { continuation.resume(throwing: $0) })
         }
     }
-    func receiveFile(_ file: URL, metadata: [String: Any]) {
-        defer { try? FileManager.default.removeItem(at: file) }
-        guard let raw = metadata["playlist"] as? Data,
-              let manifest = try? JSONDecoder().decode(OfflinePlaylist.self, from: raw),
-              let name = metadata["file"] as? String,
-              let track = manifest.tracks.first(where: { $0.fileName == name }),
-              let c = Vault.load(), manifest.watchID == c.watch_id else { return }
+    func backgroundMusicFailed(_ manifest: OfflinePlaylist, error: Error) {
+        guard let c = Vault.load(), manifest.watchID == c.watch_id else { return }
+        syncScope(c)
+        if syncFeedback.id != manifest.id { receive(manifest) }
+        failTransfer(manifest.id, connection: c, stage: "Retaining background audio", error: error)
+    }
+    // True means the durable inbox can discard this delivery: its verified
+    // bytes are installed, or a newer/different-watch playlist superseded it.
+    func receiveFile(_ file: URL, manifest: OfflinePlaylist, name: String) -> Bool {
+        guard let c = Vault.load() else { return false }
+        guard manifest.watchID == c.watch_id else { return true }
+        guard let track = manifest.tracks.first(where: { $0.fileName == name }) else { return true }
         receive(manifest)
         let destination = root(c)
         guard let pending = try? Data(contentsOf: destination.appendingPathComponent("incoming.json")),
-              let current = try? JSONDecoder().decode(OfflinePlaylist.self, from: pending), current.id == manifest.id else { return }
+              let current = try? JSONDecoder().decode(OfflinePlaylist.self, from: pending) else { return false }
+        guard current.id == manifest.id else { return current.generation >= manifest.generation }
         var stage = "Reading delivered background audio"
         do {
             let data = try Data(contentsOf: file, options: .mappedIfSafe)
@@ -408,7 +415,11 @@ import FanControlCore
             try? FileManager.default.removeItem(at: target.appendingPathExtension("part"))
             stage = "Installing background playlist"
             try commitIncoming(manifest, connection: c)
-        } catch { failTransfer(manifest.id, connection: c, stage: stage, error: error) }
+            return true
+        } catch {
+            failTransfer(manifest.id, connection: c, stage: stage, error: error)
+            return false
+        }
     }
     private func commitIncoming(_ manifest: OfflinePlaylist, connection c: Connection) throws {
         let destination = root(c)
@@ -418,11 +429,7 @@ import FanControlCore
             syncFeedback.progress(manifest.id, message: "Received \(received)/\(manifest.tracks.count) tracks from iPhone")
             return
         }
-        for track in manifest.tracks {
-            try OfflineMusicTransfer.verifyFile(at: staging.appendingPathComponent(track.fileName), track: track)
-        }
-        let library = Library(directory: manifest.id.uuidString, tracks: manifest.tracks)
-        try JSONEncoder().encode(library).write(to: destination.appendingPathComponent("playlist.json"), options: .atomic)
+        guard try OfflineMusicLibrary.installIfComplete(manifest, at: destination) else { return }
         if !active { scope = nil; load(c) } else { reloadLibrary = true }
         // Preserve the active player's folder until playback ends.
         try OfflineMusicTransfer.pruneGenerations(in: destination,

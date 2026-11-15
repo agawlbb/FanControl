@@ -149,7 +149,7 @@ import FanControlCore
         if let failedPlaylist, failedPlaylist == manifest?.id { return }
         if livePlaylist != nil, let at = liveUpdatedAt, Date().timeIntervalSince(at) > 20 {
             livePlaylist = nil
-            status = "Queued for background transfer; open the watch app to resume now"
+            status = "Transferring in background; waiting for watch verification"
         }
         guard livePlaylist != manifest?.id, savedPlaylist != manifest?.id else { return }
         guard let manifest else { progress = 0; return }

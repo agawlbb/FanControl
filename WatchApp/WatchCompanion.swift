@@ -13,6 +13,7 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
     func beginEntry() { protectedEntities.removeAll() }
     private let session = WCSession.default
     nonisolated private let deliveries = ConnectivityDrain()
+    nonisolated private let musicInbox = BackgroundMusicInbox(root: BackgroundMusicInbox.applicationRoot)
     private var backgroundTasks: [WKWatchConnectivityRefreshBackgroundTask] = []
     private var pendingObservation: NSKeyValueObservation?
     private var activationObservation: NSKeyValueObservation?
@@ -25,9 +26,11 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
             Task { @MainActor in self?.finishBackgroundTasks() }
         }
         session.activate()
+        installBackgroundMusic()
     }
     func reconnect(_ task: WKWatchConnectivityRefreshBackgroundTask) {
         backgroundTasks.append(task)
+        installBackgroundMusic()
         finishBackgroundTasks()
     }
     private func finishBackgroundTasks() {
@@ -37,6 +40,7 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
         for task in completed { task.setTaskCompletedWithSnapshot(false) }
     }
     func requestLatest() {
+        installBackgroundMusic()
         ExercisePlayer.shared.connectivityReady()
         provision()
         if let c = Vault.load(), session.activationState == .activated {
@@ -100,7 +104,7 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
             } catch { }
     }
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        Task { @MainActor in self.receive(session.receivedApplicationContext); self.finishBackgroundTasks(); self.provision(); if WKExtension.shared().applicationState == .active { self.requestLatest() } }
+        Task { @MainActor in self.receive(session.receivedApplicationContext); self.installBackgroundMusic(); self.finishBackgroundTasks(); self.provision(); if WKExtension.shared().applicationState == .active { self.requestLatest() } }
     }
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         Task { @MainActor in
@@ -118,20 +122,31 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) { deliver(applicationContext) }
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) { deliver(userInfo) }
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) { deliver(message, live: true) }
+    private func installBackgroundMusic() {
+        // Runs during a WC background wake as well as launch/activation. No
+        // applicationState/isReachable gate: receipt is already local on disk.
+        musicInbox.installPending { delivery, file in
+            ExercisePlayer.shared.receiveFile(file, manifest: delivery.playlist, name: delivery.fileName)
+        }
+    }
     nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        guard let raw = file.metadata?["playlist"] as? Data,
+              let manifest = try? JSONDecoder().decode(OfflinePlaylist.self, from: raw),
+              let name = file.metadata?["file"] as? String else { return }
         deliveries.begin()
-        // The URL is temporary and must be copied before this delegate returns.
-        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         do {
-            try FileManager.default.copyItem(at: file.fileURL, to: temporary)
-            let metadata = file.metadata ?? [:]
+            // Persist before returning to WCSession. A later suspension or
+            // process termination cannot orphan bytes from their manifest.
+            try musicInbox.enqueue(file: file.fileURL, playlist: manifest, fileName: name)
             Task { @MainActor in
                 defer { deliveries.end(); finishBackgroundTasks() }
-                ExercisePlayer.shared.receiveFile(temporary, metadata: metadata)
+                installBackgroundMusic()
             }
         } catch {
-            deliveries.end()
-            Task { @MainActor in self.finishBackgroundTasks() }
+            Task { @MainActor in
+                defer { deliveries.end(); finishBackgroundTasks() }
+                ExercisePlayer.shared.backgroundMusicFailed(manifest, error: error)
+            }
         }
     }
 }
