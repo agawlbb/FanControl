@@ -318,3 +318,29 @@ and existing Internal TestFlight access passed in run 43730564602. Apple build
 `1fccc5ea-55a1-4aaf-95e2-ab88977b4e81` is VALID and IN_BETA_TESTING.
 Tag: `v0.12.6-build34`. Physical-watch playback remains unconfirmed. Main is
 unchanged and related work remains on the same claimed combined branch.
+
+## Screen-off music delivery recovery — November 15, 2026
+
+The follow-up requires music sync to complete with the watch screen asleep.
+The previous cleanup/progress fix alone did not change the background handoff.
+WCSession file delivery now synchronously persists verified audio and a committed
+playlist/filename record in Application Support before its delegate returns,
+instead of copying audio to temporary storage with metadata held only in a queued
+UI task. Background wakes and session activation drain this durable inbox without
+requiring active application state or live reachability. Launch also recovers
+pending deliveries once WCSession is activated, so saved receipts can be queued.
+Installation failures retain the inbox copy; verified installed or superseded
+files alone remove it. Forget pairing removes queued private audio as well.
+The shared atomic playlist installer preserves the existing library until all
+replacement tracks pass size/SHA-256 verification. The phone no longer tells the
+user to reopen the watch to continue an already queued background transfer.
+
+Source `907ad5b215b2e22acbc6cf5fd23d152222614db6` passed 133 core tests and
+watch/iPhone SDK typechecks in:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43738715639
+New lifecycle regressions cover OS temporary-file removal, reconstructed inboxes,
+failed-install retention, multiple background files replacing an existing library,
+out-of-order generations, corrupt/incomplete deliveries, and private-audio deletion.
+The earlier cleanup/progress fix is included. Tests do not verify WCSession's
+real-device scheduling, screen-off delivery, or speaker playback. Those remain
+paired-device checks. No app build/release or main merge was requested or started.
