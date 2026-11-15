@@ -175,3 +175,13 @@ TestFlight assignment passed in run 43713373876. The user explicitly authorized
 continuing this already-started release and clarified that there is no standing
 release authorization. Underlying device transfer failure remains unconfirmed;
 the retained settings/phone error is needed for the next diagnosis.
+
+## First audio chunk storage — November 15, 2026
+
+Task `fix/music-first-chunk`, based on fetched main
+`dcd045a8ede6d515f3d8815735a88af7103a24fd`. Device evidence reports
+Saving audio chunk at byte 0 failed (NSCocoaErrorDomain 4).
+Regression cases cover first-chunk writes to nested missing staging directories,
+staging removed before the first reply, and rejecting later chunks without their
+prefix. Tests are first run against the existing writer to verify reproduction.
+No release or merge is authorized by this bug report.
