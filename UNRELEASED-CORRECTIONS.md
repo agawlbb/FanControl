@@ -301,3 +301,11 @@ and altered saved-file cases are covered. This validates normal MP3 handling and
 improves failure evidence; it does not establish the original watch-only cause.
 No app build, merge or release is authorized by the file attachment. Actual-watch
 playback and its native error code remain needed if the supplied file still fails.
+
+Validation for source `980948333ab0c5675e243f96bf10afdb8525ff05`: all 125 core
+tests and both watch/iPhone SDK typechecks passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43729965607
+The generated matching-profile MP3 successfully initialized AVAudioPlayer and
+decoded PCM through AVAudioFile on macOS, without playing sound. The user's
+recording was decoded/inspected locally only, not sent to CI. The specific
+watch-only cause is not reproduced or confirmed. No app release was started.
