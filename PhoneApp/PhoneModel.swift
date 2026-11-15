@@ -316,6 +316,12 @@ import FanControlCore
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) { Task { @MainActor in self.receive(userInfo) } }
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
         Task { @MainActor in
+            if message["music_chunk"] != nil {
+                replyHandler(PhoneLibrary.shared.musicChunk(message)); return
+            }
+            if message["playlist_saved"] != nil || message["music_sync_requested"] != nil {
+                self.receive(message); replyHandler(["received": true]); return
+            }
             if let raw = message["podcast_command"] as? Data {
                 guard message["watch_id"] as? String == self.connection?.watch_id,
                       let command = try? JSONDecoder().decode(PodcastCommand.self, from: raw) else { replyHandler([:]); return }

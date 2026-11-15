@@ -16,6 +16,8 @@ import FanControlCore
         for task in backgroundTasks {
             if let transfer = task as? WKURLSessionRefreshBackgroundTask, transfer.sessionIdentifier == CommandDelivery.sessionID {
                 CommandDelivery.shared.reconnect(transfer)
+            } else if let connectivity = task as? WKWatchConnectivityRefreshBackgroundTask {
+                WatchCompanion.shared.reconnect(connectivity)
             } else { task.setTaskCompletedWithSnapshot(false) }
         }
     }

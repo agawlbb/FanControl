@@ -13,6 +13,9 @@ import FanControlCore
     @Published private(set) var beganPlayback = false
     @Published private(set) var waiting = false
     @Published private(set) var syncing = false
+    private var musicTask: Task<Void, Never>?
+    private var syncRequestID: UUID?
+    private var musicPlaylist: UUID?
     @Published private(set) var status = ""
     private var player: AVAudioPlayer?
     private var tracks: [ExerciseTrack] = []
@@ -79,7 +82,7 @@ import FanControlCore
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
     }
     func forget() {
-        syncing = false; stop()
+        musicTask?.cancel(); musicTask = nil; musicPlaylist = nil; syncRequestID = nil; syncing = false; stop()
         // Delete persisted copies even if no library was loaded this launch.
         try? FileManager.default.removeItem(at: musicDirectory)
         UserDefaults.standard.removeObject(forKey: "exerciseHeadsetUID")
@@ -166,7 +169,18 @@ import FanControlCore
         }
         // The iPhone library is authoritative. HA's legacy playlist can contain
         // different tracks and must never replace the phone's imported music.
-        WCSession.default.transferUserInfo(["music_sync_requested": true, "watch_id": c.watch_id])
+        let request: [String: Any] = ["music_sync_requested": true, "watch_id": c.watch_id]
+        guard WCSession.default.isReachable else {
+            status = "Open Fan Control on iPhone and tap Sync"
+            return
+        }
+        let requestID = UUID(); syncRequestID = requestID
+        WCSession.default.sendMessage(request, replyHandler: { _ in }, errorHandler: { _ in
+            Task { @MainActor in
+                guard self.syncRequestID == requestID, Vault.load()?.token == c.token else { return }
+                self.status = "Open Fan Control on iPhone and tap Sync"
+            }
+        })
         status = "Music sync requested from iPhone"
     }
     func receive(_ manifest: OfflinePlaylist) {
@@ -176,6 +190,10 @@ import FanControlCore
         let pending = destination.appendingPathComponent("incoming.json")
         if let data = try? Data(contentsOf: pending), let old = try? JSONDecoder().decode(OfflinePlaylist.self, from: data),
            old.generation > manifest.generation || (old.generation == manifest.generation && old.id != manifest.id) { return }
+        syncRequestID = nil
+        if musicPlaylist != manifest.id {
+            musicTask?.cancel(); musicTask = nil; musicPlaylist = nil; syncing = false
+        }
         let staging = destination.appendingPathComponent(manifest.id.uuidString)
         do {
             try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
@@ -196,7 +214,64 @@ import FanControlCore
                    item.lastPathComponent != installed, item != folder { try? FileManager.default.removeItem(at: item) }
             }
             try commitIncoming(manifest, connection: c)
+            beginMusicTransfer(manifest, connection: c)
         } catch { status = "Music transfer failed" }
+    }
+    private func beginMusicTransfer(_ manifest: OfflinePlaylist, connection c: Connection) {
+        guard musicPlaylist != manifest.id, WCSession.default.activationState == .activated,
+              WCSession.default.isReachable, WKExtension.shared().applicationState == .active else { return }
+        let staging = root(c).appendingPathComponent(manifest.id.uuidString)
+        guard manifest.tracks.contains(where: { !FileManager.default.fileExists(atPath: staging.appendingPathComponent($0.fileName).path) }) else { return }
+        musicTask?.cancel(); musicPlaylist = manifest.id; syncing = true
+        musicTask = Task {
+            defer {
+                if musicPlaylist == manifest.id { musicPlaylist = nil; musicTask = nil; syncing = false }
+            }
+            do {
+                for (number, track) in manifest.tracks.enumerated() {
+                    let target = staging.appendingPathComponent(track.fileName)
+                    if FileManager.default.fileExists(atPath: target.path) { continue }
+                    let partial = staging.appendingPathComponent(track.fileName + ".part")
+                    defer { try? FileManager.default.removeItem(at: partial) }
+                    var offset = 0
+                    while offset < track.size {
+                        try Task.checkCancellation()
+                        guard musicPlaylist == manifest.id, Vault.load()?.token == c.token,
+                              Vault.load()?.watch_id == c.watch_id,
+                              WCSession.default.isReachable, WKExtension.shared().applicationState == .active else { throw CancellationError() }
+                        status = "Receiving \(number + 1)/\(manifest.tracks.count) (\(offset * 100 / track.size)%)"
+                        let reply = try await musicReply(["music_chunk": manifest.id.uuidString,
+                            "watch_id": c.watch_id, "file": track.fileName, "offset": offset])
+                        try Task.checkCancellation()
+                        guard musicPlaylist == manifest.id, Vault.load()?.token == c.token,
+                              reply["music_chunk"] as? String == manifest.id.uuidString,
+                              reply["file"] as? String == track.fileName,
+                              reply["offset"] as? Int == offset, let data = reply["data"] as? Data else { throw ControlError.invalidResponse }
+                        let complete = try OfflineMusicTransfer.append(data, to: partial, track: track, offset: offset)
+                        offset += data.count
+                        if complete {
+                            // A background file can win the race; both paths verify
+                            // the same manifest and only install complete files.
+                            if !FileManager.default.fileExists(atPath: target.path) {
+                                try FileManager.default.moveItem(at: partial, to: target)
+                            }
+                            try commitIncoming(manifest, connection: c)
+                        }
+                    }
+                }
+            } catch {
+                guard musicPlaylist == manifest.id, Vault.load()?.token == c.token else { return }
+                status = "Music transfer interrupted. Open both apps and tap Sync on iPhone."
+            }
+        }
+    }
+    private func musicReply(_ message: [String: Any]) async throws -> [String: Any] {
+        try await withCheckedThrowingContinuation { continuation in
+            // WatchConnectivity delivers either a reply or an error, including
+            // its reply timeout. Never interpret dispatch alone as receipt.
+            WCSession.default.sendMessage(message, replyHandler: { continuation.resume(returning: $0) },
+                errorHandler: { continuation.resume(throwing: $0) })
+        }
     }
     func receiveFile(_ file: URL, metadata: [String: Any]) {
         defer { try? FileManager.default.removeItem(at: file) }
@@ -232,8 +307,13 @@ import FanControlCore
         for item in (try? FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)) ?? [] {
             if UUID(uuidString: item.lastPathComponent) != nil, item != staging, item != folder { try? FileManager.default.removeItem(at: item) }
         }
+        musicTask?.cancel(); musicTask = nil; musicPlaylist = nil; syncing = false
         status = "\(manifest.tracks.count) tracks ready offline"
-        WCSession.default.transferUserInfo(["playlist_saved": manifest.id.uuidString, "watch_id": c.watch_id])
+        let receipt: [String: Any] = ["playlist_saved": manifest.id.uuidString, "watch_id": c.watch_id]
+        WCSession.default.transferUserInfo(receipt)
+        if WCSession.default.isReachable {
+            WCSession.default.sendMessage(receipt, replyHandler: { _ in }, errorHandler: { _ in })
+        }
     }
     #if DEBUG && targetEnvironment(simulator)
     func preview(playing: Bool) {

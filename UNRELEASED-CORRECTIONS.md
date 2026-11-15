@@ -88,3 +88,28 @@ Paired-device checks remaining: import one song, request sync from each watch
 settings surface, verify 1/1 and offline playback; delayed phone delivery, rejected
 wrong-watch request, reordered/empty playlist, interrupted transfer, and syncing
 while an existing library is playing. Release/install is still required.
+
+### Stalled phone-to-watch transfer and screen-off delivery
+
+Continues the same music-sync task. The app delegate previously completed
+WatchConnectivity background wake tasks immediately, before session activation,
+pending content delivery, and queued file verification/persistence had drained.
+Retain those tasks until all three are complete, including after wrist-down.
+This is a concrete lifecycle defect; device logs are still needed to prove it
+was the only cause of the reported weeks-long failure.
+
+A reachable, visible watch also pulls bounded 32 KiB chunks from the current
+phone manifest. Every reply matches playlist, filename and offset; the entire
+track's length and SHA-256 must match before it enters the existing atomic
+replacement path. The phone displays byte progress; immediate saved receipts
+supplement the durable background receipt. Completion cancels redundant queued
+files. Background file delivery remains available when the screen blanks; direct
+transfer can resume on a later visible entry without promoting partial files.
+No screen-on requirement or guaranteed watchOS scheduling is claimed.
+
+Core regressions cover chunk boundaries, interruption/restart, invalid offsets,
+corruption and waiting for activation/content/persistence before completing a
+background wake. Paired-device validation must include one imported song,
+foreground progress, wrist-down during transfer, background receipt, interrupted
+transfer, playback preservation and stale playlist/target rejection. Both apps
+need an updated release; no HA deployment is needed.

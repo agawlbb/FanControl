@@ -12,7 +12,30 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
     func protectIntent(_ entity: String) { protectedEntities.insert(entity) }
     func beginEntry() { protectedEntities.removeAll() }
     private let session = WCSession.default
-    func start() { session.delegate = self; session.activate() }
+    nonisolated private let deliveries = ConnectivityDrain()
+    private var backgroundTasks: [WKWatchConnectivityRefreshBackgroundTask] = []
+    private var pendingObservation: NSKeyValueObservation?
+    private var activationObservation: NSKeyValueObservation?
+    func start() {
+        session.delegate = self
+        pendingObservation = session.observe(\.hasContentPending, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor in self?.finishBackgroundTasks() }
+        }
+        activationObservation = session.observe(\.activationState, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor in self?.finishBackgroundTasks() }
+        }
+        session.activate()
+    }
+    func reconnect(_ task: WKWatchConnectivityRefreshBackgroundTask) {
+        backgroundTasks.append(task)
+        finishBackgroundTasks()
+    }
+    private func finishBackgroundTasks() {
+        guard deliveries.canComplete(activated: session.activationState == .activated,
+                                     hasContentPending: session.hasContentPending) else { return }
+        let completed = backgroundTasks; backgroundTasks.removeAll()
+        for task in completed { task.setTaskCompletedWithSnapshot(false) }
+    }
     func requestLatest() {
         provision()
         if let c = Vault.load(), session.activationState == .activated {
@@ -76,18 +99,32 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
             } catch { }
     }
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        Task { @MainActor in self.receive(session.receivedApplicationContext); self.provision(); if WKExtension.shared().applicationState == .active { self.requestLatest() } }
+        Task { @MainActor in self.receive(session.receivedApplicationContext); self.finishBackgroundTasks(); self.provision(); if WKExtension.shared().applicationState == .active { self.requestLatest() } }
     }
-    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) { Task { @MainActor in self.receive(applicationContext) } }
-    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) { Task { @MainActor in self.receive(userInfo) } }
-    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) { Task { @MainActor in self.receive(message, live: true) } }
+    nonisolated private func deliver(_ message: [String: Any], live: Bool = false) {
+        deliveries.begin()
+        Task { @MainActor in
+            defer { deliveries.end(); finishBackgroundTasks() }
+            receive(message, live: live)
+        }
+    }
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) { deliver(applicationContext) }
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) { deliver(userInfo) }
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) { deliver(message, live: true) }
     nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        deliveries.begin()
         // The URL is temporary and must be copied before this delegate returns.
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         do {
             try FileManager.default.copyItem(at: file.fileURL, to: temporary)
             let metadata = file.metadata ?? [:]
-            Task { @MainActor in ExercisePlayer.shared.receiveFile(temporary, metadata: metadata) }
-        } catch { }
+            Task { @MainActor in
+                defer { deliveries.end(); finishBackgroundTasks() }
+                ExercisePlayer.shared.receiveFile(temporary, metadata: metadata)
+            }
+        } catch {
+            deliveries.end()
+            Task { @MainActor in self.finishBackgroundTasks() }
+        }
     }
 }
