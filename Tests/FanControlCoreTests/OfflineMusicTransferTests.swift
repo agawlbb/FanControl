@@ -7,6 +7,36 @@ final class OfflineMusicTransferTests: XCTestCase {
         ExerciseTrack(name: "one.mp3", sha256: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(), size: data.count)
     }
     private func temporaryFile() -> URL { FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString) }
+    func testCleanupPreservesSleepingTransferAndInstalledPlaybackAcrossDirectoryURLForms() throws {
+        let root = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let incoming = UUID().uuidString, installed = UUID().uuidString, playing = UUID().uuidString, obsolete = UUID().uuidString
+        let bytes = Data(repeating: 3, count: chunkSizeForTest)
+        let song = track(bytes)
+        for name in [incoming, installed, playing, obsolete] {
+            try OfflineMusicTransfer.saveVerified(bytes, to: root.appendingPathComponent(name).appendingPathComponent(song.fileName), track: song)
+        }
+        let partial = root.appendingPathComponent(incoming).appendingPathComponent("prefix.part")
+        try bytes.write(to: partial)
+        // Enumerated URLs and appended URLs have different directory forms.
+        // Repeated manifest delivery after wrist-down must keep both generations.
+        for _ in 0..<3 {
+            try OfflineMusicTransfer.pruneGenerations(in: root, keeping: [incoming, installed, playing])
+        }
+        XCTAssertEqual(try Data(contentsOf: partial), bytes)
+        for name in [incoming, installed, playing] {
+            try OfflineMusicTransfer.verifyFile(at: root.appendingPathComponent(name).appendingPathComponent(song.fileName), track: song)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(obsolete).path))
+        try OfflineMusicTransfer.pruneGenerations(in: root, keeping: [incoming, playing])
+        try OfflineMusicTransfer.verifyFile(at: root.appendingPathComponent(incoming).appendingPathComponent(song.fileName), track: song)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.appendingPathComponent(installed).path))
+    }
+    private var chunkSizeForTest: Int { OfflineMusicTransfer.chunkSize }
+    func testTransportCompletionCannotDisplayInstalledProgress() {
+        XCTAssertEqual(OfflineMusicTransfer.sendingProgress(1), 0.99)
+        XCTAssertEqual(OfflineMusicTransfer.sendingProgress(0.11), 0.11)
+    }
     func testSingleSongRequiresAllChunksAndMatchingHash() throws {
         let data = Data((0..<(OfflineMusicTransfer.chunkSize * 2 + 17)).map { UInt8($0 % 251) })
         let song = track(data), file = temporaryFile()

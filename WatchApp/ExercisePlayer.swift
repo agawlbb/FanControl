@@ -290,10 +290,8 @@ import FanControlCore
             }
             let installed = (try? Data(contentsOf: destination.appendingPathComponent("playlist.json")))
                 .flatMap { try? JSONDecoder().decode(Library.self, from: $0) }?.directory
-            for item in (try? FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)) ?? [] {
-                if UUID(uuidString: item.lastPathComponent) != nil, item != staging,
-                   item.lastPathComponent != installed, item != folder { try? FileManager.default.removeItem(at: item) }
-            }
+            try OfflineMusicTransfer.pruneGenerations(in: destination,
+                keeping: Set([manifest.id.uuidString, installed, folder?.lastPathComponent].compactMap { $0 }))
             try commitIncoming(manifest, connection: c)
             beginMusicTransfer(manifest, connection: c)
         } catch { failTransfer(manifest.id, connection: c, stage: "Preparing watch storage", error: error) }
@@ -420,12 +418,19 @@ import FanControlCore
             syncFeedback.progress(manifest.id, message: "Received \(received)/\(manifest.tracks.count) tracks from iPhone")
             return
         }
+        for track in manifest.tracks {
+            try OfflineMusicTransfer.verifyFile(at: staging.appendingPathComponent(track.fileName), track: track)
+        }
         let library = Library(directory: manifest.id.uuidString, tracks: manifest.tracks)
         try JSONEncoder().encode(library).write(to: destination.appendingPathComponent("playlist.json"), options: .atomic)
         if !active { scope = nil; load(c) } else { reloadLibrary = true }
         // Preserve the active player's folder until playback ends.
-        for item in (try? FileManager.default.contentsOfDirectory(at: destination, includingPropertiesForKeys: nil)) ?? [] {
-            if UUID(uuidString: item.lastPathComponent) != nil, item != staging, item != folder { try? FileManager.default.removeItem(at: item) }
+        try OfflineMusicTransfer.pruneGenerations(in: destination,
+            keeping: Set([manifest.id.uuidString, folder?.lastPathComponent].compactMap { $0 }))
+        // A saved receipt proves readable verified bytes after cleanup, not just
+        // an existing filename before cleanup.
+        for track in manifest.tracks {
+            try OfflineMusicTransfer.verifyFile(at: staging.appendingPathComponent(track.fileName), track: track)
         }
         musicTask?.cancel(); musicTask = nil; musicPlaylist = nil; syncing = false
         syncFeedback.verified(manifest.id, tracks: manifest.tracks.count)

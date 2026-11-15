@@ -28,6 +28,22 @@ public enum OfflineMusicTransfer {
         try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: file, options: .atomic)
     }
+    // Compare generation names, not URL equality: directory enumeration supplies
+    // directory URLs with a trailing slash, unlike persisted/appended paths.
+    public static func pruneGenerations(in root: URL, keeping names: Set<String>) throws {
+        for item in try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) {
+            let name = item.lastPathComponent
+            if UUID(uuidString: name) != nil, !names.contains(name) {
+                try FileManager.default.removeItem(at: item)
+            }
+        }
+    }
+    public static func verifyFile(at file: URL, track: ExerciseTrack) throws {
+        try verify(Data(contentsOf: file, options: .mappedIfSafe), track: track)
+    }
+    public static func sendingProgress(_ fraction: Double) -> Double {
+        min(0.99, max(0, fraction))
+    }
     private static func verify(_ data: Data, track: ExerciseTrack) throws {
         try track.validate()
         let hash = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()

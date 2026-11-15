@@ -103,7 +103,7 @@ import FanControlCore
                 livePlaylist = manifest.id; liveUpdatedAt = Date()
                 let previous = manifest.tracks.prefix(number).reduce(0) { $0 + $1.size }
                 let total = manifest.tracks.reduce(0) { $0 + $1.size }
-                progress = Double(previous + offset + count) / Double(total)
+                progress = OfflineMusicTransfer.sendingProgress(Double(previous + offset + count) / Double(total))
                 status = "Sending \(number + 1)/\(manifest.tracks.count) to watch (\(Int(progress * 100))%)"
                 error = ""
             }
@@ -152,13 +152,15 @@ import FanControlCore
             status = "Queued for background transfer; open the watch app to resume now"
         }
         guard livePlaylist != manifest?.id, savedPlaylist != manifest?.id else { return }
-        guard let manifest, !manifest.tracks.isEmpty else { progress = 1; return }
+        guard let manifest else { progress = 0; return }
+        guard !manifest.tracks.isEmpty else { progress = 0; status = "Waiting for watch verification"; return }
         let pending = WCSession.default.outstandingFileTransfers.filter {
             guard let raw = $0.file.metadata?["playlist"] as? Data,
                   let list = try? JSONDecoder().decode(OfflinePlaylist.self, from: raw) else { return false }
             return list.id == manifest.id
         }
-        progress = min(1, max(0, (Double(manifest.tracks.count - pending.count) + pending.reduce(0) { $0 + $1.progress.fractionCompleted }) / Double(manifest.tracks.count)))
+        progress = OfflineMusicTransfer.sendingProgress((Double(manifest.tracks.count - pending.count) + pending.reduce(0) { $0 + $1.progress.fractionCompleted }) / Double(manifest.tracks.count))
+        if pending.isEmpty { status = "Waiting for watch verification" }
     }
     func transferFinished(_ transfer: WCSessionFileTransfer, error: Error?) {
         guard let raw = transfer.file.metadata?["playlist"] as? Data,
