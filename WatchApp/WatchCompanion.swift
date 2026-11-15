@@ -37,6 +37,7 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
         for task in completed { task.setTaskCompletedWithSnapshot(false) }
     }
     func requestLatest() {
+        ExercisePlayer.shared.connectivityReady()
         provision()
         if let c = Vault.load(), session.activationState == .activated {
             session.transferUserInfo(["watch_opened": true, "watch_id": c.watch_id, "panel": c.entity,
@@ -100,6 +101,12 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
     }
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         Task { @MainActor in self.receive(session.receivedApplicationContext); self.finishBackgroundTasks(); self.provision(); if WKExtension.shared().applicationState == .active { self.requestLatest() } }
+    }
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        Task { @MainActor in
+            guard session.isReachable, WKExtension.shared().applicationState == .active else { return }
+            self.requestLatest()
+        }
     }
     nonisolated private func deliver(_ message: [String: Any], live: Bool = false) {
         deliveries.begin()

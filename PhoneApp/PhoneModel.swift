@@ -22,6 +22,7 @@ import FanControlCore
     private let session = WCSession.default
     private var snapshot: CompanionSnapshot?
     private var foregroundWork: Task<Void, Never>?
+    private var publicationID = UUID()
     private var outbox: [[String: Any]] = []
     @Published private(set) var saving = false
     private var defaults: UserDefaults { .standard }
@@ -242,13 +243,24 @@ import FanControlCore
         return value
     }
     func publish() {
-        guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled, connection != nil else { return }
-        do {
-            let value = payload()
-            try session.updateApplicationContext(value)
-            if session.isReachable { session.sendMessage(value, replyHandler: nil, errorHandler: { _ in }) }
+        guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled, let c = connection else { return }
+        let value = payload()
+        let ticket = UUID(); publicationID = ticket
+        do { try session.updateApplicationContext(value) }
+        catch {
+            let failure = error as NSError
+            self.error = "Watch update failed (\(failure.domain) \(failure.code))."
         }
-        catch { self.error = "Watch update pending" }
+        // A context failure must not prevent delivery on a reachable live link.
+        if session.isReachable {
+            session.sendMessage(value, replyHandler: nil, errorHandler: { error in
+                Task { @MainActor in
+                    guard self.publicationID == ticket, self.connection?.token == c.token else { return }
+                    let failure = error as NSError
+                    self.error = "Watch update failed (\(failure.domain) \(failure.code))."
+                }
+            })
+        }
     }
     func record(_ phase: String, updateID: String? = nil) {
         guard let c = connection else { return }
@@ -303,7 +315,12 @@ import FanControlCore
     nonisolated func session(_ session: WCSession, didFinish fileTransfer: WCSessionFileTransfer, error: Error?) {
         Task { @MainActor in PhoneLibrary.shared.transferFinished(fileTransfer, error: error) }
     }
-    nonisolated func sessionReachabilityDidChange(_ session: WCSession) { Task { @MainActor in self.reachable = session.isReachable } }
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        Task { @MainActor in
+            self.reachable = session.isReachable
+            if self.reachable { self.publish() }
+        }
+    }
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) { }
     nonisolated func sessionDidDeactivate(_ session: WCSession) {
         Task { @MainActor in
@@ -318,6 +335,25 @@ import FanControlCore
         Task { @MainActor in
             if message["music_chunk"] != nil {
                 replyHandler(PhoneLibrary.shared.musicChunk(message)); return
+            }
+            if message["music_sync_requested"] as? Bool == true,
+               let rawID = message["music_sync_id"] as? String, let requestID = UUID(uuidString: rawID) {
+                let reply: MusicSyncReply
+                if let c = self.connection {
+                    if message["watch_id"] as? String != c.watch_id {
+                        reply = MusicSyncReply(requestID: requestID, watchID: c.watch_id, failure: .differentWatch)
+                    } else {
+                        let old = PhoneLibrary.shared.manifest?.id
+                        PhoneLibrary.shared.sync()
+                        let manifest = PhoneLibrary.shared.manifest
+                        reply = MusicSyncReply(requestID: requestID, watchID: c.watch_id,
+                            playlist: manifest, failure: manifest?.id == old ? .transferUnavailable : nil)
+                    }
+                } else {
+                    reply = MusicSyncReply(requestID: requestID, watchID: nil, failure: .notLinked)
+                }
+                replyHandler(["music_sync_reply": (try? JSONEncoder().encode(reply)) ?? Data()])
+                return
             }
             if message["playlist_saved"] != nil || message["music_sync_requested"] != nil {
                 self.receive(message); replyHandler(["received": true]); return

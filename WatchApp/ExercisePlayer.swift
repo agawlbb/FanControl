@@ -15,6 +15,9 @@ import FanControlCore
     @Published private(set) var syncing = false
     private var musicTask: Task<Void, Never>?
     private var syncRequestID: UUID?
+    private var syncAttempt: MusicSyncAttempt?
+    private var syncConnection: Connection?
+    private var syncRequestTimeout: Task<Void, Never>?
     private var musicPlaylist: UUID?
     @Published private(set) var status = ""
     private var player: AVAudioPlayer?
@@ -82,6 +85,7 @@ import FanControlCore
         try? session.setActive(false, options: .notifyOthersOnDeactivation)
     }
     func forget() {
+        syncRequestTimeout?.cancel(); syncRequestTimeout = nil; syncAttempt = nil; syncConnection = nil
         musicTask?.cancel(); musicTask = nil; musicPlaylist = nil; syncRequestID = nil; syncing = false; stop()
         // Delete persisted copies even if no library was loaded this launch.
         try? FileManager.default.removeItem(at: musicDirectory)
@@ -162,26 +166,56 @@ import FanControlCore
         }
     }
     func sync(_ c: Connection) {
-        guard WCSession.default.activationState == .activated,
-              WCSession.default.isCompanionAppInstalled else {
-            status = "Open the iPhone app to sync music"
-            return
+        syncRequestTimeout?.cancel()
+        let attempt = MusicSyncAttempt(watchID: c.watch_id)
+        syncAttempt = attempt; syncRequestID = attempt.id; syncConnection = c
+        status = "Connecting to iPhone…"
+        syncRequestTimeout = Task {
+            do { try await Task.sleep(for: .seconds(15)) } catch { return }
+            guard syncRequestID == attempt.id, Vault.load()?.token == c.token else { return }
+            syncAttempt = nil; syncRequestID = nil; syncConnection = nil
+            status = "Music connection timed out. Phone link: \(WCSession.default.isReachable ? "reachable" : "unreachable")."
         }
-        // The iPhone library is authoritative. HA's legacy playlist can contain
-        // different tracks and must never replace the phone's imported music.
-        let request: [String: Any] = ["music_sync_requested": true, "watch_id": c.watch_id]
-        guard WCSession.default.isReachable else {
-            status = "Open Fan Control on iPhone and tap Sync"
-            return
-        }
-        let requestID = UUID(); syncRequestID = requestID
-        WCSession.default.sendMessage(request, replyHandler: { _ in }, errorHandler: { _ in
+        continueSyncRequest()
+    }
+    private func continueSyncRequest() {
+        guard let c = syncConnection, Vault.load()?.token == c.token,
+              syncAttempt?.claim(activated: WCSession.default.activationState == .activated,
+                                 reachable: WCSession.default.isReachable, watchID: c.watch_id) == true,
+              let requestID = syncRequestID else { return }
+        // Use the same live channel as Podcast. An installation hint must not
+        // veto a working channel. The reply itself supplies the matching list.
+        WCSession.default.sendMessage(["music_sync_requested": true, "music_sync_id": requestID.uuidString,
+                                       "watch_id": c.watch_id], replyHandler: { value in
             Task { @MainActor in
                 guard self.syncRequestID == requestID, Vault.load()?.token == c.token else { return }
-                self.status = "Open Fan Control on iPhone and tap Sync"
+                do {
+                    guard let raw = value["music_sync_reply"] as? Data else { throw MusicSyncFailure.invalidReply }
+                    let reply = try JSONDecoder().decode(MusicSyncReply.self, from: raw)
+                    self.receive(try reply.resolved(requestID: requestID, watchID: c.watch_id))
+                } catch { self.failSyncRequest(requestID, connection: c, error: error) }
             }
+        }, errorHandler: { error in
+            Task { @MainActor in self.failSyncRequest(requestID, connection: c, error: error) }
         })
-        status = "Music sync requested from iPhone"
+    }
+    private func failSyncRequest(_ id: UUID, connection c: Connection, error: Error) {
+        guard syncRequestID == id, Vault.load()?.token == c.token else { return }
+        syncRequestTimeout?.cancel(); syncRequestTimeout = nil
+        syncAttempt = nil; syncRequestID = nil; syncConnection = nil
+        if let failure = error as? MusicSyncFailure { status = failure.message }
+        else {
+            let code = error as NSError
+            status = "Music connection failed (\(code.domain) \(code.code))."
+        }
+    }
+    func connectivityReady() {
+        continueSyncRequest()
+        guard syncRequestID == nil, let c = Vault.load(),
+              WKExtension.shared().applicationState == .active,
+              let data = try? Data(contentsOf: root(c).appendingPathComponent("incoming.json")),
+              let manifest = try? JSONDecoder().decode(OfflinePlaylist.self, from: data) else { return }
+        receive(manifest)
     }
     func receive(_ manifest: OfflinePlaylist) {
         guard let c = Vault.load(), manifest.watchID == c.watch_id,
@@ -190,7 +224,8 @@ import FanControlCore
         let pending = destination.appendingPathComponent("incoming.json")
         if let data = try? Data(contentsOf: pending), let old = try? JSONDecoder().decode(OfflinePlaylist.self, from: data),
            old.generation > manifest.generation || (old.generation == manifest.generation && old.id != manifest.id) { return }
-        syncRequestID = nil
+        syncRequestID = nil; syncAttempt = nil; syncConnection = nil
+        syncRequestTimeout?.cancel(); syncRequestTimeout = nil
         if musicPlaylist != manifest.id {
             musicTask?.cancel(); musicTask = nil; musicPlaylist = nil; syncing = false
         }

@@ -119,3 +119,25 @@ Music-sync corrections above were published in 0.12.1 (29), signed source
 SDK typechecks passed. Signed release, Apple processing and Internal TestFlight
 assignment passed in run 43661897402. See RELEASE.md for the release record.
 Update both apps; paired-device transfer and wrist-down checks remain.
+
+## Live music connection readiness — November 15, 2026
+
+Task `fix/music-sync-readiness`, based on canonical main
+`f2fc515bb821c3ba5a83b31ae33aea559ad39c4d`. Both installed apps were confirmed
+as 0.12.1 (29); Podcast live commands work but music remains at 0%.
+Music had an additional companion-installation-hint gate absent from Podcast.
+It now uses the same activated/reachable link and obtains the correlated phone
+playlist directly in its reply, without depending on application-context delivery.
+An unlinked phone, wrong watch, preparation failure, malformed reply, timeout and
+numeric transport errors are reported distinctly instead of all saying open phone.
+
+A bounded 15-second pending sync request can submit once when activation or
+reachability arrives. Watch readiness events resume incoming verified transfers;
+phone readiness republishes the saved manifest. An application-context failure no
+longer prevents a live publication attempt. Existing background file delivery,
+verification, playback preservation and completion receipts remain in place.
+Regression coverage includes late readiness, single submission, expiry, target and
+request matching, direct single-song replies, invalid manifests and phone failures.
+These changes address concrete code-path differences and lifecycle omissions;
+paired-device validation is still required to establish the reported failure's
+cause and confirm one-song transfer, wrist-down continuation and playback.
