@@ -260,3 +260,9 @@ the playlist. A corrupt background replacement cannot overwrite installed audio.
 Tests cover the photographed 688128-byte resume boundary, incomplete/oversized
 prefixes, corruption, and missing background destinations. Physical-watch transfer
 and wrist-down checks remain. No merge, app build or release was requested here.
+
+Validation for source `c3acc406e96b2199856ad9564171c27448da8408`: all 121 core
+tests and both watch/iPhone SDK typechecks passed together:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43720023118
+This remains unreleased work on the same combined branch; no app build or release
+was started. The published 0.12.4 (32) tag still identifies its original source.
