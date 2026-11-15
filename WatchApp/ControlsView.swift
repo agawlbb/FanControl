@@ -192,7 +192,7 @@ private struct SettingsPage: View {
             Button(player.syncing ? "Syncing music…" : "Sync exercise music") {
                 if let c = model.connection { player.sync(c) }
             }.disabled(player.syncing || model.connection == nil)
-            if !player.status.isEmpty { Text(player.status).font(.caption2).foregroundStyle(.secondary) }
+            if !player.syncFeedback.message.isEmpty { Text(player.syncFeedback.message).font(.caption2).foregroundStyle(.secondary) }
         }.sheet(isPresented: $diagnostics) { PushDiagnosticsView(connection: model.connection) }
     }
 }
@@ -240,7 +240,7 @@ struct SetupView: View {
                 Button(player.syncing ? "Syncing music…" : "Sync exercise music") {
                     if let c = model.connection { player.sync(c) }
                 }.disabled(player.syncing)
-                if !player.status.isEmpty { Text(player.status).font(.caption2) }
+                if !player.syncFeedback.message.isEmpty { Text(player.syncFeedback.message).font(.caption2) }
                 Button("Diagnostics") { diagnostics = true }
                 Button("Forget connection", role: .destructive) { model.forget(); dismiss() }
             } else {

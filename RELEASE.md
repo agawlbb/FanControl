@@ -1,3 +1,31 @@
+# Readable music sync failures — 0.12.3 (31), November 15, 2026
+
+Continues the user's authorized music-sync investigation and release instruction.
+Task `fix/music-sync-feedback` starts at main
+`6ae6cffe31d7df59c77a2f2c848cad2a4af13f75`.
+
+- Sync progress and errors are separate from playback and appear by the existing
+  sync controls, never on the Exercise panel.
+- The first failure remains readable across repeated phone updates, navigation,
+  playback events and app restarts. Passive updates do not restart that failed
+  attempt. A new explicit sync can retry; verified background installation can
+  complete an interrupted live transfer.
+- Existing Diagnostics retain a bounded sync history. A matched watch failure
+  is also retained in the phone's existing music error area.
+- Errors identify requesting, saving or installing audio and preserve sanitized
+  domain/code. Chunk length, offset, reply mismatch and checksum failures have
+  distinct wording. Screen sleep or a lost live link pauses foreground work
+  without treating it as an unexplained transfer failure.
+
+Core tests, platform typechecks and TestFlight publication are pending.
+This corrects the reported error placement, flashing and erased failure evidence.
+The underlying device audio-transfer failure is not yet established; the retained
+stage/code is needed to diagnose it. Physical checks remain for settings-only
+feedback, persistence, one-song delivery, wrist-down and offline playback.
+Both apps need updating after publication. No HA deployment is needed.
+
+---
+
 # Live music sync handshake — 0.12.2 (30), November 15, 2026
 
 Continues the user's instruction to complete music sync, merge to main, remove

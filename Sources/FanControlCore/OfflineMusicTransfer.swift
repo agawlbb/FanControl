@@ -11,17 +11,17 @@ public enum OfflineMusicTransfer {
         return min(chunkSize, track.size - offset)
     }
     public static func append(_ data: Data, to file: URL, track: ExerciseTrack, offset: Int) throws -> Bool {
-        guard data.count == (try byteCount(track: track, offset: offset)) else { throw ControlError.invalidResponse }
+        guard data.count == (try byteCount(track: track, offset: offset)) else { throw MusicFileFailure.invalidSize }
         if offset == 0 { try Data().write(to: file, options: .atomic) }
         let handle = try FileHandle(forWritingTo: file)
         defer { try? handle.close() }
-        guard try handle.seekToEnd() == UInt64(offset) else { throw ControlError.invalidResponse }
+        guard try handle.seekToEnd() == UInt64(offset) else { throw MusicFileFailure.wrongOffset }
         try handle.write(contentsOf: data)
         guard offset + data.count == track.size else { return false }
         try handle.synchronize()
         let complete = try Data(contentsOf: file, options: .mappedIfSafe)
         let hash = SHA256.hash(data: complete).map { String(format: "%02x", $0) }.joined()
-        guard complete.count == track.size, hash == track.sha256 else { throw ControlError.invalidResponse }
+        guard complete.count == track.size, hash == track.sha256 else { throw MusicFileFailure.checksumMismatch }
         return true
     }
 }

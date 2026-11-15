@@ -14,6 +14,7 @@ import FanControlCore
     private var liveUpdatedAt: Date?
     private var livePlaylist: UUID?
     private var savedPlaylist: UUID?
+    private var failedPlaylist: UUID?
     private var root: URL { FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Music") }
     private init() {
         if let data = try? Data(contentsOf: root.appendingPathComponent("library.json")),
@@ -21,6 +22,10 @@ import FanControlCore
            (try? OfflinePlaylist(watchID: "local", tracks: saved)) != nil { tracks = saved }
         if let data = try? Data(contentsOf: root.appendingPathComponent("transfer.json")),
            let saved = try? JSONDecoder().decode(OfflinePlaylist.self, from: data), (try? saved.validate()) != nil { manifest = saved }
+        if let data = try? Data(contentsOf: root.appendingPathComponent("transfer-error.json")),
+           let failure = try? JSONDecoder().decode(WatchMusicFailure.self, from: data), failure.id == manifest?.id {
+            failedPlaylist = failure.id; error = failure.message; status = "Watch transfer failed"
+        }
     }
     private func save() throws {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -71,7 +76,8 @@ import FanControlCore
             }
             try raw.write(to: root.appendingPathComponent("transfer.json"), options: .atomic)
             for transfer in WCSession.default.outstandingFileTransfers where transfer.file.metadata?["playlist"] != nil { transfer.cancel() }
-            manifest = next; livePlaylist = nil; savedPlaylist = nil; PhoneModel.shared.publish()
+            manifest = next; livePlaylist = nil; savedPlaylist = nil; failedPlaylist = nil;
+            try? FileManager.default.removeItem(at: root.appendingPathComponent("transfer-error.json")); PhoneModel.shared.publish()
             for track in tracks {
                 WCSession.default.transferFile(root.appendingPathComponent(track.fileName), metadata: ["playlist": raw, "file": track.fileName])
             }
@@ -93,7 +99,7 @@ import FanControlCore
             defer { try? handle.close() }
             try handle.seek(toOffset: UInt64(offset))
             guard let data = try handle.read(upToCount: count), data.count == count else { throw ControlError.invalidResponse }
-            if savedPlaylist != manifest.id {
+            if savedPlaylist != manifest.id, failedPlaylist != manifest.id {
                 livePlaylist = manifest.id; liveUpdatedAt = Date()
                 let previous = manifest.tracks.prefix(number).reduce(0) { $0 + $1.size }
                 let total = manifest.tracks.reduce(0) { $0 + $1.size }
@@ -107,9 +113,20 @@ import FanControlCore
             return [:]
         }
     }
+    private struct WatchMusicFailure: Codable { let id: UUID; let message: String }
+    func watchFailed(_ id: String, message: String) {
+        guard let current = manifest, current.id.uuidString == id, savedPlaylist != current.id,
+              failedPlaylist != current.id else { return }
+        let failure = WatchMusicFailure(id: current.id, message: String(message.prefix(300)))
+        failedPlaylist = current.id; livePlaylist = nil; status = "Watch transfer failed"; error = failure.message
+        if let data = try? JSONEncoder().encode(failure) {
+            try? data.write(to: root.appendingPathComponent("transfer-error.json"), options: .atomic)
+        }
+    }
     func acknowledge(_ id: String) {
         guard manifest?.id.uuidString == id else { return }
-        savedPlaylist = manifest?.id; livePlaylist = nil; progress = 1
+        savedPlaylist = manifest?.id; livePlaylist = nil; failedPlaylist = nil; progress = 1
+        try? FileManager.default.removeItem(at: root.appendingPathComponent("transfer-error.json"))
         status = tracks == manifest?.tracks ? "On watch" : ""
         error = ""
         for transfer in WCSession.default.outstandingFileTransfers {
@@ -124,10 +141,12 @@ import FanControlCore
     }
     func targetChanged() {
         for transfer in WCSession.default.outstandingFileTransfers where transfer.file.metadata?["playlist"] != nil { transfer.cancel() }
-        livePlaylist = nil; savedPlaylist = nil; manifest = nil; status = ""; progress = 0; error = ""
+        livePlaylist = nil; savedPlaylist = nil; failedPlaylist = nil; manifest = nil; status = ""; progress = 0; error = ""
         try? FileManager.default.removeItem(at: root.appendingPathComponent("transfer.json"))
+        try? FileManager.default.removeItem(at: root.appendingPathComponent("transfer-error.json"))
     }
     func updateProgress() {
+        if let failedPlaylist, failedPlaylist == manifest?.id { return }
         if livePlaylist != nil, let at = liveUpdatedAt, Date().timeIntervalSince(at) > 20 {
             livePlaylist = nil
             status = "Queued for background transfer; open the watch app to resume now"
@@ -145,6 +164,6 @@ import FanControlCore
         guard let raw = transfer.file.metadata?["playlist"] as? Data,
               let list = try? JSONDecoder().decode(OfflinePlaylist.self, from: raw), list.id == manifest?.id else { return }
         updateProgress()
-        if error != nil, savedPlaylist != list.id, livePlaylist != list.id { status = ""; self.error = "Transfer interrupted. Tap Sync to retry." }
+        if error != nil, savedPlaylist != list.id, livePlaylist != list.id, failedPlaylist != list.id { status = ""; self.error = "Transfer interrupted. Tap Sync to retry." }
     }
 }

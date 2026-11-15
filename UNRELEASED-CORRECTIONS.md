@@ -147,3 +147,23 @@ The live music readiness correction was published as 0.12.2 (30), signed source
 typechecks passed in run 43663475154. Signed release, Apple processing and existing
 Internal TestFlight assignment passed in run 43663628978. Update both apps;
 paired-device confirmation of the reported failure remains outstanding.
+
+## Persistent sync feedback — November 15, 2026
+
+Task `fix/music-sync-feedback`, based on main
+`6ae6cffe31d7df59c77a2f2c848cad2a4af13f75`. The user reported an almost immediate
+Music transfer interrupted message flashing on the Exercise panel.
+Sync and playback no longer share status. Sync progress/results appear only by
+the sync controls and in existing Diagnostics; failures persist across playback,
+navigation and relaunch. Repeated manifests cannot restart a failed attempt or
+overwrite its first error. A new explicit sync can retry; verified installation
+may complete a failed live transfer through the existing background path.
+The phone also retains a matched watch failure beside its sync controls.
+
+The chunk loop distinguishes expected screen-sleep/link-loss pause from failure.
+Errors retain the transfer stage and sanitized domain/code, or a specific chunk
+length/position/reply/checksum failure. No raw request contents are logged.
+This fixes the feedback placement, unreadability and passive retry loop; it does
+not establish the underlying device transfer failure without its retained result.
+Physical checks remain for persistent settings errors, no sync messages on the
+Exercise panel, one-song delivery, wrist-down/background completion and playback.

@@ -26,6 +26,7 @@ import FanControlCore
 }
 
 struct PushDiagnosticsView: View {
+    @ObservedObject private var player = ExercisePlayer.shared
     let connection: Connection?
     @State private var events: [PushTraceEvent] = []
     @State private var commands: [String] = []
@@ -34,6 +35,11 @@ struct PushDiagnosticsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Diagnostics").font(.headline)
                 Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?") (\(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"))").font(.caption2)
+                if !player.syncFeedback.history.isEmpty {
+                    Text("Music sync").font(.headline)
+                    Text(player.syncFeedback.message).font(.caption2)
+                    ForEach(Array(player.syncFeedback.history.enumerated()), id: \.offset) { _, message in Text(message).font(.caption2) }
+                }
                 Text("Command receipt and notification times are separate from vehicle completion.").font(.caption)
                 Button("Refresh diagnostics") {
                     Task {

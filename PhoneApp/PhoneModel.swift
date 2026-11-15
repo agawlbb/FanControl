@@ -309,6 +309,9 @@ import FanControlCore
             Task { await flushReceipts() }
         }
         if value["music_sync_requested"] as? Bool == true { PhoneLibrary.shared.sync() }
+        if let id = value["music_sync_failure"] as? String, let reason = value["reason"] as? String {
+            PhoneLibrary.shared.watchFailed(id, message: reason)
+        }
         if let id = value["playlist_saved"] as? String { PhoneLibrary.shared.acknowledge(id) }
     }
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) { Task { @MainActor in self.reachable = session.isReachable; self.publish() } }
@@ -355,7 +358,7 @@ import FanControlCore
                 replyHandler(["music_sync_reply": (try? JSONEncoder().encode(reply)) ?? Data()])
                 return
             }
-            if message["playlist_saved"] != nil || message["music_sync_requested"] != nil {
+            if message["playlist_saved"] != nil || message["music_sync_requested"] != nil || message["music_sync_failure"] != nil {
                 self.receive(message); replyHandler(["received": true]); return
             }
             if let raw = message["podcast_command"] as? Data {
