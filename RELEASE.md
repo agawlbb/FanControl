@@ -1,3 +1,31 @@
+# Interrupted music recovery — 0.12.5 (33), November 15, 2026
+
+The user explicitly requested this release. Work continues on the existing claimed
+`fix/music-sync-and-settings` branch; implementation source is
+`c3acc406e96b2199856ad9564171c27448da8408`.
+
+- A live WatchConnectivity notReachable/session-inactive error pauses music sync
+  instead of marking it permanently failed or deleting downloaded chunks.
+- Existing visible-entry/reachability handling resumes the manifest-scoped partial
+  file at its saved chunk boundary. The regression test resumes at the photographed
+  688128-byte offset and verifies the complete file. Invalid or corrupt prefixes
+  cannot be installed; full SHA-256 verification remains required.
+- Background audio verifies its content and creates the destination directory at
+  the actual write boundary before atomic saving. Diagnostics distinguish reading,
+  saving and installing background audio. Late live replies safely defer to a
+  background delivery that has already installed a verified track.
+
+All 121 implementation core tests and both SDK typechecks passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43720023118
+Release-source validation and signed TestFlight publication are pending. No main
+merge was requested; this release remains on the existing working branch.
+No HA deployment is needed. Physical-watch checks remain for link loss/recovery,
+screen-off background completion, one-song sync and playback. Automated tests do
+not establish real-device delivery or playback. Both apps need updating after
+publication. Authorization applies to this release only.
+
+---
+
 # Music storage fix and watch settings — 0.12.4 (32), November 15, 2026
 
 The user explicitly requested consolidating both fix branches, deleting the old
