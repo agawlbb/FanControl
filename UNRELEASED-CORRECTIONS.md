@@ -113,3 +113,9 @@ background wake. Paired-device validation must include one imported song,
 foreground progress, wrist-down during transfer, background receipt, interrupted
 transfer, playback preservation and stale playlist/target rejection. Both apps
 need an updated release; no HA deployment is needed.
+
+Music-sync corrections above were published in 0.12.1 (29), signed source
+`83e80b2401a72e8ea0c6edf73ce02860f899a32e`, after 101 core tests and both
+SDK typechecks passed. Signed release, Apple processing and Internal TestFlight
+assignment passed in run 43661897402. See RELEASE.md for the release record.
+Update both apps; paired-device transfer and wrist-down checks remain.

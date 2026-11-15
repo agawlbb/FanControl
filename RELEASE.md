@@ -14,11 +14,20 @@ Prepared on `fix/iphone-music-sync`, containing implementation source
 - Partial or corrupt replacements never replace the installed library, and
   currently playing music is retained until the next session.
 
-Implementation core tests and iPhone/watch SDK typechecks passed:
-https://github.com/agawlbb/FanControlWatch/actions/runs/43661483372
-Release validation, signing, upload, Apple processing and Internal TestFlight
-assignment are pending. Both the iPhone and watch apps need updating after
-publication. No HA deployment is needed.
+Published to the existing **Internal** TestFlight group. Apple build
+`4d9d0d06-e5c7-478f-8579-6937e04790ae` is `VALID`, not expired and
+`IN_BETA_TESTING`, marketing version 0.12.1, without non-exempt encryption.
+Update both the iPhone and watch apps through TestFlight.
+
+Signed source, merged into main: `83e80b2401a72e8ea0c6edf73ce02860f899a32e`.
+All **101 Swift core tests** and iPhone/watch SDK source typechecks passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43661749003
+Signed iPhone/watch archive/export, signatures and production APNs entitlement
+checks, upload, Apple processing and Internal-group assignment passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43661897402
+Immutable release tag: `v0.12.1-build29` at the signed source. Processing evidence
+is retained in the release workflow artifact and this record. The user authorized
+removing the merged task branch. No HA deployment is needed.
 
 Paired-device checks remain for a one-song playlist, wrist-down during transfer,
 background completion receipts, interrupted transfer and offline playback.
