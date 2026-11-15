@@ -1,3 +1,31 @@
+# Offline MP3 playback checks — 0.12.6 (34), November 15, 2026
+
+The user explicitly requested this release. Related work continues on the same
+claimed `fix/music-sync-and-settings` branch. Implementation source:
+`980948333ab0c5675e243f96bf10afdb8525ff05`.
+
+- Verify the actual saved audio size and SHA-256 before opening the decoder.
+- Supply explicit MP3/M4A format hints to AVAudioPlayer.
+- Preserve native read, decoder, audio-session and asynchronous decoding errors
+  rather than replacing every failure with Track could not play.
+- Stop automatic playback reattempts after a failure until explicit user action,
+  and show playback failures on the existing playback controls only.
+
+The user's supplied MP3 was decoded and inspected locally without errors. Only
+a generated tone with matching MP3 encoding characteristics is stored in Git/CI.
+All 125 implementation tests and both app SDK typechecks passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43729965607
+The generated tone initializes AVAudioPlayer and decodes PCM through AVAudioFile
+on macOS without playing sound. The user's specific watch failure remains
+unconfirmed; this release improves file preparation and preserves native evidence.
+
+Release-source validation and signed TestFlight publication are pending. No main
+merge was requested. No HA deployment is needed. Physical-watch checks remain
+for the supplied MP3 on the speaker/headphones, interruptions and offline playback.
+Both apps need updating after publication. This authorization is for this release.
+
+---
+
 # Interrupted music recovery — 0.12.5 (33), November 15, 2026
 
 The user explicitly requested this release. Work continues on the existing claimed
