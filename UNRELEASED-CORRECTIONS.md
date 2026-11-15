@@ -201,3 +201,22 @@ All 112 core tests and watch/iPhone SDK source typechecks passed for implementat
 https://github.com/agawlbb/FanControlWatch/actions/runs/43716241743
 Physical-watch layout/navigation checks remain. No app build, merge or release
 was started for this settings cleanup request.
+
+## First audio chunk storage — November 15, 2026
+
+Task `fix/music-first-chunk`, based on fetched main
+`dcd045a8ede6d515f3d8815735a88af7103a24fd`. Device evidence reports
+Saving audio chunk at byte 0 failed (NSCocoaErrorDomain 4).
+Regression cases cover first-chunk writes to nested missing staging directories,
+staging removed before the first reply, and rejecting later chunks without their
+prefix. Tests are first run against the existing writer to verify reproduction.
+No release or merge is authorized by this bug report.
+
+The unmodified writer reproduced NSCocoaErrorDomain 4 in both missing-staging
+cases on macOS run 43714828710. The screenshot does not identify why staging
+was missing on the physical watch. The first write now creates its parent path
+at the write boundary and atomically saves the actual first chunk, without an
+empty-file creation/reopen step. Later chunks still require their existing prefix
+and exact offset; length and whole-file SHA-256 verification remain unchanged.
+This changes no phone/watch configuration and does not touch the installed library.
+Physical-device confirmation and an explicitly requested app release remain needed.

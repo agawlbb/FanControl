@@ -20,6 +20,35 @@ final class OfflineMusicTransferTests: XCTestCase {
         }
         XCTAssertEqual(try Data(contentsOf: file), data)
     }
+    func testFirstChunkCreatesMissingNestedStagingAndVerifies() throws {
+        let root = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = root.appendingPathComponent("Music/pairing/playlist/song.mp3.part")
+        let data = Data(repeating: 5, count: 41)
+        XCTAssertTrue(try OfflineMusicTransfer.append(data, to: file, track: track(data), offset: 0))
+        XCTAssertEqual(try Data(contentsOf: file), data)
+    }
+    func testStagingRemovedWhileWaitingForFirstReplyIsRecreated() throws {
+        let root = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let staging = root.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
+        let file = staging.appendingPathComponent("song.mp3.part")
+        let data = Data(repeating: 6, count: OfflineMusicTransfer.chunkSize + 9)
+        // The first response arrives after its staging directory has disappeared.
+        try FileManager.default.removeItem(at: staging)
+        XCTAssertFalse(try OfflineMusicTransfer.append(data.prefix(OfflineMusicTransfer.chunkSize), to: file, track: track(data), offset: 0))
+        XCTAssertTrue(try OfflineMusicTransfer.append(data.suffix(9), to: file, track: track(data), offset: OfflineMusicTransfer.chunkSize))
+        XCTAssertEqual(try Data(contentsOf: file), data)
+    }
+    func testLaterChunkCannotRecreateMissingPrefix() throws {
+        let root = temporaryFile()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = root.appendingPathComponent("missing/song.mp3.part")
+        let data = Data(repeating: 7, count: OfflineMusicTransfer.chunkSize + 3)
+        XCTAssertThrowsError(try OfflineMusicTransfer.append(data.suffix(3), to: file, track: track(data), offset: OfflineMusicTransfer.chunkSize))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+    }
     func testCorruptionNeverConfirmsTrack() throws {
         let data = Data(repeating: 1, count: 20), file = temporaryFile()
         defer { try? FileManager.default.removeItem(at: file) }
