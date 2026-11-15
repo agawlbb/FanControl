@@ -266,3 +266,12 @@ tests and both watch/iPhone SDK typechecks passed together:
 https://github.com/agawlbb/FanControlWatch/actions/runs/43720023118
 This remains unreleased work on the same combined branch; no app build or release
 was started. The published 0.12.4 (32) tag still identifies its original source.
+
+The user explicitly requested releasing the interrupted audio/background storage
+fixes. Version 0.12.5 (33), signed source
+`b602e7a65acd73c0f2b41c4dd9e2d4cede4a9ff8`, passed all 121 release-source
+core tests and both SDK typechecks in run 43723468186. Signed release, Apple
+processing and Internal TestFlight access passed in run 43723468369. Apple build
+`feee7f07-e34e-4ca4-a3fb-77cceaa95c62` is VALID and IN_BETA_TESTING.
+Release tag: `v0.12.5-build33`. Main remains unchanged; related work continues
+on the same claimed branch. Physical-watch verification remains outstanding.

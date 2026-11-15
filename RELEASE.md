@@ -17,8 +17,22 @@ The user explicitly requested this release. Work continues on the existing claim
 
 All 121 implementation core tests and both SDK typechecks passed:
 https://github.com/agawlbb/FanControlWatch/actions/runs/43720023118
-Release-source validation and signed TestFlight publication are pending. No main
-merge was requested; this release remains on the existing working branch.
+Published to the existing **Internal** TestFlight group. Apple build
+`feee7f07-e34e-4ca4-a3fb-77cceaa95c62` is `VALID`, not expired and
+`IN_BETA_TESTING`, marketing version 0.12.5, without non-exempt encryption.
+Update both the iPhone and watch apps through TestFlight.
+
+Signed source: `b602e7a65acd73c0f2b41c4dd9e2d4cede4a9ff8` on
+`fix/music-sync-and-settings`. All **121 Swift core tests** and both app SDK
+source typechecks passed for this release source:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43723468186
+Signed archive/export, signature and production APNs entitlement checks, upload,
+Apple processing and Internal TestFlight access passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43723468369
+Immutable release tag: `v0.12.5-build33` at the signed source. Apple processing
+evidence is retained in the workflow artifact and this record. Main remains
+unchanged pending explicit merge approval; the existing branch/checkout claim
+are retained for related follow-ups.
 No HA deployment is needed. Physical-watch checks remain for link loss/recovery,
 screen-off background completion, one-song sync and playback. Automated tests do
 not establish real-device delivery or playback. Both apps need updating after
