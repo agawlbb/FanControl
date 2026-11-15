@@ -37,6 +37,7 @@ import FanControlCore
         feedbackLocation = file
     }
     private func failTransfer(_ id: UUID, connection c: Connection, stage: String, error: Error) {
+        guard syncFeedback.id == id, syncFeedback.phase != .failed, syncFeedback.phase != .ready else { return }
         syncFeedback.fail(id, message: MusicSyncFeedback.failure(stage: stage, error: error))
         guard syncFeedback.id == id, syncFeedback.phase == .failed else { return }
         let report: [String: Any] = ["music_sync_failure": id.uuidString, "reason": syncFeedback.message, "watch_id": c.watch_id]
@@ -362,7 +363,7 @@ import FanControlCore
               let current = try? JSONDecoder().decode(OfflinePlaylist.self, from: pending), current.id == manifest.id else { return }
         do {
             let data = try Data(contentsOf: file, options: .mappedIfSafe)
-            guard data.count == track.size, SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == track.sha256 else { throw ControlError.invalidResponse }
+            guard data.count == track.size, SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == track.sha256 else { throw MusicFileFailure.checksumMismatch }
             let target = destination.appendingPathComponent(manifest.id.uuidString).appendingPathComponent(track.fileName)
             try data.write(to: target, options: .atomic)
             try commitIncoming(manifest, connection: c)
