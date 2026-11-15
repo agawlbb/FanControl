@@ -344,3 +344,12 @@ out-of-order generations, corrupt/incomplete deliveries, and private-audio delet
 The earlier cleanup/progress fix is included. Tests do not verify WCSession's
 real-device scheduling, screen-off delivery, or speaker playback. Those remain
 paired-device checks. No app build/release or main merge was requested or started.
+
+The user explicitly requested release of the screen-off music fixes. Version
+0.12.7 (35), signed source `d7d924d92a5a7733062714b578f4cdf781a6ee72`, passed all
+133 core tests and both SDK typechecks in run 43739230927. Signed release and
+Apple processing/Internal TestFlight verification passed in run 43739230864.
+Apple build `5b0031ec-d8e1-4163-b522-aa0aef2cdb8a` is VALID and
+IN_BETA_TESTING. Tag: `v0.12.7-build35`. Screen-off transfer and speaker playback
+still require paired-device checks. Main remains unchanged; the same combined
+fix branch is retained pending merge approval.

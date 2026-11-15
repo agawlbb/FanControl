@@ -1,3 +1,38 @@
+# Background music delivery — 0.12.7 (35), November 15, 2026
+
+Published at the user's explicit request to the existing **Internal** TestFlight
+group. Apple build `5b0031ec-d8e1-4163-b522-aa0aef2cdb8a` is `VALID`, not
+expired, and `IN_BETA_TESTING`, marketing version 0.12.7, without non-exempt
+encryption. Update both iPhone and watch apps through TestFlight.
+
+- Persist background audio and its playlist metadata before WCSession's file
+  callback returns; recover the delivery inbox after interruption/relaunch.
+- Install local deliveries during background wakes and session activation without
+  requiring an active screen or live phone reachability. Keep failed installs
+  queued, and preserve the old library until the replacement fully verifies.
+- Preserve incoming, installed and playing generations by directory name, avoiding
+  URL-form differences that allowed cleanup to delete required files.
+- Verify installed bytes after cleanup before sending the saved receipt. Reserve
+  phone 100% completion for that receipt, rather than an empty outgoing queue.
+
+Signed source: `d7d924d92a5a7733062714b578f4cdf781a6ee72` on existing branch
+`fix/music-sync-and-settings`. All **133 core tests** and both app SDK typechecks
+passed for that exact source:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43739230927
+Signed archive/export, signatures, production APNs entitlement checks, upload,
+Apple processing and Internal TestFlight access passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43739230864
+Release tag: `v0.12.7-build35`. Processing evidence is retained in the workflow
+artifact and locally under ignored `build/release35-evidence/`.
+
+Actual paired-watch screen-off transfer, installation and speaker playback remain
+physical checks; automation does not prove OS scheduling or playback. No HA
+change or deployment was needed. Main remains unchanged and the fix branch
+awaits merge approval. No new branch, tester group or external/App Store release
+was created.
+
+---
+
 # Offline MP3 playback checks — 0.12.6 (34), November 15, 2026
 
 The user explicitly requested this release. Related work continues on the same
