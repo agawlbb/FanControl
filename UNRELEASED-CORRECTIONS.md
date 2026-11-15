@@ -275,3 +275,29 @@ processing and Internal TestFlight access passed in run 43723468369. Apple build
 `feee7f07-e34e-4ca4-a3fb-77cceaa95c62` is VALID and IN_BETA_TESTING.
 Release tag: `v0.12.5-build33`. Main remains unchanged; related work continues
 on the same claimed branch. Physical-watch verification remains outstanding.
+
+## Offline MP3 playback investigation — November 15, 2026
+
+Continues on the existing claimed `fix/music-sync-and-settings` branch after
+`57e849ec34247bb99009a37ed613a938e352880e`. The user reports transfer success
+but Track could not play through the watch speaker; the same file plays in a
+phone player. Local ffprobe identifies MPEG-1 Layer III, 128 kbps CBR, 44.1 kHz
+stereo, about 247.88 seconds, with structurally valid ID3v2.3 tags. A full local
+ffmpeg decode completed without errors. The supplied recording stays private in
+ignored build storage; only a generated sine-tone fixture enters Git/CI.
+
+Playback now validates the saved file's size/hash before decoder initialization,
+provides explicit MP3/M4A format hints, and distinguishes read, decoder-open,
+audio-session and asynchronous decoder failures with sanitized native error codes.
+A failure stops automatic playback reattempts until explicit user action.
+Playback errors stay on the playback controls, separate from sync feedback.
+The audio-session route policy is unchanged: Apple's current documentation allows
+long-form audio on supported watch speakers, so speaker use alone is not evidence
+that the existing policy is wrong.
+
+A real generated MP3 with matching encoding characteristics exercises the complete
+save/prepare/native Apple decode path without playing sound. Missing, truncated
+and altered saved-file cases are covered. This validates normal MP3 handling and
+improves failure evidence; it does not establish the original watch-only cause.
+No app build, merge or release is authorized by the file attachment. Actual-watch
+playback and its native error code remain needed if the supplied file still fails.

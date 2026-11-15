@@ -128,14 +128,17 @@ import FanControlCore
         let ticket = UUID(); activation = ticket
         do {
             try session.setCategory(.playback, mode: .default, policy: .longFormAudio, options: [])
-            session.activate(options: []) { [weak self] success, _ in
+            session.activate(options: []) { [weak self] success, error in
                 Task { @MainActor in
                     guard let self, self.active, self.activation == ticket else { return }
                     if success { self.routeChanged() }
-                    else { self.playing = false; self.waiting = true; self.status = "Waiting for headset" }
+                    else {
+                        self.playing = false; self.waiting = true
+                        self.status = error.map { MusicSyncFeedback.failure(stage: "Audio session", error: $0) } ?? "Waiting for headset"
+                    }
                 }
             }
-        } catch { status = "Audio not available"; waiting = true }
+        } catch { status = MusicSyncFeedback.failure(stage: "Audio session", error: error); waiting = true }
     }
     private func allowedRoute() -> Bool {
         let outputs = session.currentRoute.outputs
@@ -161,15 +164,22 @@ import FanControlCore
     }
     private func playCurrent() {
         guard active, allowedRoute(), !tracks.isEmpty, let folder else { return }
+        var stage = "Reading saved track"
         do {
             if player == nil {
-                player = try AVAudioPlayer(contentsOf: folder.appendingPathComponent(tracks[index].fileName))
+                let source = try ExerciseAudioSource.prepare(tracks[index], in: folder)
+                stage = "Opening audio decoder"
+                player = try AVAudioPlayer(contentsOf: source.url, fileTypeHint: source.fileTypeHint)
                 player?.delegate = self
             }
             playing = player?.play() == true
             beganPlayback = beganPlayback || playing
-            status = playing ? "" : "Playback not confirmed"
-        } catch { playing = false; status = "Track could not play" }
+            status = playing ? "" : "Audio start was not accepted."
+            if !playing { wantsPlayback = false }
+        } catch {
+            player?.stop(); player = nil; playing = false; waiting = false; wantsPlayback = false
+            status = MusicSyncFeedback.failure(stage: stage, error: error)
+        }
     }
     func pause() { wantsPlayback = false; player?.pause(); playing = false }
     func toggle() {
@@ -187,7 +197,15 @@ import FanControlCore
         Task { @MainActor in
             guard self.player === player, self.active else { return }
             if flag { self.skip(1) }
-            else { self.pause(); self.status = "Track could not play" }
+            else { self.pause(); self.status = "Audio playback ended unexpectedly." }
+        }
+    }
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor in
+            guard self.player === player, self.active else { return }
+            self.pause()
+            self.status = error.map { MusicSyncFeedback.failure(stage: "Decoding audio", error: $0) }
+                ?? "Audio decoder stopped unexpectedly."
         }
     }
     func sync(_ c: Connection) {
@@ -437,6 +455,9 @@ struct ExercisePlaybackView: View {
                     Button { player.skip(1) } label: { Image(systemName: "forward.end.fill") }.accessibilityLabel("Next track")
                 }.buttonStyle(PlaybackButtonStyle())
                 WatchVolume().frame(height: 44)
+                if !player.status.isEmpty {
+                    Text(player.status).font(.caption2).foregroundStyle(.gray)
+                }
             } else if player.waiting {
                 Text(player.status).font(.caption2).foregroundStyle(.gray)
                 Button("Use watch speaker") { player.useSpeaker() }

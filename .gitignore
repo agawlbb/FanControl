@@ -16,3 +16,6 @@ private-music/
 *.[wW][aA][vV]
 *.[aA][iI][fF][fF]
 *.[fF][lL][aA][cC]
+
+# Generated test tone only; imported recordings stay ignored.
+!Tests/FanControlCoreTests/Fixtures/generated-tone.mp3
