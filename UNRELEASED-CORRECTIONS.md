@@ -184,7 +184,7 @@ fix remains preserved on `fix/music-first-chunk`; it is not part of this UI task
 
 The long-press settings and existing settings preview now share a native List
 with connection, exercise music and support actions. Routine panel-configuration
-instructions are removed. Watch ID and remote address appear only after expanding
+instructions are removed. Watch ID and remote address appear only after opening
 Connection details. Sync music has one persistent result beside its own control;
 Diagnostics no longer duplicates music status/history or static command-timing
 explanations. Diagnostics shows actual recorded activity, a single empty state,

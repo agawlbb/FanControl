@@ -28,15 +28,17 @@ struct WatchSettingsView: View {
                         if !connectionResult.isEmpty {
                             Text(connectionResult).font(.footnote).foregroundStyle(.secondary)
                         }
-                        DisclosureGroup("Connection details") {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Server").font(.caption).foregroundStyle(.secondary)
-                                Text(connection.remote_url.flatMap { $0.isEmpty ? nil : $0 } ?? "Not configured")
-                                    .font(.caption2).fixedSize(horizontal: false, vertical: true)
-                                Text("Watch ID").font(.caption).foregroundStyle(.secondary)
-                                Text(connection.watch_id).font(.caption2.monospaced())
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
+                        NavigationLink("Connection details") {
+                            List {
+                                Section("Server") {
+                                    Text(connection.remote_url.flatMap { $0.isEmpty ? nil : $0 } ?? "Not configured")
+                                        .font(.caption2).fixedSize(horizontal: false, vertical: true)
+                                }
+                                Section("Watch ID") {
+                                    Text(connection.watch_id).font(.caption2.monospaced())
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }.navigationTitle("Connection")
                         }
                     }
                     Section("Exercise music") {
