@@ -196,5 +196,8 @@ native destructive confirmation describing removal of pairing/downloaded music.
 The connection check still uses only the configured remote HTTPS address and an
 authenticated read-only config request, with cancellation/target guards. No HA
 control, vehicle wake, pairing format or music transfer behavior is changed.
-Core/SDK checks and physical-watch layout/navigation checks remain to be recorded.
-No app build, merge or release is authorized by this settings cleanup request.
+All 112 core tests and watch/iPhone SDK source typechecks passed for implementation
+`f7665eb7eecca133bfd9988db482457a542d60a4`:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43716241743
+Physical-watch layout/navigation checks remain. No app build, merge or release
+was started for this settings cleanup request.
