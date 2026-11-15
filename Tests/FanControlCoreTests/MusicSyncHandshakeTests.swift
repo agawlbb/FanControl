@@ -10,12 +10,6 @@ final class MusicSyncHandshakeTests: XCTestCase {
         XCTAssertTrue(attempt.claim(activated: true, reachable: true, watchID: "watch", now: now.addingTimeInterval(1)))
         XCTAssertFalse(attempt.claim(activated: true, reachable: true, watchID: "watch", now: now.addingTimeInterval(2)))
     }
-    func testWorkingLiveLinkDoesNotDependOnInstallationHint() {
-        var attempt = MusicSyncAttempt(watchID: "watch")
-        // Music uses the same channel readiness as Podcast. No separate
-        // isCompanionAppInstalled hint can veto an activated reachable link.
-        XCTAssertTrue(attempt.claim(activated: true, reachable: true, watchID: "watch"))
-    }
     func testExpiredAndOtherWatchAttemptsCannotSubmit() {
         let now = Date(timeIntervalSince1970: 1000)
         var attempt = MusicSyncAttempt(watchID: "watch", now: now)

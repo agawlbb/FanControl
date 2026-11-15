@@ -192,7 +192,10 @@ import FanControlCore
                 do {
                     guard let raw = value["music_sync_reply"] as? Data else { throw MusicSyncFailure.invalidReply }
                     let reply = try JSONDecoder().decode(MusicSyncReply.self, from: raw)
-                    self.receive(try reply.resolved(requestID: requestID, watchID: c.watch_id))
+                    let manifest = try reply.resolved(requestID: requestID, watchID: c.watch_id)
+                    self.syncRequestID = nil; self.syncAttempt = nil; self.syncConnection = nil
+                    self.syncRequestTimeout?.cancel(); self.syncRequestTimeout = nil
+                    self.receive(manifest)
                 } catch { self.failSyncRequest(requestID, connection: c, error: error) }
             }
         }, errorHandler: { error in
@@ -224,8 +227,6 @@ import FanControlCore
         let pending = destination.appendingPathComponent("incoming.json")
         if let data = try? Data(contentsOf: pending), let old = try? JSONDecoder().decode(OfflinePlaylist.self, from: data),
            old.generation > manifest.generation || (old.generation == manifest.generation && old.id != manifest.id) { return }
-        syncRequestID = nil; syncAttempt = nil; syncConnection = nil
-        syncRequestTimeout?.cancel(); syncRequestTimeout = nil
         if musicPlaylist != manifest.id {
             musicTask?.cancel(); musicTask = nil; musicPlaylist = nil; syncing = false
         }

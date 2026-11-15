@@ -1,3 +1,29 @@
+# Live music sync handshake — 0.12.2 (30), November 15, 2026
+
+Continues the user's instruction to complete music sync, merge to main, remove
+completed task branches and release the app. Task `fix/music-sync-readiness`
+starts at main `f2fc515bb821c3ba5a83b31ae33aea559ad39c4d`.
+
+The user confirmed both apps were on 0.12.1 (29) and Podcast live controls work.
+Music now uses that same activated/reachable channel without an extra companion
+installation hint blocking submission. The phone returns a matching single-song
+manifest directly in its reply. Sync can wait up to 15 seconds for initial
+readiness and submit once. Readiness changes republish/resume pending transfers.
+Unsolicited old manifests cannot clear an outstanding live request. Unlinked or
+mismatched watches, preparation failures, invalid replies, timeouts and numeric
+WatchConnectivity errors remain distinct. Context publication failure does not
+prevent live publication. Hash verification, atomic replacement, active playback
+preservation and screen-off background file handling remain unchanged.
+
+Core tests, SDK typechecks and TestFlight publication are pending.
+Physical-device checks remain for the reported 0% failure, late readiness,
+single-song transfer, wrist-down completion and offline playback. Working Podcast
+controls establish a live channel, but automated validation alone cannot establish
+why music failed on the paired devices or guarantee the fix resolves that failure.
+Both apps need updating after publication. No HA deployment is needed.
+
+---
+
 # Exercise music sync — 0.12.1 (29), November 15, 2026
 
 User authorized merge, task-branch cleanup and app release on November 15, 2026.
