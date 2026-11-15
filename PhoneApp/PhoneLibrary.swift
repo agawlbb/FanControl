@@ -103,7 +103,7 @@ import FanControlCore
             }
             return ["music_chunk": manifest.id.uuidString, "file": name, "offset": offset, "data": data]
         } catch {
-            error = "Music file unavailable. Import it again and tap Sync."
+            self.error = "Music file unavailable. Import it again and tap Sync."
             return [:]
         }
     }

@@ -12,7 +12,6 @@ public enum OfflineMusicTransfer {
     }
     public static func append(_ data: Data, to file: URL, track: ExerciseTrack, offset: Int) throws -> Bool {
         guard data.count == (try byteCount(track: track, offset: offset)) else { throw ControlError.invalidResponse }
-        let manager = FileManager.default
         if offset == 0 { try Data().write(to: file, options: .atomic) }
         let handle = try FileHandle(forWritingTo: file)
         defer { try? handle.close() }
