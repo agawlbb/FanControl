@@ -1,3 +1,29 @@
+# Music storage fix and watch settings — 0.12.4 (32), November 15, 2026
+
+The user explicitly requested consolidating both fix branches, deleting the old
+branches and releasing the combined app. The single ongoing working branch is
+`fix/music-sync-and-settings`, based on main
+`dcd045a8ede6d515f3d8815735a88af7103a24fd`. It preserves all commits from
+`fix/music-first-chunk` (`d653465f4941b670eb163b26f64c6b260be58a7f`) and
+`fix/watch-settings-cleanup` (`599850a4a6f12dc2eb71b3aaad16b3079eccfcad`).
+
+- The first audio-chunk write creates its staging directory at the write boundary
+  and saves real data directly. Missing-staging regression tests reproduced the
+  photographed NSCocoaErrorDomain 4 with the old writer. Later chunks still
+  require the correct existing prefix; whole-file SHA-256 remains mandatory.
+- One native watch settings menu replaces the duplicated layouts. Routine setup
+  instructions are removed. Watch ID/server are available only on the Connection
+  details page, and sync status appears only beside Sync music.
+- Diagnostics shows recorded activity without static timing explanations or
+  duplicated music errors. Forget connection requires a destructive confirmation.
+
+Combined source validation and TestFlight publication are pending. No HA deployment
+is needed. Physical checks remain for one-song transfer, wrist-down/background
+completion, offline playback, and settings layout/navigation. Automated checks do
+not establish physical-watch behavior. This request authorizes this release only.
+
+---
+
 # Readable music sync failures — 0.12.3 (31), November 15, 2026
 
 The user explicitly authorized finishing this already-started release. There is

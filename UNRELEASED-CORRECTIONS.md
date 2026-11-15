@@ -220,3 +220,14 @@ empty-file creation/reopen step. Later chunks still require their existing prefi
 and exact offset; length and whole-file SHA-256 verification remain unchanged.
 This changes no phone/watch configuration and does not touch the installed library.
 Physical-device confirmation and an explicitly requested app release remain needed.
+
+## Consolidated music/settings release — November 15, 2026
+
+The user explicitly requested merging the two fix branches into one working
+branch, deleting their old names and releasing the combined app. Both complete
+histories are preserved on `fix/music-sync-and-settings`; prior branch sections
+above describe their separate development before consolidation. The old branch
+names are removed only after verifying the combined branch is pushed and contains
+both original heads. Version 0.12.4 (32) contains both fixes. This is the sole
+ongoing working branch; no future release authorization is inferred. Main remains
+the last accepted integration head until merging to main is explicitly approved.
