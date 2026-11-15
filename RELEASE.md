@@ -1,9 +1,21 @@
-# Mission Log phone player — 0.12.0 (28), November 14, 2026
+# Mission Log phone player — 0.12.0 (28), November 15, 2026
 
 Release authorized by the user. Prepared on `feature/iphone-podcast-player`,
 containing implementation source `60943d0ca77aaad2cffaf1d1736abd9166267f2f`.
-Publication is pending signed build, upload, Apple processing and assignment to
-the existing Internal TestFlight group.
+Published to the existing **Internal** TestFlight group. Apple build
+`9538ea76-35ec-4baa-81a8-48601303a147` is `VALID`, not expired and
+`IN_BETA_TESTING`, marketing version 0.12.0, without non-exempt encryption.
+Update Fan Control in TestFlight to install it.
+
+Signed source: `f5d1262d4ba09be3c192b0c784f9964704a3cb9c`.
+All 95 Swift tests, signed iPhone/watch archive/export, signature and production
+APNs entitlement checks, upload, Apple processing and Internal-group assignment
+passed: https://github.com/agawlbb/FanControlWatch/actions/runs/43655966382
+Release-source core tests and both SDK typechecks also passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43655966169
+Immutable release tag: `v0.12.0-build28` at the signed source.
+Processing evidence is retained in the release workflow artifact and recorded here.
+No external testing submission or App Store release was performed.
 
 - iPhone-owned offline podcast playback and saved progress/completion history.
 - Episode picker grouped by Star Trek series/season, with films and played indicators.
