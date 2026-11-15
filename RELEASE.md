@@ -1,3 +1,31 @@
+# Exercise music sync — 0.12.1 (29), November 15, 2026
+
+User authorized merge, task-branch cleanup and app release on November 15, 2026.
+Prepared on `fix/iphone-music-sync`, containing implementation source
+`5c8f767c1021ba004e98aadd3edd09be07234f92`.
+
+- Both watch Sync controls request the iPhone's imported playlist instead of the
+  separate legacy HA playlist, fixing mismatched song totals.
+- A visible watch can receive verified music chunks directly from the iPhone,
+  with transfer progress and immediate saved receipts.
+- Screen-off WatchConnectivity wake tasks remain alive until session activation,
+  incoming delivery and file persistence finish; background file transfers remain
+  available after wrist-down.
+- Partial or corrupt replacements never replace the installed library, and
+  currently playing music is retained until the next session.
+
+Implementation core tests and iPhone/watch SDK typechecks passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43661483372
+Release validation, signing, upload, Apple processing and Internal TestFlight
+assignment are pending. Both the iPhone and watch apps need updating after
+publication. No HA deployment is needed.
+
+Paired-device checks remain for a one-song playlist, wrist-down during transfer,
+background completion receipts, interrupted transfer and offline playback.
+Automated tests and builds do not establish physical-device transfer or playback.
+
+---
+
 # Mission Log phone player — 0.12.0 (28), November 15, 2026
 
 Release authorized by the user. Prepared on `feature/iphone-podcast-player`,
