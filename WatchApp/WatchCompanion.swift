@@ -125,6 +125,8 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
     private func installBackgroundMusic() {
         // Runs during a WC background wake as well as launch/activation. No
         // applicationState/isReachable gate: receipt is already local on disk.
+        // Wait for session activation so installation can enqueue its receipt.
+        guard session.activationState == .activated else { return }
         musicInbox.installPending { delivery, file in
             ExercisePlayer.shared.receiveFile(file, manifest: delivery.playlist, name: delivery.fileName)
         }
