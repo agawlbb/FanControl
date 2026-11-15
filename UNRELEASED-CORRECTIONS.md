@@ -231,3 +231,10 @@ names are removed only after verifying the combined branch is pushed and contain
 both original heads. Version 0.12.4 (32) contains both fixes. This is the sole
 ongoing working branch; no future release authorization is inferred. Main remains
 the last accepted integration head until merging to main is explicitly approved.
+
+The consolidated source `e4147ea11e55590ec1f716dbf7fc8551d3d095fe` passed all
+115 core tests and both SDK typechecks in run 43717925835. Version 0.12.4 (32)
+was published to the existing Internal TestFlight group in successful signed
+release run 43718143480. Apple confirms VALID and IN_BETA_TESTING. Release tag:
+`v0.12.4-build32`. Both former branch heads remain in the combined history; their
+local/remote branch names were removed. Main is unchanged pending merge approval.

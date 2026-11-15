@@ -17,8 +17,24 @@ branches and releasing the combined app. The single ongoing working branch is
 - Diagnostics shows recorded activity without static timing explanations or
   duplicated music errors. Forget connection requires a destructive confirmation.
 
-Combined source validation and TestFlight publication are pending. No HA deployment
-is needed. Physical checks remain for one-song transfer, wrist-down/background
+Published to the existing **Internal** TestFlight group. Apple build
+`c9a81f2c-ccce-4d72-bc66-82916c36273d` is `VALID`, not expired and
+`IN_BETA_TESTING`, marketing version 0.12.4, without non-exempt encryption.
+Update both the iPhone and watch apps through TestFlight.
+
+Signed source: `e4147ea11e55590ec1f716dbf7fc8551d3d095fe` on
+`fix/music-sync-and-settings`. All **115 Swift core tests** and both app SDK
+source typechecks passed together:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43717925835
+Signed archive/export, signatures and production APNs entitlement checks, upload,
+Apple processing and Internal TestFlight access passed:
+https://github.com/agawlbb/FanControlWatch/actions/runs/43718143480
+Immutable release tag: `v0.12.4-build32` at the signed source. Apple processing
+evidence is retained in the release workflow artifact and this record.
+The old fix branches were removed locally/remotely after both original heads were
+verified as ancestors of the pushed combined branch. Main remains unchanged;
+merging to main was not requested. The combined branch and its checkout claim
+remain available for related follow-ups. No HA deployment is needed. Physical checks remain for one-song transfer, wrist-down/background
 completion, offline playback, and settings layout/navigation. Automated checks do
 not establish physical-watch behavior. This request authorizes this release only.
 
