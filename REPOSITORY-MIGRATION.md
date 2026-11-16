@@ -53,7 +53,6 @@ restart, uninstall, pairing change or physical command.
 
 All five existing Apple signing secret names are present in the final repository.
 Encryption-only workflow run 43956293551 succeeded in the preserved Apple history
-repository. The temporary transfer branch, unused run requests and ciphertext
-artifact were removed; the normal TestFlight workflow on main was not replaced.
+repository. The temporary transfer branch and ciphertext artifact were removed. The history repository workflow was disabled before archival. GitHub rejected cancellation/deletion of two earlier hosted-run requests while they were awaiting queue admission; those audit records remain in the archived repository. The normal TestFlight workflow on canonical main was not replaced.
 Original Apple releases and pull requests (including consolidation PRs 9 and 10)
 remain in [FanControl-Apple-history](https://github.com/agawlbb/FanControl-Apple-history).
