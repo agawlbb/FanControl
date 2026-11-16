@@ -38,3 +38,11 @@ fan_control_music/
 *.p8
 
 .venv-ha/
+
+# Apple build outputs and signing material.
+.build/
+build/
+*.xcodeproj/
+*.xcworkspace/
+*.mobileprovision
+.DS_Store

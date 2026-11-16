@@ -1,8 +1,16 @@
+# Unified FanControl repository
+
+Home Assistant lives at the root. Apple apps live under `apple-watch/`; apply
+that directory's AGENTS.md for Apple work. Never reintroduce Wear OS source.
+Run tools from each component's directory. Root `.github/workflows/` owns all
+workflows; builds and releases require explicit user authorization. The canonical
+checkout is `/home/dev/projects/FanControl` after migration acceptance.
+
 # Home Assistant integration development
 
 ## GitHub, branches and workspaces
 
-- GitHub `agawlbb/FanControlHA`, default branch `main`, is the canonical copy of accepted code and history. Laptop, VPS and cloud checkouts are working copies. The default branch is for integration of completed work, never a working branch for a task.
+- GitHub `agawlbb/FanControl`, default branch `main`, is the canonical copy of accepted code and history. Laptop, VPS and cloud checkouts are working copies. The default branch is for integration of completed work, never a working branch for a task.
 - Prefer the VPS for most development. Development may also take place on the laptop or another authorized environment, including emulator, webview and device testing. Independent tasks use separate, clearly named temporary branches and separate working directories (Git worktrees or clones). Do not share a writable checkout between concurrent tasks. There is no permanent designated chat owner or owner-chat approval requirement.
 - Before editing, read applicable instructions and inspect current branches, worktrees, local edits, live GitHub heads and active writers/builds. Preserve unrelated and unpushed work; a clean tree alone does not prove inactivity. Coordinate overlapping changes and shared resources with the tasks involved.
 - Before starting new work, fetch from GitHub (`git fetch origin`) and create the temporary task branch from the latest fetched remote default (`origin/<default>`, where `<default>` is this repository's `main`, `master` or `work` branch identified above). Record the task's purpose and base commit; do not branch from a stale local default.

@@ -13,7 +13,7 @@ without a command tap or phone. Local command alerts reconcile saved timers on
 recovery, suppress obsolete callbacks and avoid duplicate notifications. The
 release passed 85 Swift tests, iPhone/watch source typechecks and signed upload checks.
 
-Independent watchOS 10+ SwiftUI client for the [Fan Control HA integration](https://github.com/agawlbb/FanControlHA), ported from [Android 1.5.3](https://github.com/agawlbb/FanControl/tree/841587d42c391afaac4df77621c7428dd250b2c9).
+Independent watchOS 10+ SwiftUI client for the [Fan Control HA integration](https://github.com/agawlbb/FanControl), ported from [Android 1.5.3](https://github.com/agawlbb/FanControl/tree/841587d42c391afaac4df77621c7428dd250b2c9).
 
 ## Phone-only messages — 0.11.1 (27)
 
@@ -54,7 +54,7 @@ Watch command failure alerts keep their existing separate destination.
 
 HA holds the APNs signing key privately and sends directly to Apple over HTTP/2.
 The old hosted relay is retired. See the
-[verified HA deployment](https://github.com/agawlbb/FanControlHA/blob/main/DEPLOYMENT-DIRECT-APNS.md).
+[verified HA deployment](https://github.com/agawlbb/FanControl/blob/main/DEPLOYMENT-DIRECT-APNS.md).
 This transport migration changes no app payload or pairing contract.
 
 Automation alerts and readable in-app messages are included in 0.10.0 (24).
@@ -109,9 +109,7 @@ repository, see [GitHub builds and TestFlight setup](GITHUB-TESTFLIGHT.md).
 
 Current version: **0.11.1 (27)**; iOS 17+, watchOS 10+, HA 0.14.0. Published to the existing Internal TestFlight group.
 `swift test` runs core regression tests. XcodeGen uses `project.yml` to generate
-the iPhone, watch and complication targets. Existing GitHub workflows compile
-simulators/archive on main pushes and build/upload TestFlight only by explicit
-dispatch. Inspect workflow triggers before pushing; do not run release workflows
+the iPhone, watch and complication targets. GitHub app builds and TestFlight publication run only by explicit dispatch. Inspect workflow triggers before pushing; do not run release workflows
 for documentation maintenance.
 
 [Release evidence and remaining hardware checks](RELEASE.md),

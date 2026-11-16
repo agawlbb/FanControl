@@ -3,8 +3,8 @@
   "name": "Fan Control",
   "version": "0.14.0",
   "config_flow": true,
-  "documentation": "https://github.com/agawlbb/FanControlHA",
-  "issue_tracker": "https://github.com/agawlbb/FanControlHA/issues",
+  "documentation": "https://github.com/agawlbb/FanControl",
+  "issue_tracker": "https://github.com/agawlbb/FanControl/issues",
   "dependencies": [
     "http",
     "network"
