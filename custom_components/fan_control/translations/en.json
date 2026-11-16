@@ -1,0 +1,199 @@
+{
+  "title": "Fan Control",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Fan Control",
+        "description": "Enable local watch pairing. After adding the integration, choose Configure to approve your watch and select its devices."
+      }
+    },
+    "abort": {
+      "already_configured": "Fan Control is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage watches",
+        "menu_options": {
+          "pair": "Pair a watch",
+          "configure": "Configure watch devices and addresses",
+          "revoke": "Revoke a watch",
+          "panels": "Manage watch panels",
+          "push": "Apple Watch push refresh"
+        }
+      },
+      "pair": {
+        "title": "Enter watch code",
+        "description": "On the watch, choose Find Home Assistant and keep the pairing screen open. Enter its eight-digit code here.",
+        "data": {
+          "code": "Pairing code"
+        }
+      },
+      "confirm": {
+        "title": "Verify watch fingerprint",
+        "description": "Compare this fingerprint with the watch: **{fingerprint}**. Approve only if all characters match.",
+        "data": {
+          "matches": "The fingerprint matches my watch"
+        }
+      },
+      "configure": {
+        "title": "Choose watch",
+        "data": {
+          "watch_id": "Watch"
+        }
+      },
+      "devices": {
+        "title": "Choose watch controls",
+        "description": "Enter the watch name, administrator and Home Assistant addresses. Apple Watch panels are added separately under Manage watch panels; no fan is required. For Wear OS, choose approved devices and an active device. Remote access requires HTTPS.",
+        "data": {
+          "name": "Watch name",
+          "entities": "Approved devices",
+          "active_entity": "Active tile device",
+          "local_url": "Local Home Assistant address",
+          "remote_url": "Remote HTTPS address (optional)",
+          "owner_id": "Access-owning administrator"
+        }
+      },
+      "revoke": {
+        "title": "Revoke watch access",
+        "description": "The selected watch will stop connecting. Pair it again to restore access.",
+        "data": {
+          "watch_id": "Watch"
+        }
+      },
+      "panels": {
+        "title": "Choose watch for panels",
+        "data": {
+          "watch_id": "Watch"
+        }
+      },
+      "panel_menu": {
+        "title": "Manage panels",
+        "menu_options": {
+          "add_panel": "Add Work Morning panel",
+          "edit_panel": "Edit a panel",
+          "remove_panel": "Remove a panel",
+          "activate_panel": "Select active panel",
+          "add_exercise": "Add Exercise panel",
+          "add_driving": "Add Driving panel",
+          "add_fan": "Add Fan Control panel",
+          "add_on_duty": "Add On Duty panel"
+        }
+      },
+      "edit_panel": {
+        "title": "Edit panel",
+        "data": {
+          "panel_id": "Panel"
+        }
+      },
+      "remove_panel": {
+        "title": "Remove panel",
+        "description": "Removes this panel and its access to the selected entities. If active, device controls will be restored.",
+        "data": {
+          "panel_id": "Panel"
+        }
+      },
+      "activate_panel": {
+        "title": "Select active tile panel",
+        "data": {
+          "panel_id": "Panel"
+        },
+        "description": "Choose a panel and press Submit to save. The selected option reflects the current saved panel. The watch changes when its tile is visible."
+      },
+      "panel": {
+        "title": "Work Morning panel",
+        "description": "Choose a percentage sensor, a climate entity supporting power or a switch, and a script. Panel ID is used by automations and stays fixed after creation. Up to eight panels and sixteen total pages per watch. Climate labels: up to 12 characters; script labels: up to 18. For a vehicle, select both wake and online entities. Visible entry wakes the vehicle; controls wait for online status and valid readings. Cached readings do not prove fresh vehicle measurements.",
+        "data": {
+          "id": "Panel ID (letters, digits, underscores)",
+          "name": "Panel name",
+          "battery_entity": "Battery percentage sensor",
+          "climate_entity": "Climate power control",
+          "script_entity": "Leave for Work script",
+          "climate_label": "Climate button label",
+          "script_label": "Script button label",
+          "wake_entity": "Vehicle wake button (optional)",
+          "awake_entity": "Vehicle online binary sensor (optional)"
+        }
+      },
+      "exercise": {
+        "title": "Exercise panel",
+        "description": "Select the vehicle entities for the same car. Start locks the car and requests Spotify launch. Spotify is optional: leave both player and playlist blank to skip it. Selecting a Spotify player REQUIRES a playlist link or URI. A blank source uses Spotify’s active device, possibly another device; opening the watch app does not guarantee transfer. Stop unlocks, turns climate on and sets 63°F. Apple Watch does not currently support watch-local Spotify pause.",
+        "data": {
+          "id": "Panel ID",
+          "name": "Panel name",
+          "lock_entity": "Car door lock",
+          "climate_entity": "Car climate",
+          "wake_entity": "Car wake button",
+          "awake_entity": "Car online binary sensor",
+          "spotify_entity": "Spotify media player (optional)",
+          "spotify_playlist": "Spotify playlist link or URI (required when a player is selected)",
+          "spotify_source": "Spotify source name (optional; blank uses active device)"
+        },
+        "data_description": {
+          "spotify_playlist": "Required with Spotify media player. Use an open.spotify.com/playlist/… link or spotify:playlist:… URI. Leave both fields blank to disable Spotify."
+        }
+      },
+      "driving": {
+        "title": "Driving panel",
+        "description": "Choose distinct garage and powered-trunk cover entities that support explicit Open and Close, plus climate, wake and online roles for the same vehicle. Visible entry requests wake. Trunk initially displays CLOSED in gray, and its first tap requests OPEN without waiting for state confirmation. Gray requested outcomes become confirmed colors only after matching HA state. Unknown garage state disables its toggle until read. No configuration/background request wakes the car.",
+        "data": {
+          "id": "Panel ID",
+          "name": "Panel name",
+          "garage_entity": "Garage door cover",
+          "trunk_entity": "Vehicle trunk cover",
+          "climate_entity": "Vehicle climate",
+          "horn_entity": "Vehicle horn button (optional)",
+          "podcast_entity": "Podcast script (optional)",
+          "wake_entity": "Vehicle wake button",
+          "awake_entity": "Vehicle online binary sensor",
+          "color": "Car identification color"
+        }
+      },
+      "fan": {
+        "title": "Fan Control panel",
+        "description": "Choose a fan. This panel is optional, like Exercise, Driving and Work Morning. Panel IDs must be unique for this watch and remain unchanged when editing.",
+        "data": {
+          "id": "Panel ID",
+          "name": "Panel name",
+          "fan_entity": "Fan"
+        }
+      },
+      "push": {
+        "title": "Apple push notifications",
+        "description": "HA sends refreshes and alerts directly to Apple. Store your APNs P-256 signing key at /config/fancontrol-apns.p8 with private file permissions, then enter its Key ID and your Apple Team ID. No relay is used. Passive reads never wake vehicles.",
+        "data": {
+          "enabled": "Enable Apple push notifications",
+          "team_id": "Apple Team ID",
+          "key_id": "APNs Key ID"
+        }
+      },
+      "on_duty": {
+        "title": "On Duty panel",
+        "description": "Display the flight selected by FlightSync. No flight number is displayed.",
+        "data": {
+          "id": "Panel ID",
+          "name": "Name",
+          "city_pair_entity": "City pair sensor",
+          "departure_entity": "Departure time sensor"
+        }
+      }
+    },
+    "error": {
+      "invalid_pairing": "Pairing expired or was already approved. Start pairing again on the watch.",
+      "invalid_configuration": "Check the addresses and device selection. The active device must be in your approved list. Pairing codes expire after 10 minutes.",
+      "invalid_panel": "Check entity types, percentage units, label lengths and unique panel ID. Keep an edited panel ID unchanged.",
+      "spotify_playlist_required": "Enter a playlist for the selected Spotify player, or clear the player to disable Spotify.",
+      "spotify_player_required": "Select a Spotify player for this playlist, or clear the playlist to disable Spotify.",
+      "invalid_spotify_playlist": "Enter a valid Spotify playlist link or spotify:playlist:… URI.",
+      "invalid_exercise": "Check the four vehicle entities, panel name (up to 40 characters), and unique panel ID. Keep an edited panel ID unchanged.",
+      "invalid_fan": "Select an existing fan and a unique panel ID. Keep an edited panel ID unchanged.",
+      "invalid_push": "Enter the 10-character Apple Team ID and APNs Key ID and install a valid P-256 key at /config/fancontrol-apns.p8."
+    },
+    "abort": {
+      "admin_required": "A Home Assistant administrator must manage watch access.",
+      "no_watches": "No watches are paired yet.",
+      "no_panels": "No panels are configured for this watch."
+    }
+  }
+}
