@@ -16,4 +16,4 @@ FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for details.
 Dependencies retain their own licenses and notices. This grant does not cover
 third-party trademarks or imply endorsement by Home Assistant, Google or Spotify.
 
-Corresponding project source: https://github.com/agawlbb/FanControlHA
+Corresponding project source: https://github.com/agawlbb/FanControl

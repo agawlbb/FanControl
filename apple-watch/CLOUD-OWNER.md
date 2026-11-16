@@ -4,7 +4,7 @@ This file is retained for existing links. [AGENTS.md](AGENTS.md) governs reposit
 
 ## GitHub, branches and workspaces
 
-- GitHub `agawlbb/FanControlWatch`, default branch `main`, is the canonical copy of accepted code and history. Laptop, VPS and cloud checkouts are working copies. The default branch is for integration of completed work, never a working branch for a task.
+- GitHub `agawlbb/FanControl`, default branch `main`, is the canonical copy of accepted code and history. Laptop, VPS and cloud checkouts are working copies. The default branch is for integration of completed work, never a working branch for a task.
 - Prefer the VPS for most development. Development may also take place on the laptop or another authorized environment, including emulator, webview and device testing. Independent tasks use separate, clearly named temporary branches and separate working directories (Git worktrees or clones). Do not share a writable checkout between concurrent tasks. There is no permanent designated chat owner or owner-chat approval requirement.
 - Before editing, read applicable instructions and inspect current branches, worktrees, local edits, live GitHub heads and active writers/builds. Preserve unrelated and unpushed work; a clean tree alone does not prove inactivity. Coordinate overlapping changes and shared resources with the tasks involved.
 - Before starting new work, fetch from GitHub (`git fetch origin`) and create the temporary task branch from the latest fetched remote default (`origin/<default>`, where `<default>` is this repository's `main`, `master` or `work` branch identified above). Record the task's purpose and base commit; do not branch from a stale local default.
@@ -20,10 +20,10 @@ Apple builds run on GitHub-hosted macOS with Xcode. The Linux cloud workspace
 can edit source but cannot compile iOS/watchOS targets locally.
 The Apple repository's `watchos.yml` supports manual dispatch on main.
 Select `validation_only: true` for Swift tests and unsigned phone/watch simulator
-builds. Main pushes and pull requests also trigger its build workflow.
+builds. App builds run only by explicit workflow dispatch. Core tests and source typechecks run for Apple source changes.
 
 The HA repository's `checks.yml` supports push, pull request and manual dispatch,
-covering regression tests, Python/PHP checks, integration packaging and an HA
+covering regression tests, Python/PHP checks and an HA
 runtime job. Verify that the workflow is enabled before relying on it.
 
 The Apple `testflight.yml` is manual, defaults upload to false, and needs existing signing credentials.

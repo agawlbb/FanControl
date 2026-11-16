@@ -51,7 +51,7 @@ class Client:
 
 def deploy(sha, client=None):
     if not re.fullmatch(r"[a-f0-9]{40}",sha): raise ValueError("Pinned source required")
-    with urllib.request.urlopen("https://raw.githubusercontent.com/agawlbb/FanControlHA/"+sha+"/relay/public/index.php",timeout=30) as response:
+    with urllib.request.urlopen("https://raw.githubusercontent.com/agawlbb/FanControl/"+sha+"/relay/public/index.php",timeout=30) as response:
         source=response.read()
     if not source.startswith(b"<?php") or b"function outcome_payload" not in source: raise ValueError("Relay source rejected")
     client=client or Client()
