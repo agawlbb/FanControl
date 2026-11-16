@@ -18,8 +18,9 @@ def responses(): return [io.BytesIO(b"<?php function outcome_payload() {}"),io.B
 
 def test_pinned_public_only_deployment_preserves_private_state():
     client=FakeClient()
-    with patch.object(module.urllib.request,"urlopen",side_effect=responses()):
+    with patch.object(module.urllib.request,"urlopen",side_effect=responses()) as request:
         result=module.deploy("a"*40,client)
+    assert request.call_args_list[0].args[0] == "https://raw.githubusercontent.com/agawlbb/FanControl/" + "a"*40 + "/relay/public/index.php"
     assert len(client.writes)==2
     assert client.writes[0][0]==module.PRIVATE_DIR and client.writes[0][1].startswith("index-before-outcomes-")
     assert client.writes[1][:2]==(module.PUBLIC_DIR,"index.php")

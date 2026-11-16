@@ -1,12 +1,10 @@
-# Build and publish from the Apple Watch repository
+# Build and publish from the unified FanControl repository
 
-All new builds and releases use `agawlbb/FanControlWatch`. Historical releases
-used a different repository because it already held signing credentials. That
-repository is not required for the workflow described here.
+All new builds and releases use `agawlbb/FanControl`. This is the renamed Apple repository, so its existing signing secrets and release records are retained. Apple source lives in `apple-watch/`; the workflow files live in the repository root under `.github/workflows/`. Run local Apple checks from `apple-watch/`.
 
 ## Test and build without Apple credentials
 
-Open https://github.com/agawlbb/FanControlWatch/actions/workflows/watchos.yml.
+Open https://github.com/agawlbb/FanControl/actions/workflows/watchos.yml.
 Select **Run workflow**, select the branch you want to test, select
 **validation_only**, and select the green **Run workflow** button.
 This runs the Swift regression tests and compiles the iPhone and Apple Watch
@@ -16,7 +14,7 @@ on GitHub's Mac runner instead.
 
 ## Add signing credentials once
 
-Open https://github.com/agawlbb/FanControlWatch/settings/secrets/actions.
+Open https://github.com/agawlbb/FanControl/settings/secrets/actions.
 Select **New repository secret** for each name in the table below. Enter its
 value in GitHub's secret field, then select **Add secret**. Never send these
 values in chat or commit them to the repository.
@@ -60,7 +58,7 @@ and password used for the previous releases.
 
 ## Verify a signed build without uploading
 
-Open https://github.com/agawlbb/FanControlWatch/actions/workflows/testflight.yml.
+Open https://github.com/agawlbb/FanControl/actions/workflows/testflight.yml.
 Select **Run workflow** and select the intended branch. Enter a positive build
 number and leave **Upload signed build to TestFlight** unchecked. Select the
 green **Run workflow** button.

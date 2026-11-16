@@ -372,7 +372,7 @@ Immutable release tag: `v0.11.0-build26` at the signed source commit.
 HA **0.14.0** is deployed and loaded; its old live message copy was removed
 without changing pairing. Direct APNs remains enabled. The flight-alert automation
 retains delay, schedule-attention and route-change alerts, without arrival clearing.
-See [HA deployment evidence](https://github.com/agawlbb/FanControlHA/blob/main/DEPLOYMENT-PHONE-MESSAGES.md).
+See [HA deployment evidence](https://github.com/agawlbb/FanControl/blob/main/DEPLOYMENT-PHONE-MESSAGES.md).
 
 The one-time release-branch trigger was removed after the successful release;
 normal TestFlight publication remains manual. Physical checks remain for swipe

@@ -22,3 +22,22 @@ Wear OS source and Git history were verified in the Samba Retired projects folde
 before the original FanControl GitHub repository was deleted by the user.
 
 Integration packaging remains available through `python scripts/build_integration.py`; automatic checks do not build distributables. Apple workflow preflight runs at the workspace root before checkout; release commands run in `apple-watch/`.
+
+## Remaining updater migration — November 16, 2026
+
+The live Marketplace still owns the installed `fan_control` directory through
+repository ID 1417562588 (`agawlbb/FanControlHA`). The combined repository, ID
+1424743760 (`agawlbb/FanControl`), is registered as a custom integration source.
+An install pinned to the combined main commit was rejected before installation:
+"The fan_control directory belongs to agawlbb/FanControlHA".
+
+Do not delete the configured integration or its pairing data to work around this
+ownership check. Keep FanControlHA available until a supported ownership transfer
+or an explicitly approved backup/restore migration is established. Registering the
+new repository alone does not transfer installed ownership. No HA restart, config
+entry deletion, integration uninstall or physical command was performed.
+
+Historical Actions links deliberately retain the original repository name because
+those run records were not moved by the Git history import. Current source links
+and the legacy relay maintenance fetch now use the unified repository. The relay
+is retired; changing its source link does not authorize running its deployment.
