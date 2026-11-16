@@ -1,43 +1,59 @@
 # Repository consolidation — November 16, 2026
 
 Canonical repository: https://github.com/agawlbb/FanControl (main).
+Canonical local checkout: `/home/dev/projects/FanControl`.
 
-The former FanControlWatch repository is renamed so its Apple signing secrets,
-Actions history and release records remain attached. Its source moves to
-`apple-watch/`. FanControlHA is imported at the root through a merge retaining
-its original commits, preserving HACS custom_components discovery. The retained
-FanControlHA repository should redirect users here and be archived only after
-the migration is accepted; existing HACS users must update their custom repository URL.
+Home Assistant stays at the root for HACS/Marketplace discovery. The iPhone and
+Apple Watch apps live in `apple-watch/`. Both original commit histories and
+release tags are preserved without rewriting history.
 
-Source bases:
-- Apple: 75425f5 (original main).
-- HA: 42b4658 (original main).
+## Preserve the Home Assistant update identity
 
-Original release tags point to their original historical layouts. New releases
-must use the unified layout. Historical release evidence remains historical.
-No app identifiers, HA domain, pairing credentials or deployed software change.
-Migration does not deploy HA or publish an app.
+The final canonical repository retains the original Home Assistant repository ID
+1417562588. Marketplace owns the installed `fan_control` directory through that
+ID, so renaming this repository preserves the existing update connection without
+uninstalling the integration, deleting configuration, or recreating pairings.
 
-Wear OS source and Git history were verified in the Samba Retired projects folder
-before the original FanControl GitHub repository was deleted by the user.
+The earlier attempt to use Apple repository ID 1424743760 as canonical was
+rejected by Marketplace's directory-ownership check. Its uninstalled Marketplace
+registration was removed. That repository is retained as `FanControl-Apple-history`
+for original Apple release files, Actions runs and pull-request records.
 
-Integration packaging remains available through `python scripts/build_integration.py`; automatic checks do not build distributables. Apple workflow preflight runs at the workspace root before checkout; release commands run in `apple-watch/`.
+The five existing Apple signing secrets were copied with explicit user approval,
+sealed to the destination repository public key. No plaintext secrets were logged
+or placed in artifacts; the temporary artifact contained only destination-key
+ciphertext, which was deleted after import. An isolated one-job development-container runner completed the transfer after hosted execution stalled; its registration and local files were removed. No new Apple identity was created and no app was built or released.
 
-## Remaining updater migration — November 16, 2026
+Original main bases:
+- Apple: 75425f5.
+- HA: 42b4658.
 
-The live Marketplace still owns the installed `fan_control` directory through
-repository ID 1417562588 (`agawlbb/FanControlHA`). The combined repository, ID
-1424743760 (`agawlbb/FanControl`), is registered as a custom integration source.
-An install pinned to the combined main commit was rejected before installation:
-"The fan_control directory belongs to agawlbb/FanControlHA".
+Original tags retain their historical layouts. New integration updates use the
+unified main layout; Apple release tags from before consolidation do not contain
+root-level integration source. Historical Actions links retain the repository
+identity that actually owns those records.
 
-Do not delete the configured integration or its pairing data to work around this
-ownership check. Keep FanControlHA available until a supported ownership transfer
-or an explicitly approved backup/restore migration is established. Registering the
-new repository alone does not transfer installed ownership. No HA restart, config
-entry deletion, integration uninstall or physical command was performed.
+Wear OS source and Git history were verified on Samba before the user deleted
+its original GitHub repository. Redundant local checkouts were preserved outside
+the active project directories. A combined Git recovery bundle is in Samba's
+`Retired projects/FanControl-consolidation-recovery-20261116/` folder.
 
-Historical Actions links deliberately retain the original repository name because
-those run records were not moved by the Git history import. Current source links
-and the legacy relay maintenance fetch now use the unified repository. The relay
-is retired; changing its source link does not authorize running its deployment.
+The consolidation changes no HA domain, app identifier, pairing, credential,
+entity or physical-device behavior. Integration packaging remains available with
+`python scripts/build_integration.py`; Apple checks run from `apple-watch/`.
+App builds and TestFlight publication require explicit workflow dispatch and
+separate user authorization.
+
+## Verified completion
+
+Marketplace lists `agawlbb/FanControl`, ID 1417562588, as the installed update
+source. The original config entry `01M4VCVEECE8176WED4BJGGMS8` remained loaded.
+Its installed revision stayed `42b4658`; source migration required no deployment,
+restart, uninstall, pairing change or physical command.
+
+All five existing Apple signing secret names are present in the final repository.
+Encryption-only workflow run 43956293551 succeeded in the preserved Apple history
+repository. The temporary transfer branch, unused run requests and ciphertext
+artifact were removed; the normal TestFlight workflow on main was not replaced.
+Original Apple releases and pull requests (including consolidation PRs 9 and 10)
+remain in [FanControl-Apple-history](https://github.com/agawlbb/FanControl-Apple-history).

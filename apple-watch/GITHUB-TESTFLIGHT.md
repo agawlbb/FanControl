@@ -1,6 +1,6 @@
 # Build and publish from the unified FanControl repository
 
-All new builds and releases use `agawlbb/FanControl`. This is the renamed Apple repository, so its existing signing secrets and release records are retained. Apple source lives in `apple-watch/`; the workflow files live in the repository root under `.github/workflows/`. Run local Apple checks from `apple-watch/`.
+All new builds and releases use `agawlbb/FanControl`. The original Apple release records are preserved in `agawlbb/FanControl-Apple-history`. The same five existing signing credentials were securely copied into the unified repository with explicit user approval; app identifiers and the Apple team are unchanged. Apple source lives in `apple-watch/`; the workflow files live in the repository root under `.github/workflows/`. Run local Apple checks from `apple-watch/`.
 
 ## Test and build without Apple credentials
 
