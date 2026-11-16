@@ -1,0 +1,156 @@
+"""Load this integration in an isolated real HA instance; never connects to a home."""
+import asyncio
+import shutil
+import tempfile
+from pathlib import Path
+
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from homeassistant.core import HomeAssistant
+from homeassistant.bootstrap import async_from_config_dict
+from homeassistant import loader
+from homeassistant.setup import async_setup_component
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.auth.const import GROUP_ID_ADMIN
+
+
+async def main():
+    with tempfile.TemporaryDirectory() as directory:
+        source = Path(__file__).resolve().parents[1] / "custom_components"
+        shutil.copytree(source, Path(directory) / "custom_components", ignore=shutil.ignore_patterns("__pycache__"))
+        hass = HomeAssistant(directory)
+        # Dependencies are provisioned before this isolated test. Never let HA's
+        # installer replace the patched CI-only Pillow/uv overrides at runtime.
+        hass.config.skip_pip = True
+        try:
+            # Bootstrap initializes auth, loaders, and the config-entry manager as on HA startup.
+            loader.async_setup(hass)
+            config = {"http": {"server_host": "127.0.0.1", "server_port": 18123}, "fan_control": {}}
+            assert await async_from_config_dict(config, hass) is hass
+            assert await async_setup_component(hass, "fan_control", config)
+            await hass.async_block_till_done()
+            assert "fan_control" in hass.config.components
+            result = await hass.config_entries.flow.async_init("fan_control", context={"source": "user"}, data={})
+            assert result["type"] == "create_entry", result
+            entry = result["result"]
+            await hass.async_block_till_done()
+            assert entry.state is ConfigEntryState.LOADED, entry.state
+            owner = await hass.auth.async_create_user("Test administrator", group_ids=[GROUP_ID_ADMIN])
+            # Synthetic states are sufficient: this check never calls a device service.
+            hass.states.async_set("fan.example", "off", {"friendly_name": "Example fan", "supported_features": 1, "percentage": 0})
+            hass.states.async_set("light.example", "off", {"friendly_name": "Example light"})
+            from custom_components.fan_control.protocol import encode
+            keys = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+            manager = hass.data["fan_control"]["manager"]
+            pairing = manager.create(encode(keys.public_key().public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)))
+            flow = await hass.config_entries.options.async_init(entry.entry_id)
+            assert flow["type"] == "menu", flow
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "pair"})
+            assert flow["step_id"] == "pair", flow
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"code": pairing["code"]})
+            assert flow["step_id"] == "confirm", flow
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"matches": True})
+            assert flow["step_id"] == "devices", flow
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"name": "Example watch", "owner_id": owner.id, "entities": ["fan.example", "light.example"], "active_entity": "fan.example", "local_url": "http://127.0.0.1:8123", "remote_url": "https://ha.example.com"})
+            assert flow["type"] == "create_entry", flow
+            await hass.async_block_till_done()
+            watch_id = next(iter(manager.watches))
+            selects = [state for state in hass.states.async_all("select") if state.state == "fan.example"]
+            assert len(selects) == 1, selects
+            await hass.services.async_call("fan_control", "set_active_device", {"watch_id": watch_id, "entity_id": "light.example"}, blocking=True)
+            await hass.async_block_till_done()
+            assert hass.states.get(selects[0].entity_id).state == "light.example"
+            await hass.services.async_call("select", "select_option", {"entity_id": selects[0].entity_id, "option": "fan.example"}, blocking=True)
+            assert manager.watches[watch_id]["entity"] == "fan.example"
+            hass.states.async_set("sensor.example_battery", "82", {"unit_of_measurement": "%"})
+            hass.states.async_set("climate.example_car", "off", {"supported_features": 384})
+            hass.states.async_set("script.example_leave", "off", {})
+            flow = await hass.config_entries.options.async_init(entry.entry_id)
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "panels"})
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"watch_id": watch_id})
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "add_panel"})
+            assert flow["step_id"] == "panel", flow
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {
+                "id": "work_morning", "name": "Work Morning", "battery_entity": "sensor.example_battery",
+                "climate_entity": "climate.example_car", "script_entity": "script.example_leave",
+                "climate_label": "Climate", "script_label": "Leave for work"})
+            assert flow["type"] == "create_entry", flow
+            await hass.services.async_call("fan_control", "set_active_panel", {"watch_id": watch_id, "panel_id": "work_morning"}, blocking=True)
+            from custom_components.fan_control.panels import configuration
+            assert configuration(manager.watches[watch_id])["entity"] == "panel.work_morning"
+            await hass.services.async_call("fan_control", "set_active_panel", {"watch_id": watch_id, "panel_id": "devices"}, blocking=True)
+            assert configuration(manager.watches[watch_id])["entity"] == "fan.example"
+            # Exercise the new Driving menu and selectors with synthetic entities only.
+            for entity, state, attributes in (
+                ("cover.example_garage", "closed", {"supported_features": 3}),
+                ("cover.example_trunk", "closed", {"supported_features": 3}),
+                ("button.example_wake", "unknown", {}),
+                ("binary_sensor.example_online", "off", {})):
+                hass.states.async_set(entity, state, attributes)
+            flow = await hass.config_entries.options.async_init(entry.entry_id)
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "panels"})
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"watch_id": watch_id})
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id": "add_driving"})
+            assert flow["step_id"] == "driving", flow
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {
+                "id": "driving", "name": "Driving", "garage_entity": "cover.example_garage",
+                "trunk_entity": "cover.example_trunk", "climate_entity": "climate.example_car",
+                "wake_entity": "button.example_wake", "awake_entity": "binary_sensor.example_online"})
+            assert flow["type"] == "create_entry", flow
+            await hass.services.async_call("fan_control", "set_active_panel", {"watch_id": watch_id, "panel_id": "driving"}, blocking=True)
+            assert configuration(manager.watches[watch_id])["entity"] == "panel.driving"
+            from custom_components.fan_control.panels import panel_state
+            driving = next(panel for panel in manager.watches[watch_id]["panels"] if panel["id"] == "driving")
+            assert panel_state(hass, driving)["trunk_state"] == "unknown"
+            # Apple Watch starts with identity/address setup only, then adds a fan
+            # through the same panel manager as the vehicle panels.
+            pairing = manager.create(encode(keys.public_key().public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)), "watch_os")
+            flow = await hass.config_entries.options.async_init(entry.entry_id)
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id":"pair"})
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"code":pairing["code"]})
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"matches":True})
+            assert not {"entities", "active_entity"} & {str(k) for k in flow["data_schema"].schema}
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"name":"Joes Ultra 4", "owner_id":owner.id, "local_url":"http://127.0.0.1:8123"})
+            assert flow["type"] == "create_entry", flow
+            apple_id = next(key for key, watch in manager.watches.items() if watch.get("platform") == "watch_os")
+            assert not configuration(manager.watches[apple_id])["devices"]
+            flow = await hass.config_entries.options.async_init(entry.entry_id)
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id":"panels"})
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"watch_id":apple_id})
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"next_step_id":"add_fan"})
+            flow = await hass.config_entries.options.async_configure(flow["flow_id"], {"id":"bedroom", "name":"Bedroom", "fan_entity":"fan.example"})
+            assert flow["type"] == "create_entry", flow
+            await hass.async_block_till_done()
+            assert configuration(manager.watches[apple_id])["entity"] == "panel.bedroom"
+            from homeassistant.helpers import device_registry as dr
+            device = dr.async_get(hass).async_get_device_by_identifier(("fan_control", apple_id), entry.entry_id)
+            assert device.name == "Joes Ultra 4" and device.model == "Apple Watch", device
+            # Durable operation storage/reload against real HA; the desired state
+            # already holds, so the worker must complete without a physical call.
+            import time
+            from custom_components.fan_control import vehicle_operations as vo
+            runtime = hass.data["fan_control"]
+            body = {"action":"operation_submit", "operation_id":"12345678-1234-1234-1234-123456789abc",
+                    "issued_at_ms":int(time.time()*1000), "panel_id":"bedroom",
+                    "panel_config":configuration(manager.watches[apple_id])["devices"][0]["panel"], "command":"turn_off"}
+            async with runtime["lock"]:
+                assert vo.handle(hass, runtime, apple_id, manager.watches[apple_id], body)["operation_status"] == "pending"
+                await vo.persist(runtime)
+                op = runtime["vehicle_operations"][(apple_id, body["operation_id"])]
+                op["gate"].set()
+            await op["task"]
+            assert op["status"] == "complete"
+            saved = await runtime["operation_store"].async_load()
+            assert saved["operations"][0]["status"] == "complete"
+            assert await hass.config_entries.async_unload(entry.entry_id)
+            assert await hass.config_entries.async_setup(entry.entry_id)
+            restored = hass.data["fan_control"]["vehicle_operations"][(apple_id, body["operation_id"])]
+            assert restored["status"] == "complete"
+            assert await hass.config_entries.async_unload(entry.entry_id)
+            print("Real HA load, pairing/options, durable operation storage/reload, selector and unload passed.")
+        finally:
+            await hass.async_stop()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

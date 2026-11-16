@@ -1,14 +1,14 @@
 name: watchOS
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
     inputs:
       validation_only:
         description: Run core tests and compile unsigned simulators only
         type: boolean
         default: false
+defaults:
+  run:
+    working-directory: apple-watch
 permissions:
   contents: read
 jobs:
@@ -42,11 +42,11 @@ jobs:
         with:
           name: FanControlWatch-unsigned
           path: |
-            build/watch-*.png
-            build/phone-*.png
-            build-phone/Build/Products/Debug-iphonesimulator/FanControl.app
-            build/FanControlWatch.xcarchive
-            build/Build/Products/Debug-watchsimulator/FanControlWatch.app
+            apple-watch/build/watch-*.png
+            apple-watch/build/phone-*.png
+            apple-watch/build-phone/Build/Products/Debug-iphonesimulator/FanControl.app
+            apple-watch/build/FanControlWatch.xcarchive
+            apple-watch/build/Build/Products/Debug-watchsimulator/FanControlWatch.app
           retention-days: 7
 
 

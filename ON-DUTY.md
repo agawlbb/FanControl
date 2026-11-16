@@ -2,56 +2,70 @@
 > phone-only storage and 12-hour/manual dismissal with HA 0.14.0 and the next
 > iPhone build. Arrival no longer clears messages; HA no longer retains them.
 
-# On Duty tile and readable iPhone messages
+# On Duty tile and iPhone messages
 
 Task `feature/on-duty`, based on canonical main
-`d21ffd123048f34547e5ccaab7af12aecbe2a025`. Requires FanControl HA 0.12.0.
+`8ec6de4369788858f33016453ac83bea7ffccc59` (HA) and
+`d21ffd123048f34547e5ccaab7af12aecbe2a025` (Apple).
 
-The read-only tile shows city pair, departure time in the watch's local timezone,
-and time to go. No flight number. FlightSync owns flight selection. Stored
-observations display gray at entry; fresh available observations turn teal.
-Existing HA hints, iPhone snapshots, watch transfer and bounded entry reads are
-reused. A received On Duty snapshot refreshes only passive flight presentation;
-it cannot confirm commands. The countdown runs locally and stops at zero.
+HA 0.12.0 adds an Apple-only, read-only On Duty panel. Configure the city pair
+and departure sensors in the native panel manager. FlightSync selects the flight;
+FanControl copies those values without choosing a flight or showing its number.
+The panel uses existing active-panel change hints and companion snapshots.
+It never wakes or controls a device. On watch opening, saved data is gray;
+a fresh authenticated read or newly received available snapshot turns it teal.
+Departure uses the watch's local time, and time to go counts down locally to zero.
+Unknown or unavailable values remain gray.
 
-The iPhone Messages section keeps the title and full body of automation alerts.
-Tapping a banner opens a scrollable message with selectable text and a Done button,
-including when the app starts from closed. Messages persist locally for offline
-reading. HA snapshots reconcile the full list. On `flight_arrived`, the prepared
-HA automation clears all messages; the next successful snapshot removes them
-from view, including an open message. Notification Center is unchanged.
-Unlinking or replacing the pairing clears private local messages.
+Automation notifications now retain title and full message with the same push ID
+in private per-watch HA storage. Companion snapshots deliver messages to the
+linked iPhone. Tapping an alert opens its full text even on a cold app launch;
+messages also appear in the phone's Messages section. No messages go in Git,
+diagnostics, or relay storage. Unlinking the companion clears the messages.
+`fan_control.clear_messages` clears all messages for the selected watch's iPhone,
+persists the empty list, and queues an ordinary refresh hint. The next successful
+snapshot clears the list and any open message. Notification Center is unchanged.
+A suspended/offline phone reconciles at its next allowed refresh/opening.
+No relay changes or FlightSync changes are required.
 
-The On Duty panel is configured and these two HA automations are enabled:
-`automation.joe_watch_on_duty_tile` and
-`automation.joe_watch_flightsync_messages`. See the HA repository's ON-DUTY.md.
-No FlightSync or relay change is required. Version 0.10.0 (24) is published to the
-existing Internal TestFlight group;
-HA 0.12.0 is deployed and loaded after one validated restart. Phone/watch app
-installation and remaining physical checks are user/device actions.
+## Prepared automations
 
-Validation: all 78 Swift core tests and iPhone/watch source typechecks passed on
-[Mac core-tests run 42040629167](https://github.com/agawlbb/FanControlWatch/actions/runs/42040629167),
-commit `ce2db5ee20b0541808afc2cdf50104df83033b7c`. Release/device checks still needed: stored gray → updated teal,
-local countdown and timezone rendering, notifications tapped with phone app cold
-and warm, and arrival clearing on refresh after phone suspension.
+The following are configured and enabled in HA. The existing Work Morning and
+other automations are unchanged.
 
-## Gray opening display correction — 0.10.1 (25)
+- `automation.joe_watch_on_duty_tile`: On duty becomes on → select `on_duty`
+  on `select.watch_tile_panel`.
+- `automation.joe_watch_flightsync_messages`: listen for FlightSync's
+  `next_flight_delayed`, `schedule_needs_attention`, `flight_route_changed`, and
+  `flight_arrived` bus events, filtered to Joe's FlightSync config entry.
+  The first three call `fan_control.send_notification`; arrival calls
+  `fan_control.clear_messages`. Queued execution preserves event order.
+  FlightSync's title/message are forwarded directly where supplied; route
+  changes include the city pair and new route.
 
-The original On Duty implementation omitted its fields from ObservationCache,
-so a live flight could be displayed but was not saved for the next opening.
-The correction retains one complete valid city-pair/departure observation from
-entry reads and phone snapshots. Saved data contains no availability/freshness
-flag; opening still starts gray. An incoming available snapshot supplies the
-actual live state for teal presentation. Unavailable/partial updates preserve
-the saved pair and departure together, gray. Existing credential/watch/role scope
-is retained. No HA or automation changes are needed.
+## Activation
 
-All 80 Swift tests and iPhone/watch source typechecks passed on
-https://github.com/agawlbb/FanControlWatch/actions/runs/42054731006.
-After upgrading, one successful update seeds the cache if no earlier flight data
-was saved by the previous build. Paired-watch opening/rendering checks remain.
+Install the HA integration and matching iPhone/watch update through the existing
+release process. Under Fan Control → Manage watch panels, add On Duty with ID
+`on_duty`, city pair `sensor.joe_s_work_schedule_flight_airports` and departure
+`sensor.joe_s_work_schedule_flight_start`. Enable the two prepared automations.
+Deployment completed November 5, 2026 from source
+`f4bff5e215f83e2912029cee9019c25d7f4bc96e`. All ten changed existing files
+matched the installed 0.11.0 source before copying. Eleven updated/new files
+read back exactly. HA configuration validation passed; one Core restart loaded
+0.12.0, verified through the integration manifest and new clear_messages action.
+The On Duty panel is configured with the entities above and both automations
+are enabled. Pairing and existing panels/selection were preserved. FanControl
+0.10.0 (24) is available to the existing Internal TestFlight group, Apple build
+`28b6c495-b6b1-4d38-a274-860da576692b`, VALID and IN_BETA_TESTING.
+No physical commands or synthetic flight notifications were sent as validation.
+User/device installation and physical checks remain.
 
-The correction is published as 0.10.1 (25) to the existing Internal TestFlight group.
-Apple processing and assignment passed in run
-https://github.com/agawlbb/FanControlWatch/actions/runs/42055189243.
+## Validation
+
+297 Python integration tests and eight relay tests passed; Python compilation passed.
+All 78 Swift tests and iPhone/watch source typechecks passed on Mac run
+https://github.com/agawlbb/FanControlWatch/actions/runs/42039898195.
+Physical checks: gray cache then teal refreshed flight data, background phone
+updates, departure/countdown across timezones, full text on cold/warm notification
+taps, and arrival clearing while the phone is suspended then reopened.

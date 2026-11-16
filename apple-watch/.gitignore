@@ -1,0 +1,21 @@
+.build/
+__pycache__/
+*.py[cod]
+build/
+*.xcodeproj/
+*.xcworkspace/
+.DS_Store
+*.p8
+*.p12
+*.mobileprovision
+.env*
+private-music/
+*.[mM][pP]3
+*.[mM]4[aA]
+*.[aA][aA][cC]
+*.[wW][aA][vV]
+*.[aA][iI][fF][fF]
+*.[fF][lL][aA][cC]
+
+# Generated test tone only; imported recordings stay ignored.
+!Tests/FanControlCoreTests/Fixtures/generated-tone.mp3

@@ -1,355 +1,49 @@
-# Released corrections - October 25, 2026
+# Released HA/relay corrections - October 25, 2026
 
-Apple 0.9.0 (18) is published to the existing Internal TestFlight group. HA 0.10.0
-and the outcome relay are deployed; command_operations_version is 2. This rollout
-followed the user's subsequent explicit build/release authorization.
-See [release evidence](RELEASE.md). This filename is retained for existing links.
+HA 0.10.0 and command_operations_version 2 are deployed with the outcome relay
+following explicit build/release authorization. Apple 0.9.0 (18) is the matching
+client. See [deployment and rollback evidence](DEPLOYMENT-0.10.0.md).
+This filename is retained to preserve existing links to the implementation record.
 
-## Color and lifecycle contract
+The shared operation pipeline now returns authoritative request-arrival,
+registration, acceptance, wake/online, dispatch/return and terminal timestamps,
+plus bounded event history and fresh observation metadata. Duplicate submissions
+keep original times; client-provided timestamps cannot replace server evidence.
+HA last_reported/last_updated freshness (120 seconds) prevents old online/climate
+state suppressing wake or confirming success. Role comparisons ignore cosmetic
+names/colors while still rejecting changed targets or revoked authorization.
 
-All command controls project the requested absolute outcome in gray immediately.
-An authenticated, matching operation acknowledgment turns the requested outcome
-teal: HA owns ensuring completion. This applies to climate, fan power/speed,
-covers and action buttons alike. Teal does not assert physical completion or
-playback. Execution, pending/conflict protection and observed cache are independent.
-Terminal failed, unconfirmed or cancelled outcomes return the requested control
-to gray. No separate command status text was introduced.
+The watch turns every requested control teal on authenticated HA ownership;
+physical execution and matching-state confirmation continue independently. The
+watch entry coordinator performs bounded user-visible wake/readiness observation,
+and cached climate ON cannot invert the initial cold-entry ON intent.
 
-Background and foreground responses feed one persisted receipt and visible-control
-update. Match operation ID, watch credential and captured target roles. Ignore
-older snapshots and stale callbacks; never downgrade a completed operation with
-a late pending response. On reopening, reconcile the saved receipt before waiting
-for another network response. Unrelated names/colors and configuration revisions
-cannot redirect or prevent a valid captured command.
+User-command outcomes now use a dedicated watch-only registration/relay namespace,
+separate from the phone's passive snapshot destination. The new relay `outcome`
+action accepts only operation IDs and fixed terminal statuses, never arbitrary
+messages or physical commands. Failed/unconfirmed operations generate generic
+visible alerts; complete/accepted operations send silent hints. The watch verifies
+operation status through its authenticated API before changing feedback. Entry-only
+wake operations do not generate extra command alerts.
 
-## Visible vehicle entry
+HA persists notification evidence, retries bounded transport failures, rechecks
+newer intents and revocation after awaits, restores unsent outcomes after reload
+and backfills results after watch registration. The relay deduplicates APNs-
+accepted update IDs and uses a per-operation collapse ID and bounded expiration.
+APNs acceptance is not watch receipt. Cross-channel exactly-once display cannot
+be guaranteed during disconnection; local missing-handoff fallback uses honest
+not-confirmed wording and 30 seconds of notification grace after the 195-second
+operation deadline. Normal accepted wake/retry delays remain silent.
 
-Work Morning, Driving and Exercise use one scoped entry coordinator: primary
-entry is immediate, swipes settle for 1.5 seconds. HA validates the captured roles
-and owns the accepted wake. The watch retries the same entry submission only while
-that target remains visible, reuses endpoint fallback, and performs bounded
-readiness/state confirmation (105 seconds maximum). This is not routine polling.
-Phone snapshots cannot accidentally cancel or disable an eligible entry. Leaving
-cancels entry work; it cannot cancel an independently saved user command.
+The approved rollout coordinates **HA, relay and watch together**.
+Preserve HA pairing/operation stores and relay private config/key/SQLite data;
+never put those files in Git. Validate the new relay before depending on HA outcome
+alerts. No new Apple key/topic is introduced: command alerts use the existing watch
+topic, with a registration separate from phone snapshot delivery. Watch notification
+permission, registration, relay connectivity and OS delivery remain prerequisites.
 
-Only fresh available HA observations update displayed vehicle state. Old online
-or climate reports cannot suppress wake or confirm an outcome. The HA freshness
-window is 120 seconds; it describes HA reporting, not independent vehicle proof.
-Cold/unconfirmed climate presents assumed OFF in gray so its first tap is ON,
-even if yesterday's cache said ON. Preserve that absolute intent through all retries.
-
-## Failure alerts
-
-Every user command uses generic watch alert handling. Before HA acknowledgment,
-a local not-confirmed fallback is scheduled after the 195-second operation window
-plus 30 seconds of notification transport grace. Ownership cancels that fallback.
-After handoff, HA sends terminal failed/unconfirmed alerts to a dedicated watch
-APNs registration, separate from phone snapshot routing; success uses a silent
-outcome hint and no user alert. Entry-only wakes do not generate command alerts.
-HA retries notification transport with stable IDs, rechecks supersession/revocation,
-records APNs evidence and resumes unsent terminal outcomes after HA reload.
-
-Notification permission, valid watch registration, relay connectivity and watchOS
-notification delivery are prerequisites. APNs acceptance is not watch receipt.
-Unknown network outcomes say not confirmed. Local and remote notification delivery
-cannot promise exactly-once presentation when connectivity is lost; operation IDs,
-transport grace and reconciliation suppress normal duplicates and stale alerts.
-
-## Diagnostics and remaining device checks
-
-HA diagnostics record request arrival, registration, durable acceptance, wake/
-online observation, command dispatch/return, terminal and notification timings.
-Watch diagnostics retain bounded tap, upload, acknowledgment received/displayed
-and entry display/cancellation/state timings. Match by operation ID. Server times
-are generated by HA; retries preserve original timestamps. No credentials, tokens,
-URLs or full request bodies are logged.
-
-Synthetic regressions cover asynchronous receipt ordering, stale IDs/targets,
-color ownership vs execution, cold climate intent, scoped cosmetics, timing bounds,
-closed-watch server continuation, shared wake, stale online/climate reports,
-notification routing/deduplication/supersession and relay payload validation.
-Physical checks remain: cellular-only swipe/tap/immediate exit, sleeping car,
-notification permission/OS delivery, lost acknowledgment, opposite intents,
-configuration changes, HA restart and live state freshness. Automated tests do not
-prove physical car behavior or paired-watch rendering/background scheduling.
-
-## Watch music sync uses the iPhone library
-
-Task `fix/iphone-music-sync`, based on `d4d437532f77aa40006467dcb59518799fc8ba53`.
-The watch's two Sync exercise music controls now request the existing iPhone
-library transfer through WatchConnectivity. They no longer download the separate
-legacy HA playlist, whose track count could differ from the iPhone's imports.
-The watch reports received files against the iPhone manifest and reports ready
-only after the existing verified replacement commits. Requests preserve playback
-and the installed library while waiting for the phone; phone availability and OS
-transfer scheduling still apply. No HA change is required.
-
-Paired-device checks remaining: import one song, request sync from each watch
-settings surface, verify 1/1 and offline playback; delayed phone delivery, rejected
-wrong-watch request, reordered/empty playlist, interrupted transfer, and syncing
-while an existing library is playing. Release/install is still required.
-
-### Stalled phone-to-watch transfer and screen-off delivery
-
-Continues the same music-sync task. The app delegate previously completed
-WatchConnectivity background wake tasks immediately, before session activation,
-pending content delivery, and queued file verification/persistence had drained.
-Retain those tasks until all three are complete, including after wrist-down.
-This is a concrete lifecycle defect; device logs are still needed to prove it
-was the only cause of the reported weeks-long failure.
-
-A reachable, visible watch also pulls bounded 32 KiB chunks from the current
-phone manifest. Every reply matches playlist, filename and offset; the entire
-track's length and SHA-256 must match before it enters the existing atomic
-replacement path. The phone displays byte progress; immediate saved receipts
-supplement the durable background receipt. Completion cancels redundant queued
-files. Background file delivery remains available when the screen blanks; direct
-transfer can resume on a later visible entry without promoting partial files.
-No screen-on requirement or guaranteed watchOS scheduling is claimed.
-
-Core regressions cover chunk boundaries, interruption/restart, invalid offsets,
-corruption and waiting for activation/content/persistence before completing a
-background wake. Paired-device validation must include one imported song,
-foreground progress, wrist-down during transfer, background receipt, interrupted
-transfer, playback preservation and stale playlist/target rejection. Both apps
-need an updated release; no HA deployment is needed.
-
-Music-sync corrections above were published in 0.12.1 (29), signed source
-`83e80b2401a72e8ea0c6edf73ce02860f899a32e`, after 101 core tests and both
-SDK typechecks passed. Signed release, Apple processing and Internal TestFlight
-assignment passed in run 43661897402. See RELEASE.md for the release record.
-Update both apps; paired-device transfer and wrist-down checks remain.
-
-## Live music connection readiness — November 15, 2026
-
-Task `fix/music-sync-readiness`, based on canonical main
-`f2fc515bb821c3ba5a83b31ae33aea559ad39c4d`. Both installed apps were confirmed
-as 0.12.1 (29); Podcast live commands work but music remains at 0%.
-Music had an additional companion-installation-hint gate absent from Podcast.
-It now uses the same activated/reachable link and obtains the correlated phone
-playlist directly in its reply, without depending on application-context delivery.
-An unlinked phone, wrong watch, preparation failure, malformed reply, timeout and
-numeric transport errors are reported distinctly instead of all saying open phone.
-
-A bounded 15-second pending sync request can submit once when activation or
-reachability arrives. Watch readiness events resume incoming verified transfers;
-phone readiness republishes the saved manifest. An application-context failure no
-longer prevents a live publication attempt. Existing background file delivery,
-verification, playback preservation and completion receipts remain in place.
-Regression coverage includes late readiness, single submission, expiry, target and
-request matching, direct single-song replies, invalid manifests and phone failures.
-These changes address concrete code-path differences and lifecycle omissions;
-paired-device validation is still required to establish the reported failure's
-cause and confirm one-song transfer, wrist-down continuation and playback.
-
-The live music readiness correction was published as 0.12.2 (30), signed source
-`6bcbe32746a0cda8fffa2365e184dcb156af1daf`. All 106 core tests and both SDK
-typechecks passed in run 43663475154. Signed release, Apple processing and existing
-Internal TestFlight assignment passed in run 43663628978. Update both apps;
-paired-device confirmation of the reported failure remains outstanding.
-
-## Persistent sync feedback — November 15, 2026
-
-Task `fix/music-sync-feedback`, based on main
-`6ae6cffe31d7df59c77a2f2c848cad2a4af13f75`. The user reported an almost immediate
-Music transfer interrupted message flashing on the Exercise panel.
-Sync and playback no longer share status. Sync progress/results appear only by
-the sync controls and in existing Diagnostics; failures persist across playback,
-navigation and relaunch. Repeated manifests cannot restart a failed attempt or
-overwrite its first error. A new explicit sync can retry; verified installation
-may complete a failed live transfer through the existing background path.
-The phone also retains a matched watch failure beside its sync controls.
-
-The chunk loop distinguishes expected screen-sleep/link-loss pause from failure.
-Errors retain the transfer stage and sanitized domain/code, or a specific chunk
-length/position/reply/checksum failure. No raw request contents are logged.
-This fixes the feedback placement, unreadability and passive retry loop; it does
-not establish the underlying device transfer failure without its retained result.
-Physical checks remain for persistent settings errors, no sync messages on the
-Exercise panel, one-song delivery, wrist-down/background completion and playback.
-
-Persistent sync feedback was published as 0.12.3 (31), signed source
-`dc95fffc26053d8001ab07a6fc1dfdd8e8e5180b`. All 112 core tests and both SDK
-typechecks passed in run 43713182207. Signed release, Apple processing and Internal
-TestFlight assignment passed in run 43713373876. The user explicitly authorized
-continuing this already-started release and clarified that there is no standing
-release authorization. Underlying device transfer failure remains unconfirmed;
-the retained settings/phone error is needed for the next diagnosis.
-
-## Watch settings cleanup — November 15, 2026
-
-Task `fix/watch-settings-cleanup`, based on fetched main
-`dcd045a8ede6d515f3d8815735a88af7103a24fd`. The separate first-chunk storage
-fix remains preserved on `fix/music-first-chunk`; it is not part of this UI task.
-
-The long-press settings and existing settings preview now share a native List
-with connection, exercise music and support actions. Routine panel-configuration
-instructions are removed. Watch ID and remote address appear only after opening
-Connection details. Sync music has one persistent result beside its own control;
-Diagnostics no longer duplicates music status/history or static command-timing
-explanations. Diagnostics shows actual recorded activity, a single empty state,
-local refresh, and Send reports only when there are pending receipts. New saved
-outcomes/snapshots refresh the displayed local history without network polling.
-Version/source remain available at the bottom. Forget connection requires a
-native destructive confirmation describing removal of pairing/downloaded music.
-
-The connection check still uses only the configured remote HTTPS address and an
-authenticated read-only config request, with cancellation/target guards. No HA
-control, vehicle wake, pairing format or music transfer behavior is changed.
-All 112 core tests and watch/iPhone SDK source typechecks passed for implementation
-`f7665eb7eecca133bfd9988db482457a542d60a4`:
-https://github.com/agawlbb/FanControlWatch/actions/runs/43716241743
-Physical-watch layout/navigation checks remain. No app build, merge or release
-was started for this settings cleanup request.
-
-## First audio chunk storage — November 15, 2026
-
-Task `fix/music-first-chunk`, based on fetched main
-`dcd045a8ede6d515f3d8815735a88af7103a24fd`. Device evidence reports
-Saving audio chunk at byte 0 failed (NSCocoaErrorDomain 4).
-Regression cases cover first-chunk writes to nested missing staging directories,
-staging removed before the first reply, and rejecting later chunks without their
-prefix. Tests are first run against the existing writer to verify reproduction.
-No release or merge is authorized by this bug report.
-
-The unmodified writer reproduced NSCocoaErrorDomain 4 in both missing-staging
-cases on macOS run 43714828710. The screenshot does not identify why staging
-was missing on the physical watch. The first write now creates its parent path
-at the write boundary and atomically saves the actual first chunk, without an
-empty-file creation/reopen step. Later chunks still require their existing prefix
-and exact offset; length and whole-file SHA-256 verification remain unchanged.
-This changes no phone/watch configuration and does not touch the installed library.
-Physical-device confirmation and an explicitly requested app release remain needed.
-
-## Consolidated music/settings release — November 15, 2026
-
-The user explicitly requested merging the two fix branches into one working
-branch, deleting their old names and releasing the combined app. Both complete
-histories are preserved on `fix/music-sync-and-settings`; prior branch sections
-above describe their separate development before consolidation. The old branch
-names are removed only after verifying the combined branch is pushed and contains
-both original heads. Version 0.12.4 (32) contains both fixes. This is the sole
-ongoing working branch; no future release authorization is inferred. Main remains
-the last accepted integration head until merging to main is explicitly approved.
-
-The consolidated source `e4147ea11e55590ec1f716dbf7fc8551d3d095fe` passed all
-115 core tests and both SDK typechecks in run 43717925835. Version 0.12.4 (32)
-was published to the existing Internal TestFlight group in successful signed
-release run 43718143480. Apple confirms VALID and IN_BETA_TESTING. Release tag:
-`v0.12.4-build32`. Both former branch heads remain in the combined history; their
-local/remote branch names were removed. Main is unchanged pending merge approval.
-
-## Resume interrupted audio and prepare background storage — November 15, 2026
-
-Continues on the existing claimed `fix/music-sync-and-settings` branch from
-`8580686eade453edb859c26d2e374e417959a51c`. Device evidence shows a live request
-failing with WCErrorDomain 7007 after byte 688128 and a background write failing
-with NSCocoaErrorDomain 4.
-
-A live notReachable error is now a pause, not a terminal failed transfer. Complete
-chunks remain in the manifest-scoped partial file and existing visible-entry or
-reachability callbacks resume at its saved chunk boundary. There is no new
-polling loop or playback/physical-command retry. Missing/invalid prefixes cannot
-be synthesized; whole-file SHA-256 remains required before installation. A fully
-received partial file is verified before recovery installs it.
-
-Background file delivery verifies the file, creates its destination parent at
-the actual write boundary and atomically saves it through the shared storage
-helper. Errors distinguish reading delivery, saving verified audio and installing
-the playlist. A corrupt background replacement cannot overwrite installed audio.
-Tests cover the photographed 688128-byte resume boundary, incomplete/oversized
-prefixes, corruption, and missing background destinations. Physical-watch transfer
-and wrist-down checks remain. No merge, app build or release was requested here.
-
-Validation for source `c3acc406e96b2199856ad9564171c27448da8408`: all 121 core
-tests and both watch/iPhone SDK typechecks passed together:
-https://github.com/agawlbb/FanControlWatch/actions/runs/43720023118
-This remains unreleased work on the same combined branch; no app build or release
-was started. The published 0.12.4 (32) tag still identifies its original source.
-
-The user explicitly requested releasing the interrupted audio/background storage
-fixes. Version 0.12.5 (33), signed source
-`b602e7a65acd73c0f2b41c4dd9e2d4cede4a9ff8`, passed all 121 release-source
-core tests and both SDK typechecks in run 43723468186. Signed release, Apple
-processing and Internal TestFlight access passed in run 43723468369. Apple build
-`feee7f07-e34e-4ca4-a3fb-77cceaa95c62` is VALID and IN_BETA_TESTING.
-Release tag: `v0.12.5-build33`. Main remains unchanged; related work continues
-on the same claimed branch. Physical-watch verification remains outstanding.
-
-## Offline MP3 playback investigation — November 15, 2026
-
-Continues on the existing claimed `fix/music-sync-and-settings` branch after
-`57e849ec34247bb99009a37ed613a938e352880e`. The user reports transfer success
-but Track could not play through the watch speaker; the same file plays in a
-phone player. Local ffprobe identifies MPEG-1 Layer III, 128 kbps CBR, 44.1 kHz
-stereo, about 247.88 seconds, with structurally valid ID3v2.3 tags. A full local
-ffmpeg decode completed without errors. The supplied recording stays private in
-ignored build storage; only a generated sine-tone fixture enters Git/CI.
-
-Playback now validates the saved file's size/hash before decoder initialization,
-provides explicit MP3/M4A format hints, and distinguishes read, decoder-open,
-audio-session and asynchronous decoder failures with sanitized native error codes.
-A failure stops automatic playback reattempts until explicit user action.
-Playback errors stay on the playback controls, separate from sync feedback.
-The audio-session route policy is unchanged: Apple's current documentation allows
-long-form audio on supported watch speakers, so speaker use alone is not evidence
-that the existing policy is wrong.
-
-A real generated MP3 with matching encoding characteristics exercises the complete
-save/prepare/native Apple decode path without playing sound. Missing, truncated
-and altered saved-file cases are covered. This validates normal MP3 handling and
-improves failure evidence; it does not establish the original watch-only cause.
-No app build, merge or release is authorized by the file attachment. Actual-watch
-playback and its native error code remain needed if the supplied file still fails.
-
-Validation for source `980948333ab0c5675e243f96bf10afdb8525ff05`: all 125 core
-tests and both watch/iPhone SDK typechecks passed:
-https://github.com/agawlbb/FanControlWatch/actions/runs/43729965607
-The generated matching-profile MP3 successfully initialized AVAudioPlayer and
-decoded PCM through AVAudioFile on macOS, without playing sound. The user's
-recording was decoded/inspected locally only, not sent to CI. The specific
-watch-only cause is not reproduced or confirmed. No app release was started.
-
-The user explicitly requested releasing the playback checks/format hints/native
-error handling. Version 0.12.6 (34), signed source
-`cf93d19e18236e20423715f1452d6e99874384db`, passed all 125 release-source core
-tests and both SDK typechecks in run 43730563882. Signed release, Apple processing
-and existing Internal TestFlight access passed in run 43730564602. Apple build
-`1fccc5ea-55a1-4aaf-95e2-ab88977b4e81` is VALID and IN_BETA_TESTING.
-Tag: `v0.12.6-build34`. Physical-watch playback remains unconfirmed. Main is
-unchanged and related work remains on the same claimed combined branch.
-
-## Screen-off music delivery recovery — November 15, 2026
-
-The follow-up requires music sync to complete with the watch screen asleep.
-The previous cleanup/progress fix alone did not change the background handoff.
-WCSession file delivery now synchronously persists verified audio and a committed
-playlist/filename record in Application Support before its delegate returns,
-instead of copying audio to temporary storage with metadata held only in a queued
-UI task. Background wakes and session activation drain this durable inbox without
-requiring active application state or live reachability. Launch also recovers
-pending deliveries once WCSession is activated, so saved receipts can be queued.
-Installation failures retain the inbox copy; verified installed or superseded
-files alone remove it. Forget pairing removes queued private audio as well.
-The shared atomic playlist installer preserves the existing library until all
-replacement tracks pass size/SHA-256 verification. The phone no longer tells the
-user to reopen the watch to continue an already queued background transfer.
-
-Source `907ad5b215b2e22acbc6cf5fd23d152222614db6` passed 133 core tests and
-watch/iPhone SDK typechecks in:
-https://github.com/agawlbb/FanControlWatch/actions/runs/43738715639
-New lifecycle regressions cover OS temporary-file removal, reconstructed inboxes,
-failed-install retention, multiple background files replacing an existing library,
-out-of-order generations, corrupt/incomplete deliveries, and private-audio deletion.
-The earlier cleanup/progress fix is included. Tests do not verify WCSession's
-real-device scheduling, screen-off delivery, or speaker playback. Those remain
-paired-device checks. No app build/release or main merge was requested or started.
-
-The user explicitly requested release of the screen-off music fixes. Version
-0.12.7 (35), signed source `d7d924d92a5a7733062714b578f4cdf781a6ee72`, passed all
-133 core tests and both SDK typechecks in run 43739230927. Signed release and
-Apple processing/Internal TestFlight verification passed in run 43739230864.
-Apple build `5b0031ec-d8e1-4163-b522-aa0aef2cdb8a` is VALID and
-IN_BETA_TESTING. Tag: `v0.12.7-build35`. Screen-off transfer and speaker playback
-still require paired-device checks. Main remains unchanged; the same combined
-fix branch is retained pending merge approval.
+257 local synthetic/deployment regression tests and Python compilation passed, including
+closed-watch climate continuation, shared wake, stale reports, server-owned timing,
+notification isolation/deduplication/supersession and strict relay outcome payloads.
+Physical watch/cellular/car, notification permission, offline delivery and OS
+background behavior remain device checks; no live target was commanded for tests.

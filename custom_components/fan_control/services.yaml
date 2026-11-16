@@ -1,0 +1,65 @@
+set_active_device:
+  name: Set active watch device
+  description: Changes the tile device on the watch's next visible refresh. The device must already be approved for that watch.
+  fields:
+    watch_id:
+      name: Watch ID
+      description: Full watch ID shown in the watch app's connection status.
+      required: true
+      selector:
+        text:
+    entity_id:
+      name: Device
+      required: true
+      selector:
+        entity:
+          domain:
+            - fan
+            - light
+            - switch
+            - input_boolean
+            - script
+            - scene
+
+set_active_panel:
+  name: Set active watch panel
+  description: Selects a configured panel on the next visible refresh. Use devices to return to the active device controls.
+  fields:
+    watch_id:
+      name: Watch ID
+      required: true
+      selector:
+        text:
+    panel_id:
+      name: Panel ID
+      description: The configured panel ID, such as work_morning, or devices.
+      required: true
+      selector:
+        text:
+
+send_notification:
+  name: Send notification
+  description: Sends an alert to the selected Apple Watch's linked iPhone. Apple may present it on the watch. Success means APNs accepted delivery, not that it was received or read.
+  fields:
+    device_id:
+      name: Recipient
+      description: Select the Fan Control Apple Watch whose linked iPhone should receive the alert.
+      required: true
+      selector:
+        device:
+          filter:
+            - integration: fan_control
+    title:
+      name: Title
+      description: Up to 200 UTF-8 bytes. Defaults to Fan Control.
+      example: Garage still open
+      selector:
+        text:
+    message:
+      name: Message
+      description: Up to 1500 UTF-8 bytes.
+      required: true
+      example: The garage has been open for ten minutes.
+      selector:
+        text:
+          multiline: true

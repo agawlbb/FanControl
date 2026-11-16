@@ -1,7 +1,13 @@
 name: Core tests
 on:
+  workflow_dispatch:
   push:
-    branches-ignore: [main]
+    paths: ["apple-watch/**", ".github/workflows/core-tests.yml"]
+  pull_request:
+    paths: ["apple-watch/**", ".github/workflows/core-tests.yml"]
+defaults:
+  run:
+    working-directory: apple-watch
 permissions:
   contents: read
 jobs:
