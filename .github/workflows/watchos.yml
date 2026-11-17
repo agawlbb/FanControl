@@ -2,6 +2,10 @@ name: watchOS
 on:
   workflow_dispatch:
     inputs:
+      preview_only:
+        description: Capture unsigned simulator previews without a device archive
+        type: boolean
+        default: false
       validation_only:
         description: Run core tests and compile unsigned simulators only
         type: boolean
@@ -36,7 +40,7 @@ jobs:
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.validation_only) }}
         run: bash scripts/simulator_preview.sh
       - name: Compile unsigned watchOS archive
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.validation_only) }}
+        if: ${{ !inputs.validation_only && !inputs.preview_only }}
         run: xcodebuild -project FanControlWatch.xcodeproj -scheme FanControl -destination 'generic/platform=iOS' -archivePath build/FanControlWatch.xcarchive CODE_SIGNING_ALLOWED=NO archive
       - uses: actions/upload-artifact@v4
         with:

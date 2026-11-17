@@ -71,6 +71,13 @@ import FanControlCore
             }
         }
         observed = connection.flatMap { c in device.map { ObservationCache.shared.load(c, $0) } } ?? [:]
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("--preview-podcast") {
+            sessionTarget = PodcastTile.id
+            WatchPodcast.shared.preview()
+            return
+        }
+        #endif
         if showingPodcast { WatchPodcast.shared.enter(); return }
         WatchCompanion.shared.requestLatest()
         // Settings is local navigation, with no device reads, entry wake or controls.

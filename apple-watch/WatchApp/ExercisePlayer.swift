@@ -485,12 +485,13 @@ struct ExercisePlaybackView: View {
 
 // Native system volume, including Crown interaction; never simulate system
 // volume by changing the player's per-track gain.
-private struct WatchVolume: WKInterfaceObjectRepresentable {
+struct WatchVolume: WKInterfaceObjectRepresentable {
+    var origin: WKInterfaceVolumeControl.Origin = .local
     @Environment(\.scenePhase) private var phase
     final class Coordinator { var active = false }
     func makeCoordinator() -> Coordinator { Coordinator() }
     func makeWKInterfaceObject(context: Context) -> WKInterfaceVolumeControl {
-        WKInterfaceVolumeControl(origin: .local)
+        WKInterfaceVolumeControl(origin: origin)
     }
     func updateWKInterfaceObject(_ object: WKInterfaceVolumeControl, context: Context) {
         let active = phase == .active

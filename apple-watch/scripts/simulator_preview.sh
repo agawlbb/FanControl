@@ -16,7 +16,7 @@ xcrun simctl install "$udid" build/Build/Products/Debug-watchsimulator/FanContro
 xcrun simctl launch "$udid" dev.fancontrol.watch.watchkitapp
 sleep 3
 xcrun simctl io "$udid" screenshot build/watch-first-launch.png
-for mode in driving exercise; do
+for mode in driving exercise podcast; do
     xcrun simctl terminate "$udid" dev.fancontrol.watch.watchkitapp
     xcrun simctl launch "$udid" dev.fancontrol.watch.watchkitapp "--preview-$mode"
     sleep 2

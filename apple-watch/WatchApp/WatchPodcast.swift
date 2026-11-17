@@ -87,6 +87,16 @@ import FanControlCore
         timeout?.cancel(); pending = nil; requestID = nil; confirmed = false
         error = "Not confirmed. Retry."
     }
+    #if DEBUG && targetEnvironment(simulator)
+    func preview() {
+        snapshot = PodcastSnapshot(
+            episode: PodcastEpisode(id: "preview", title: "Voyager Season 1 Episode 1: Caretaker", published: Date(),
+                                    audioURL: URL(string: "https://example.com/preview.mp3")!, series: "Voyager", season: 1),
+            revision: UUID(), sequence: 1, position: 735, duration: 3600,
+            playing: true, downloaded: true, status: "")
+        confirmed = true; error = ""; pending = nil
+    }
+    #endif
     var displayedPosition: Double { pending?.position ?? snapshot?.position ?? 0 }
     var displayedPlaying: Bool {
         if let action = pending?.action {
@@ -119,14 +129,24 @@ struct PodcastPlaybackView: View {
                     }.accessibilityLabel(podcast.displayedPlaying ? "Pause" : "Play")
                     Button { podcast.send(.forward15) } label: { Image(systemName: "goforward.15") }.accessibilityLabel("Forward 15 seconds")
                 }
+                .disabled(podcast.pending != nil)
+                WatchVolume(origin: .companion).frame(height: 44)
                 Button(podcast.pending?.action == .complete ? "Complete" : "Mark Complete") { podcast.send(.complete) }
+                    .disabled(podcast.pending != nil)
                 if !podcast.error.isEmpty {
                     Text(podcast.error).font(.caption2).foregroundStyle(.gray)
-                    Button("Refresh", action: podcast.refresh)
+                    Button("Refresh", action: podcast.refresh).disabled(podcast.pending != nil)
                 } else if let status = podcast.snapshot?.status { Text(status).font(.caption2) }
-            }.foregroundStyle(color).tint(color.opacity(0.25)).disabled(podcast.pending != nil).padding(.horizontal, 5)
+            }.foregroundStyle(color).tint(color.opacity(0.25)).padding(.horizontal, 5)
                 .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
-                .tileSwipe(onSwipe: onSwipe)
+                .contentShape(Rectangle())
+                // Preserve native vertical scrolling alongside horizontal navigation.
+                .simultaneousGesture(DragGesture(minimumDistance: TileSwipe.minimumDistance)
+                    .onEnded { value in
+                        if let direction = TileSwipe.direction(x: value.translation.width, y: value.translation.height) {
+                            onSwipe(direction)
+                        }
+                    })
         }
         }
     }
