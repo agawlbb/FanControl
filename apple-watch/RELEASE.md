@@ -1,3 +1,28 @@
+# Podcast volume and scrolling — 0.12.9 (37), November 17, 2026
+
+The podcast tile uses the native paired-iPhone volume control with Digital Crown
+focus while active. Exercise keeps its watch-local volume control. Podcast
+vertical scrolling now recognizes alongside horizontal tile navigation, retaining
+the existing navigation thresholds. Scrolling, navigation and volume remain
+available during pending playback commands; playback buttons stay disabled.
+Other tiles retain their existing gesture handling. No HA update is required.
+
+Core tests, watch/iPhone SDK source typechecks, and unsigned watch simulator
+compilation and screenshot capture passed. Simulator evidence:
+https://github.com/agawlbb/FanControl/actions/runs/44171921667
+
+Signed source: `1a66b3ee39ac9e273dc21473f61812d814139f12` on `main`.
+TestFlight publication is pending:
+https://github.com/agawlbb/FanControl/actions/runs/44173284698
+The initial attempt stopped before building or uploading because App Store
+Connect returned HTTP 500 during the build-number check; a retry is underway.
+
+Remaining paired-watch checks: slow/fast vertical drags, diagonal gestures,
+horizontal navigation once per swipe, gestures over buttons without activation,
+long titles/error content, pending commands, and iPhone volume after entry and
+wrist-down/up. Confirm Exercise still adjusts watch volume. Simulator screenshots
+do not establish physical gesture responsiveness or audio volume behavior.
+
 # Tile swipe touch handling — 0.12.8 (36), November 17, 2026
 
 Horizontal tile navigation recognizes 12-point drags on tile content, including
