@@ -13,10 +13,11 @@ checkout is `/home/dev/projects/FanControl` after migration acceptance.
 Canonical repository: `agawlbb/FanControl`; default branch: `main`.
 Follow the VM-wide working procedure in `/home/dev/projects/AGENTS.md`.
 Use the existing checkout on `main`, one task at a time; no routine task
-branches, extra worktrees or ownership claims. Complete the requested outcome,
-including deployment when applicable, then commit and push to `main`.
+branches, extra worktrees or ownership claims. Commit and push completed source changes to `main`.
 Use only relevant checks; do not repeat passing checks without a concrete reason.
 Questions and status checks are read-only. Preserve unrelated work and credentials.
+Deploy only when the user explicitly requests deployment. In every answer state
+whether deployment and an app build are needed; do not automatically do either.
 
 Inspect push workflows first. Do not trigger releases, deployment, device installation
 or distributable builds without authorization. Never change branch protections
@@ -69,7 +70,7 @@ target/revocation changes, restart recovery and one-shot ambiguity. Exercise its
 watch surfaces too, including immediate navigation/wrist-down and stale callbacks.
 Document required API capabilities, compatible app/integration versions and
 remaining physical checks. Do not claim guaranteed exactly-once physical completion
-without target-side support. Deployment needed for the requested fix is part of completion. Physical vehicle
+without target-side support. Deployment requires an explicit user request. Physical vehicle
 actions remain subject to explicit user authorization.
 
 ## Integration invariants
@@ -97,7 +98,7 @@ independent physical vehicle proof; APNs acceptance is not device receipt.
 Keep private HA storage, relay config/database/APNs keys, diagnostics and music
 out of Git and backups of tracked source. Use synthetic test credentials. Preserve
 all integration and relay regression tests. Run pytest and Python compilation for
-code changes; PHP checks require a supported runtime. Deploy to HA/hosting when needed for the requested outcome; do not send physical
+code changes; PHP checks require a supported runtime. Deploy to HA/hosting only when explicitly requested; do not send physical
 commands as validation without explicit authorization.
 
 ## Required entry, notification and timing contract
