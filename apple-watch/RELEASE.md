@@ -938,3 +938,21 @@ Simulator captures are synthetic rendering checks; automated tests do not prove
 physical delivery, playback or vehicle behavior. iOS background work remains
 opportunistic, including when Background App Refresh is disabled or an app is
 force-quit. Wear OS development/build/test/lint remains paused and untouched.
+# Tile swipe touch handling (unreleased)
+
+Horizontal tile navigation recognizes 12-point drags on tile content, including
+over buttons, instead of waiting for a 35-point drag outside the scroll view.
+The high-priority gesture cancels child button touches before navigating; it is
+not simultaneous with command taps. Empty tile space is also swipeable. Driving,
+Exercise, Podcast and generic device tiles share the same gesture policy.
+No HA API or command delivery changes are required.
+
+Core regression coverage checks short left/right drags and rejects tap jitter,
+vertical movement and diagonal movement as navigation. The macOS core workflow
+also typechecks the watch UI without an app build.
+Remaining paired-watch checks: swipe starting on every command/playback button
+without activating it, swipe at either end of the tile order without activation,
+tap each control normally, scroll tall tiles vertically, use the Exercise native
+volume control/Crown, and long-press for Settings. Check small and large displays.
+An explicitly requested app build and installation are needed for those checks.
+

@@ -1,6 +1,18 @@
 import XCTest
 @testable import FanControlCore
 final class WatchPageTests: XCTestCase {
+    func testShortHorizontalDragsNavigateInBothDirections() {
+        XCTAssertEqual(TileSwipe.direction(x: -12, y: 0), 1)
+        XCTAssertEqual(TileSwipe.direction(x: 18, y: 5), -1)
+        XCTAssertEqual(TileSwipe.direction(x: -100, y: 20), 1)
+    }
+    func testTapMovementAndVerticalScrollingDoNotChangeTiles() {
+        XCTAssertNil(TileSwipe.direction(x: 8, y: 0))
+        XCTAssertNil(TileSwipe.direction(x: 0, y: 60))
+        XCTAssertNil(TileSwipe.direction(x: 20, y: 40))
+        XCTAssertNil(TileSwipe.direction(x: -30, y: -30))
+        XCTAssertNil(TileSwipe.direction(x: 30, y: 20))
+    }
     func testSavedOrderDoesNotMoveActivePanelOrExposeSettings() {
         let order = ["panel.fan", "panel.exercise", "panel.driving"]
         XCTAssertEqual(WatchPage.next(.device(order[1]), entities: order, active: order[1], direction: -1), .device(order[0]))

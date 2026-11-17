@@ -1,5 +1,14 @@
 import Foundation
 
+public enum TileSwipe {
+    public static let minimumDistance: CGFloat = 12
+
+    public static func direction(x: CGFloat, y: CGFloat) -> Int? {
+        guard abs(x) >= minimumDistance, abs(x) > abs(y) * 1.5 else { return nil }
+        return x < 0 ? 1 : -1
+    }
+}
+
 // Settings is a local page after the approved controls, never an HA selection.
 public enum WatchPage: Equatable, Sendable {
     case device(String)

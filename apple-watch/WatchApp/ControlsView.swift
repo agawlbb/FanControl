@@ -11,7 +11,7 @@ struct ControlsView: View {
           if scenePhase != .active || !entryReady {
             Color.black
           } else if model.showingPodcast {
-            PodcastPlaybackView()
+            PodcastPlaybackView(onSwipe: model.swipe)
           } else if model.showingSettings {
             WatchSettingsView(model: model)
           } else if model.device?.panel?.type == "exercise" {
@@ -23,8 +23,10 @@ struct ControlsView: View {
                 }
                 .padding(.horizontal, 5)
                 .frame(width: geometry.size.width, height: geometry.size.height)
+                .tileSwipe(onSwipe: model.swipe)
             }
           } else {
+           GeometryReader { geometry in
            ScrollView {
             VStack(spacing: 10) {
                 if let d = model.device {
@@ -42,7 +44,10 @@ struct ControlsView: View {
                     Button("Pair watch") { setup = true }
                 }
             }.padding(.horizontal, 5)
+                .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                .tileSwipe(onSwipe: model.swipe)
         }
+           }
           }
         }
         .persistentSystemOverlays(.hidden)
@@ -53,12 +58,6 @@ struct ControlsView: View {
             model.receiveCompanion(note.object as? CompanionSnapshot)
         }
         .onLongPressGesture { setup = true }
-        // Navigation must win over child buttons. A simultaneous drag lets the
-        // same touch also activate an HA control and schedule a delayed alert.
-        .highPriorityGesture(DragGesture(minimumDistance: 35).onEnded { value in
-            guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
-            model.swipe(value.translation.width < 0 ? 1 : -1)
-        })
         .onOpenURL { url in
             if url.scheme == "fancontrol", url.host == "active" { model.enter() }
         }
@@ -175,5 +174,20 @@ struct ControlsView: View {
         let matching = model.feedback?.command.hasPrefix(role + "_") == true
         let action = matching && model.feedback?.phase != .confirmed ? ToggleIntent.opposite(model.feedback!.command)! : role + "_" + Evidence.coverIntent(observed)
         return control(action, title + "\n" + ToggleIntent.coverPresentation(observed), known: observed == "open" || observed == "closed")
+    }
+}
+
+extension View {
+    func tileSwipe(onSwipe: @escaping (Int) -> Void) -> some View {
+        // Install on the content inside ScrollView, so its recognizer does not
+        // take the horizontal drag before navigation can cancel a child button.
+        // Recognize early, including over controls and the spaces between them.
+        contentShape(Rectangle())
+            .highPriorityGesture(DragGesture(minimumDistance: TileSwipe.minimumDistance)
+                .onEnded { value in
+                    if let direction = TileSwipe.direction(x: value.translation.width, y: value.translation.height) {
+                        onSwipe(direction)
+                    }
+                })
     }
 }
