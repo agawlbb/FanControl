@@ -14,8 +14,21 @@ Remaining paired-watch checks: swipe starting on every command/playback button
 without activating it, swipe at either end of the tile order without activation,
 tap each control normally, scroll tall tiles vertically, use the Exercise native
 volume control/Crown, and long-press for Settings. Check small and large displays.
-The user authorized this release. Build 36 is being published through the
-existing TestFlight workflow; installation is needed for those physical checks.
+Published at the user's explicit request to the existing **Internal** TestFlight
+group. Apple build `68d479af-748d-4d60-a64f-ebeab662405c` is `VALID`, not
+expired, and `IN_BETA_TESTING`, marketing version 0.12.8, without non-exempt
+encryption. Update both iPhone and watch apps through TestFlight.
+
+Signed source: `cd3da56d9f2f3a74bdd14f33f1161d0c380367e3` on `main`.
+Core tests and both Apple SDK source typechecks passed:
+https://github.com/agawlbb/FanControl/actions/runs/44074529517
+Signed archive/export, signature and production APNs entitlement checks, upload,
+Apple processing and Internal TestFlight access passed:
+https://github.com/agawlbb/FanControl/actions/runs/44074529759
+Release tag: `v0.12.8-build36`. Processing evidence is retained in the workflow
+artifact and locally under ignored `build/release36-evidence/`.
+No HA deployment was needed. Paired-watch touch checks above remain physical
+verification; automated checks do not establish actual touch recognition.
 
 # Background music delivery — 0.12.7 (35), November 15, 2026
 

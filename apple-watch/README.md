@@ -107,7 +107,7 @@ For instructions to run tests, build on GitHub's Mac runner, configure Apple
 signing credentials, and publish to internal TestFlight directly from this
 repository, see [GitHub builds and TestFlight setup](GITHUB-TESTFLIGHT.md).
 
-Current version: **0.11.1 (27)**; iOS 17+, watchOS 10+, HA 0.14.0. Published to the existing Internal TestFlight group.
+Current version: **0.12.8 (36)**; iOS 17+, watchOS 10+, HA 0.14.0. Published to the existing Internal TestFlight group.
 `swift test` runs core regression tests. XcodeGen uses `project.yml` to generate
 the iPhone, watch and complication targets. GitHub app builds and TestFlight publication run only by explicit dispatch. Inspect workflow triggers before pushing; do not run release workflows
 for documentation maintenance.
