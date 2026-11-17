@@ -12,10 +12,14 @@ compilation and screenshot capture passed. Simulator evidence:
 https://github.com/agawlbb/FanControl/actions/runs/44171921667
 
 Signed source: `1a66b3ee39ac9e273dc21473f61812d814139f12` on `main`.
-TestFlight publication is pending:
+Published to the existing **Internal** TestFlight group. Apple build
+`66927559-4292-4c1a-880e-97f2b7cec092` is `VALID`, not expired, and
+`IN_BETA_TESTING`, marketing version 0.12.9, without non-exempt encryption.
+Signed archive/export, signature and production APNs entitlement checks, upload,
+Apple processing and internal access passed:
 https://github.com/agawlbb/FanControl/actions/runs/44173284698
-The initial attempt stopped before building or uploading because App Store
-Connect returned HTTP 500 during the build-number check; a retry is underway.
+Release tag: `v0.12.9-build37`. Processing evidence is retained in the workflow
+artifact. Update both iPhone and watch apps through TestFlight.
 
 Remaining paired-watch checks: slow/fast vertical drags, diagonal gestures,
 horizontal navigation once per swipe, gestures over buttons without activation,
