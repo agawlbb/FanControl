@@ -44,7 +44,7 @@ struct ControlsView: View {
                     Button("Pair watch") { setup = true }
                 }
             }.padding(.horizontal, 5)
-                .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
                 .tileSwipe(onSwipe: model.swipe)
         }
            }

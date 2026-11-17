@@ -125,7 +125,7 @@ struct PodcastPlaybackView: View {
                     Button("Refresh", action: podcast.refresh)
                 } else if let status = podcast.snapshot?.status { Text(status).font(.caption2) }
             }.foregroundStyle(color).tint(color.opacity(0.25)).disabled(podcast.pending != nil).padding(.horizontal, 5)
-                .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
                 .tileSwipe(onSwipe: onSwipe)
         }
         }
