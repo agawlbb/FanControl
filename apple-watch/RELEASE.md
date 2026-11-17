@@ -1,4 +1,4 @@
-# Tile swipe touch handling (unreleased)
+# Tile swipe touch handling — 0.12.8 (36), November 17, 2026
 
 Horizontal tile navigation recognizes 12-point drags on tile content, including
 over buttons, instead of waiting for a 35-point drag outside the scroll view.
@@ -14,7 +14,8 @@ Remaining paired-watch checks: swipe starting on every command/playback button
 without activating it, swipe at either end of the tile order without activation,
 tap each control normally, scroll tall tiles vertically, use the Exercise native
 volume control/Crown, and long-press for Settings. Check small and large displays.
-An explicitly requested app build and installation are needed for those checks.
+The user authorized this release. Build 36 is being published through the
+existing TestFlight workflow; installation is needed for those physical checks.
 
 # Background music delivery — 0.12.7 (35), November 15, 2026
 
