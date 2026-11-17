@@ -30,9 +30,10 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
       - name: Compile iPhone simulator companion
+        if: ${{ !inputs.preview_only }}
         run: xcodebuild -project FanControlWatch.xcodeproj -scheme FanControl -destination 'generic/platform=iOS Simulator' -derivedDataPath build-phone CODE_SIGNING_ALLOWED=NO build
       - name: Capture iPhone companion
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.validation_only) }}
+        if: ${{ !inputs.validation_only && !inputs.preview_only }}
         run: bash scripts/phone_preview.sh
       - name: Compile watchOS simulator app
         run: xcodebuild -project FanControlWatch.xcodeproj -scheme FanControlWatch -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
