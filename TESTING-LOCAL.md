@@ -8,10 +8,10 @@ matching the CI runtime job. `requirements-ha.txt` pins its packages and hashes,
 including the existing CI-only Pillow/uv security overrides. This is a test
 installation only; it does not change an installed Home Assistant server.
 
-The VPS environment is prepared. Run:
+Run inside VM development (`dev bash`); check that the project environment exists:
 
 ```bash
-cd /home/debian/projects/fancontrol/ha-integration
+cd /home/dev/projects/FanControl
 .venv-ha/bin/python scripts/check_test_dependencies.py
 .venv-ha/bin/python scripts/runtime_check.py
 ```
@@ -23,12 +23,12 @@ network dependencies are preinstalled by the lock; runtime package installation
 is disabled so HA cannot replace the security overrides while booting. Run the
 dependency validator both before and after runtime checks.
 
-To recreate this environment on the VPS:
+To recreate this environment inside VM development with installed Python 3.14:
 
 ```bash
-/home/debian/projects/.dev-tools/bootstrap/bin/uv venv \
-  --python /home/debian/projects/.dev-tools/python/cpython-3.14.8-linux-x86_64-gnu/bin/python .venv-ha
-/home/debian/projects/.dev-tools/bootstrap/bin/uv pip sync \
+uv venv \
+  --python python3.14 .venv-ha
+uv pip sync \
   --python .venv-ha/bin/python --require-hashes requirements-ha.txt
 ```
 

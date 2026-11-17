@@ -1,5 +1,13 @@
 # Unified FanControl repository
 
+## Development location
+
+All development and image builds use VM-laptop. Follow the canonical VM/build,
+checkout and deployment procedure in `/home/dev/projects/AGENTS.md`; older VPS
+build commands and former laptop/VPS workspace paths in this repository are
+superseded. The VPS only receives prepared artifacts for requested deployments.
+Apple builds retain the existing macOS runner exception under that procedure.
+
 Home Assistant lives at the root. Apple apps live under `apple-watch/`; apply
 that directory's AGENTS.md for Apple work. Never reintroduce Wear OS source.
 Run tools from each component's directory. Root `.github/workflows/` owns all
