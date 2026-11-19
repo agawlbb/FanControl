@@ -31,7 +31,7 @@ jobs:
           echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
           xcodebuild -version
           test "$(xcodebuild -version)" = "$(printf 'Xcode 27.2\nBuild version 27B52')"
-          for sdk in iphoneos iphonesimulator watchos watchsimulator; do
+          for sdk in macosx iphoneos iphonesimulator watchos watchsimulator; do
             version=$(xcrun --sdk "$sdk" --show-sdk-version)
             echo "$sdk SDK: $version"
             test "$version" = 27.2
