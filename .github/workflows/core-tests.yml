@@ -12,10 +12,25 @@ permissions:
   contents: read
 jobs:
   core:
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Select and verify stable Xcode 27.2 and SDKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEVELOPER_DIR=/Applications/Xcode_27.2.app/Contents/Developer
+          test -d "$DEVELOPER_DIR"
+          sudo xcode-select -s "$DEVELOPER_DIR"
+          echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
+          xcodebuild -version
+          test "$(xcodebuild -version)" = "$(printf 'Xcode 27.2\nBuild version 27B52')"
+          for sdk in macosx iphoneos watchos; do
+            version=$(xcrun --sdk "$sdk" --show-sdk-version)
+            echo "$sdk SDK: $version"
+            test "$version" = 27.2
+          done
       - run: swift test
       - name: Typecheck watch sources without building an app
         run: |
