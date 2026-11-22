@@ -1,3 +1,24 @@
+# Compact Podcast layout (unreleased)
+
+Use the requested four-row layout without a ScrollView: a title capped at two
+lines (truncating longer titles), one progress line, the existing playback row,
+and Mark Complete on the left with native paired-iPhone volume on the right.
+Keep volume visible at 44 by 44 points and preserve its existing active-scene
+Crown-focus lifecycle. Completion remains disabled while a command is pending;
+volume stays enabled. Error/Refresh and nonredundant provider status remain bounded
+below the controls when needed; routine Playing/Paused/Ready status is omitted
+because the playback control already shows the relevant state.
+
+The long-title simulator fixture now matches the length seen in the user's photo.
+The user reported that released 0.12.10 did not show Mark Complete or give volume
+Crown focus on an Ultra 4; its single short-title simulator screenshot did not
+establish those physical behaviors. This change removes that offscreen design.
+Remaining checks: normal/larger text on the Ultra, title truncation, visible
+completion and volume, playback taps, horizontal swipes without activation,
+pending/error states, Crown volume on entry and after wrist-down/up. No new build
+or release was requested; core tests and SDK typechecks cannot prove rendering or
+paired-iPhone volume response. No HA change or deployment is required.
+
 # Podcast completion access — 0.12.10 (38), November 22, 2026
 
 Show episode details, playback buttons and Mark Complete on the first screen.

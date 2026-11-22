@@ -90,7 +90,7 @@ import FanControlCore
     #if DEBUG && targetEnvironment(simulator)
     func preview() {
         snapshot = PodcastSnapshot(
-            episode: PodcastEpisode(id: "preview", title: "Voyager Season 1 Episode 1: Caretaker", published: Date(),
+            episode: PodcastEpisode(id: "preview", title: "Star Trek: Voyager, Season 4, Episode 8 & 9 — Year of Hell Part I & Part II", published: Date(),
                                     audioURL: URL(string: "https://example.com/preview.mp3")!, series: "Voyager", season: 1),
             revision: UUID(), sequence: 1, position: 735, duration: 3600,
             playing: true, downloaded: true, status: "")
@@ -112,26 +112,23 @@ struct PodcastPlaybackView: View {
     @ObservedObject private var podcast = WatchPodcast.shared
     private var color: Color { podcast.confirmed && podcast.pending == nil ? .mint : .gray }
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                // A non-lazy stack keeps native volume mounted and Crown-focused
-                // below the first screen, even before the user scrolls to it.
-                VStack(spacing: 8) {
-                    playbackControls.frame(minHeight: geometry.size.height)
-                    WatchVolume(origin: .companion).frame(height: 44)
-                    if !podcast.error.isEmpty {
-                        Text(podcast.error).font(.caption2).foregroundStyle(.gray)
-                        Button("Refresh", action: podcast.refresh).disabled(podcast.pending != nil)
-                    } else if let status = podcast.snapshot?.status { Text(status).font(.caption2) }
-                }.frame(maxWidth: .infinity)
+        VStack(spacing: 4) {
+            playbackControls
+            if !podcast.error.isEmpty {
+                HStack(spacing: 4) {
+                    Text(podcast.error).font(.caption2).foregroundStyle(.gray).lineLimit(2)
+                    Button("Refresh", action: podcast.refresh)
+                        .font(.caption2).buttonStyle(.plain).disabled(podcast.pending != nil)
+                }
+            } else if let status = podcast.snapshot?.status,
+                      !status.isEmpty, !["Playing", "Paused", "Ready"].contains(status) {
+                Text(status).font(.caption2).lineLimit(1).minimumScaleFactor(0.8)
             }
-            // ScrollView otherwise permits content to draw into the bottom
-            // safe area, exposing part of the next (volume) row on first entry.
-            .clipped()
         }
         .foregroundStyle(color).tint(color.opacity(0.25)).padding(.horizontal, 5)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
-        // Observe navigation without taking vertical drags from ScrollView.
+        // Keep horizontal tile navigation available over the full layout.
         .simultaneousGesture(DragGesture(minimumDistance: TileSwipe.minimumDistance)
             .onEnded { value in
                 if let direction = TileSwipe.direction(x: value.translation.width, y: value.translation.height) {
@@ -141,12 +138,13 @@ struct PodcastPlaybackView: View {
     }
 
     private var playbackControls: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             Text(podcast.snapshot?.episode?.title ?? "Choose next episode on iPhone")
                 .font(.caption).multilineTextAlignment(.center)
+                .lineLimit(2, reservesSpace: true).truncationMode(.tail)
+                .frame(maxWidth: .infinity)
             Text("\(PodcastTile.time(podcast.displayedPosition)) · −\(PodcastTile.time(max(0, (podcast.snapshot?.duration ?? 0) - (podcast.snapshot?.position ?? 0))))")
-                .font(.caption).monospacedDigit()
-            Spacer(minLength: 0)
+                .font(.caption).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
             HStack(spacing: 4) {
                 Button { podcast.send(.backward15) } label: { Image(systemName: "gobackward.15") }.accessibilityLabel("Back 15 seconds")
                 Button { podcast.send(podcast.displayedPlaying ? .pause : .playCurrent) } label: {
@@ -159,9 +157,15 @@ struct PodcastPlaybackView: View {
             }
             .buttonStyle(PodcastControlStyle(color: color))
             .disabled(podcast.pending != nil)
-            Button(podcast.pending?.action == .complete ? "Complete" : "Mark Complete") { podcast.send(.complete) }
-                .buttonStyle(PodcastControlStyle(color: color))
-                .disabled(podcast.pending != nil)
+            HStack(spacing: 6) {
+                Button(podcast.pending?.action == .complete ? "Complete" : "Mark Complete") { podcast.send(.complete) }
+                    .font(.caption2).lineLimit(1).minimumScaleFactor(0.8)
+                    .buttonStyle(PodcastControlStyle(color: color))
+                    .disabled(podcast.pending != nil)
+                // Visible and outside a ScrollView so native Crown focus does
+                // not depend on scrolling to an offscreen volume control.
+                WatchVolume(origin: .companion).frame(width: 44, height: 44)
+            }
         }
     }
 }
