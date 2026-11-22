@@ -114,32 +114,32 @@ struct PodcastPlaybackView: View {
     var body: some View {
         VStack(spacing: 4) {
             ScrollView {
-                VStack(spacing: 8) {
-                    Text("Mission Log").font(.caption)
-                    Text(podcast.snapshot?.episode?.title ?? "Choose next episode on iPhone").font(.headline).multilineTextAlignment(.center)
+                VStack(spacing: 4) {
+                    Text(podcast.snapshot?.episode?.title ?? "Choose next episode on iPhone").font(.caption).multilineTextAlignment(.center)
                     Text("\(PodcastTile.time(podcast.displayedPosition)) · −\(PodcastTile.time(max(0, (podcast.snapshot?.duration ?? 0) - (podcast.snapshot?.position ?? 0))))")
                         .font(.caption).monospacedDigit()
-                    HStack {
-                        Button { podcast.send(.backward15) } label: { Image(systemName: "gobackward.15") }.accessibilityLabel("Back 15 seconds")
-                        Button { podcast.send(podcast.displayedPlaying ? .pause : .playCurrent) } label: {
-                            VStack(spacing: 2) {
-                                Image(systemName: podcast.displayedPlaying ? "pause.fill" : "play.fill")
-                                Text(podcast.displayedPlaying ? "Playing" : podcast.snapshot == nil ? "Play" : "Paused").font(.caption2)
-                            }
-                        }.accessibilityLabel(podcast.displayedPlaying ? "Pause" : "Play")
-                        Button { podcast.send(.forward15) } label: { Image(systemName: "goforward.15") }.accessibilityLabel("Forward 15 seconds")
-                    }
-                    .disabled(podcast.pending != nil)
-                    WatchVolume(origin: .companion).frame(height: 44)
                     if !podcast.error.isEmpty {
                         Text(podcast.error).font(.caption2).foregroundStyle(.gray)
                         Button("Refresh", action: podcast.refresh).disabled(podcast.pending != nil)
                     } else if let status = podcast.snapshot?.status { Text(status).font(.caption2) }
                 }.frame(maxWidth: .infinity)
             }
-            // Keep completion reachable even when the native volume control owns
-            // Crown focus or consumes a drag in the scrolling playback content.
+            // Reserve space for every control; only episode details may scroll.
+            HStack(spacing: 4) {
+                Button { podcast.send(.backward15) } label: { Image(systemName: "gobackward.15") }.accessibilityLabel("Back 15 seconds")
+                Button { podcast.send(podcast.displayedPlaying ? .pause : .playCurrent) } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: podcast.displayedPlaying ? "pause.fill" : "play.fill")
+                        Text(podcast.displayedPlaying ? "Playing" : podcast.snapshot == nil ? "Play" : "Paused").font(.caption2)
+                    }
+                }.accessibilityLabel(podcast.displayedPlaying ? "Pause" : "Play")
+                Button { podcast.send(.forward15) } label: { Image(systemName: "goforward.15") }.accessibilityLabel("Forward 15 seconds")
+            }
+            .buttonStyle(PodcastControlStyle(color: color))
+            .disabled(podcast.pending != nil)
+            WatchVolume(origin: .companion).frame(height: 44)
             Button(podcast.pending?.action == .complete ? "Complete" : "Mark Complete") { podcast.send(.complete) }
+                .buttonStyle(PodcastControlStyle(color: color))
                 .disabled(podcast.pending != nil)
         }
         .foregroundStyle(color).tint(color.opacity(0.25)).padding(.horizontal, 5)
@@ -152,5 +152,14 @@ struct PodcastPlaybackView: View {
                     onSwipe(direction)
                 }
             })
+    }
+}
+
+private struct PodcastControlStyle: ButtonStyle {
+    let color: Color
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .background(color.opacity(configuration.isPressed ? 0.35 : 0.18), in: RoundedRectangle(cornerRadius: 18))
     }
 }
