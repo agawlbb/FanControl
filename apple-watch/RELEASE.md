@@ -13,9 +13,19 @@ The simulator preview now prefers Ultra 4, otherwise another available Ultra,
 and records the actual model/runtime in its artifact. Temporary simulators
 created for the preview are shut down and deleted afterward.
 
-Core tests cover title parsing. Simulator layout verification is requested;
-physical Crown/paired-iPhone volume and touch responsiveness still need device
-checks. No release or HA deployment was requested.
+Core title tests and both Apple SDK source typechecks passed for source
+`fda5faffc3e07c92732e4eb054106dc14fd25305`:
+https://github.com/agawlbb/FanControl/actions/runs/45040236984
+Unsigned simulator compilation and screenshot capture passed on **Apple Watch
+Ultra 4 (49mm), watchOS 27.2**. The long-title screenshot shows both title lines,
+progress, playback and the completion/volume row together without scrolling:
+https://github.com/agawlbb/FanControl/actions/runs/45040236872
+The selected simulator was already installed; the capture script shut it down.
+Only the requested screenshot is retained locally at ignored
+`build/podcast-preview/watch-podcast-compact-title.png` for user retrieval until
+superseded or no longer needed. No app bundle, downloaded ZIP or temporary report
+was retained. Physical Crown/paired-iPhone volume and touch responsiveness still
+need device checks. No release or HA deployment was requested.
 
 # Compact Podcast layout (unreleased)
 
