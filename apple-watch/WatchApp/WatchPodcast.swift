@@ -125,7 +125,7 @@ struct PodcastPlaybackView: View {
                 Text(status).font(.caption2).lineLimit(1).minimumScaleFactor(0.8)
             }
         }
-        .foregroundStyle(color).tint(color.opacity(0.25)).padding(.horizontal, 5)
+        .foregroundStyle(color).tint(color.opacity(0.25)).padding(.horizontal, 2)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         // Keep horizontal tile navigation available over the full layout.
@@ -139,10 +139,17 @@ struct PodcastPlaybackView: View {
 
     private var playbackControls: some View {
         VStack(spacing: 4) {
-            Text(podcast.snapshot?.episode?.title ?? "Choose next episode on iPhone")
-                .font(.caption).multilineTextAlignment(.center)
-                .lineLimit(2, reservesSpace: true).truncationMode(.tail)
-                .frame(maxWidth: .infinity)
+            VStack(spacing: 2) {
+                let title = (podcast.snapshot?.episode).map(PodcastWatchTitle.init)
+                Text(title?.heading ?? "Mission Log")
+                    .font(.headline).lineLimit(1).minimumScaleFactor(0.75)
+                Text(title?.title ?? "Choose next episode on iPhone")
+                    .font(.caption).lineLimit(1).minimumScaleFactor(0.75)
+                    .truncationMode(.tail)
+            }
+            .frame(maxWidth: .infinity)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(podcast.snapshot?.episode?.title ?? "Choose next episode on iPhone")
             Text("\(PodcastTile.time(podcast.displayedPosition)) · −\(PodcastTile.time(max(0, (podcast.snapshot?.duration ?? 0) - (podcast.snapshot?.position ?? 0))))")
                 .font(.caption).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
             HStack(spacing: 4) {
@@ -155,11 +162,12 @@ struct PodcastPlaybackView: View {
                 }.accessibilityLabel(podcast.displayedPlaying ? "Pause" : "Play")
                 Button { podcast.send(.forward15) } label: { Image(systemName: "goforward.15") }.accessibilityLabel("Forward 15 seconds")
             }
-            .buttonStyle(PodcastControlStyle(color: color))
+            .buttonStyle(PodcastControlStyle(color: color, expands: true))
+            .frame(maxHeight: .infinity)
             .disabled(podcast.pending != nil)
             HStack(spacing: 6) {
                 Button(podcast.pending?.action == .complete ? "Complete" : "Mark Complete") { podcast.send(.complete) }
-                    .font(.caption2).lineLimit(1).minimumScaleFactor(0.8)
+                    .font(.caption).lineLimit(1).minimumScaleFactor(0.8)
                     .buttonStyle(PodcastControlStyle(color: color))
                     .disabled(podcast.pending != nil)
                 // Visible and outside a ScrollView so native Crown focus does
@@ -172,9 +180,10 @@ struct PodcastPlaybackView: View {
 
 private struct PodcastControlStyle: ButtonStyle {
     let color: Color
+    var expands = false
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .frame(maxWidth: .infinity, minHeight: 36)
+            .frame(maxWidth: .infinity, minHeight: 44, maxHeight: expands ? .infinity : nil)
             .background(color.opacity(configuration.isPressed ? 0.35 : 0.18), in: RoundedRectangle(cornerRadius: 18))
     }
 }

@@ -1,3 +1,22 @@
+# Podcast series and episode title (unreleased)
+
+Split the watch title into two single-line fields: series without the Star Trek
+prefix plus abbreviated season/episode (for example, Voyager S4 E8&9), followed
+by the episode name. Keep full source titles in accessibility labels. Parsing
+handles single episodes, paired episodes, ranges, quoted names and film/fallback
+titles without changing feed data or command payloads.
+
+Use available width with smaller side margins and let the playback buttons
+expand into remaining vertical room. Keep progress on one line and Mark Complete
+on the left/native volume on the right of the bottom 44-point row; no scrolling.
+The simulator preview now prefers Ultra 4, otherwise another available Ultra,
+and records the actual model/runtime in its artifact. Temporary simulators
+created for the preview are shut down and deleted afterward.
+
+Core tests cover title parsing. Simulator layout verification is requested;
+physical Crown/paired-iPhone volume and touch responsiveness still need device
+checks. No release or HA deployment was requested.
+
 # Compact Podcast layout (unreleased)
 
 Use the requested four-row layout without a ScrollView: a title capped at two

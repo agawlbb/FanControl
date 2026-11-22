@@ -61,6 +61,7 @@ jobs:
           name: FanControlWatch-unsigned
           path: |
             apple-watch/build/watch-*.png
+            apple-watch/build/watch-simulator-selection.json
             apple-watch/build/phone-*.png
             apple-watch/build-phone/Build/Products/Debug-iphonesimulator/FanControl.app
             apple-watch/build/FanControlWatch.xcarchive
