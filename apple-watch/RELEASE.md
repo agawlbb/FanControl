@@ -25,8 +25,24 @@ Only the requested screenshot is retained locally at ignored
 `build/podcast-preview/watch-podcast-compact-title.png` for user retrieval until
 superseded or no longer needed. No app bundle, downloaded ZIP or temporary report
 was retained. Physical Crown/paired-iPhone volume and touch responsiveness still
-need device checks. The user authorized this release; TestFlight build 39
-publication is in progress. No HA deployment is required.
+need device checks.
+
+Published at the user's explicit request to the existing **Internal** TestFlight
+group. Apple build `0ddea83c-c55f-4b89-88e0-1b23546a6f4e` is `VALID`, not
+expired, and `IN_BETA_TESTING`, marketing version 0.12.11, without non-exempt
+encryption. Update both iPhone and watch apps through TestFlight.
+
+Signed source: `2b0c358833f0877da79824858b7644195bfaa463` on `main`.
+Core tests and both Apple SDK source typechecks passed for that source:
+https://github.com/agawlbb/FanControl/actions/runs/45041604461
+Signed archive/export, signature and production APNs entitlement checks, upload,
+Apple processing and Internal TestFlight access passed:
+https://github.com/agawlbb/FanControl/actions/runs/45041604161
+Release tag: `v0.12.11-build39`. Processing evidence remains in the workflow
+artifact. No local release archive or evidence report was retained. No HA
+deployment was needed. Native volume requests Crown focus on active tile entry;
+this release does not claim verified physical focus or paired-iPhone volume
+response.
 
 ## Included compact Podcast layout
 

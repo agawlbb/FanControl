@@ -77,7 +77,7 @@ not upload a build or assign it to testers.
 After a signed build succeeds and the owner authorizes the release, run the same
 workflow with **Upload signed build to TestFlight** checked. Choose a build number
 greater than every number already uploaded for the current app version. The last
-documented upload was version 0.12.10, build 38; check App Store Connect before choosing
+documented upload was version 0.12.11, build 39; check App Store Connect before choosing
 the next number because other releases may have occurred.
 
 The release job checks uploaded build numbers directly with App Store Connect
