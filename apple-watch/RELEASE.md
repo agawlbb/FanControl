@@ -1,3 +1,19 @@
+# Podcast completion access (unreleased)
+
+Keep the existing Mark Complete button outside the scrolling episode/playback
+content, in a persistent bottom row. Long titles, error messages, native volume
+touches and the volume control's Digital Crown focus no longer require scrolling
+to reach completion. Playback details and volume remain in the vertical scroll
+view; horizontal navigation observes the full tile alongside native scroll.
+The existing completion action, pending-command protection and feedback remain.
+No HA API changes or deployment are required.
+
+Paired-watch checks remain: the bottom completion row is visible on small and
+large displays, including larger text and long episode/error content; completion
+stays disabled during pending commands; vertical scrolling, horizontal navigation,
+ordinary playback taps and paired-iPhone volume still work without accidental
+completion. No app build or release was requested for this source fix.
+
 # Podcast volume and scrolling — 0.12.9 (37), November 17, 2026
 
 The podcast tile uses the native paired-iPhone volume control with Digital Crown
