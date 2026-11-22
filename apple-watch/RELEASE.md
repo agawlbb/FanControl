@@ -1,4 +1,4 @@
-# Podcast series and episode title (unreleased)
+# Podcast series and episode title — 0.12.11 (39), November 22, 2026
 
 Split the watch title into two single-line fields: series without the Star Trek
 prefix plus abbreviated season/episode (for example, Voyager S4 E8&9), followed
@@ -25,9 +25,10 @@ Only the requested screenshot is retained locally at ignored
 `build/podcast-preview/watch-podcast-compact-title.png` for user retrieval until
 superseded or no longer needed. No app bundle, downloaded ZIP or temporary report
 was retained. Physical Crown/paired-iPhone volume and touch responsiveness still
-need device checks. No release or HA deployment was requested.
+need device checks. The user authorized this release; TestFlight build 39
+publication is in progress. No HA deployment is required.
 
-# Compact Podcast layout (unreleased)
+## Included compact Podcast layout
 
 Use the requested four-row layout without a ScrollView: a title capped at two
 lines (truncating longer titles), one progress line, the existing playback row,
@@ -44,9 +45,10 @@ Crown focus on an Ultra 4; its single short-title simulator screenshot did not
 establish those physical behaviors. This change removes that offscreen design.
 Remaining checks: normal/larger text on the Ultra, title truncation, visible
 completion and volume, playback taps, horizontal swipes without activation,
-pending/error states, Crown volume on entry and after wrist-down/up. No new build
-or release was requested; core tests and SDK typechecks cannot prove rendering or
-paired-iPhone volume response. No HA change or deployment is required.
+pending/error states, Crown volume on entry and after wrist-down/up. Core tests
+and SDK typechecks cannot prove paired-iPhone volume response. These layout
+changes are included in the user-authorized 0.12.11 release above. No HA change
+or deployment is required.
 
 # Podcast completion access — 0.12.10 (38), November 22, 2026
 
