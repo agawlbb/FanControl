@@ -1,4 +1,4 @@
-# Podcast completion access (unreleased)
+# Podcast completion access — 0.12.10 (38), November 22, 2026
 
 Show episode details, playback buttons and Mark Complete on the first screen.
 Place native paired-iPhone volume underneath that viewport, reachable by touch
@@ -16,8 +16,8 @@ stays disabled during pending commands; vertical scrolling, horizontal navigatio
 ordinary playback taps and paired-iPhone volume still work without accidental
 completion. In particular, confirm Crown volume works immediately while its
 control is below the fold, after scrolling and after wrist-down/up. A simulator
-preview checks layout only, not paired-iPhone Crown behavior. No release was
-requested.
+preview checks layout only, not paired-iPhone Crown behavior. The user explicitly
+authorized this release; TestFlight build 38 publication is in progress.
 
 # Podcast volume and scrolling — 0.12.9 (37), November 17, 2026
 
