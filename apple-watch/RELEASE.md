@@ -1,12 +1,12 @@
 # Podcast completion access (unreleased)
 
-Keep playback buttons, native volume and Mark Complete outside the scrolling
-episode details. Compact 36-point playback/completion rows reserve space for all
-controls together; only title, progress and error/status details scroll.
-The first simulator preview exposed playback controls below the fold when only
-completion was pinned; this layout also reserves the playback and volume rows.
-Native volume focus no longer requires scrolling to reach those controls.
-Horizontal navigation observes the full tile alongside native scroll.
+Show episode details, playback buttons and Mark Complete on the first screen.
+Place native paired-iPhone volume underneath that viewport, reachable by touch
+scrolling. Keep it mounted in a non-lazy stack and retain the existing active-scene
+Crown focus, so moving it below the fold does not remove its focus coordinator.
+Compact 36-point playback/completion rows preserve room for the title and progress.
+Error/status details follow volume. Horizontal navigation observes the full tile
+alongside native scroll. No extra volume screen or speaker shortcut is added.
 The existing completion action, pending-command protection and feedback remain.
 No HA API changes or deployment are required.
 
@@ -14,7 +14,10 @@ Paired-watch checks remain: the bottom completion row is visible on small and
 large displays, including larger text and long episode/error content; completion
 stays disabled during pending commands; vertical scrolling, horizontal navigation,
 ordinary playback taps and paired-iPhone volume still work without accidental
-completion. A simulator preview was requested; no release was requested.
+completion. In particular, confirm Crown volume works immediately while its
+control is below the fold, after scrolling and after wrist-down/up. A simulator
+preview checks layout only, not paired-iPhone Crown behavior. No release was
+requested.
 
 # Podcast volume and scrolling — 0.12.9 (37), November 17, 2026
 
