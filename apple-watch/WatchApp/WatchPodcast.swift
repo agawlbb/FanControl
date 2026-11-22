@@ -125,6 +125,9 @@ struct PodcastPlaybackView: View {
                     } else if let status = podcast.snapshot?.status { Text(status).font(.caption2) }
                 }.frame(maxWidth: .infinity)
             }
+            // ScrollView otherwise permits content to draw into the bottom
+            // safe area, exposing part of the next (volume) row on first entry.
+            .clipped()
         }
         .foregroundStyle(color).tint(color.opacity(0.25)).padding(.horizontal, 5)
         .contentShape(Rectangle())
