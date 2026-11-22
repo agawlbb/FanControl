@@ -17,7 +17,27 @@ ordinary playback taps and paired-iPhone volume still work without accidental
 completion. In particular, confirm Crown volume works immediately while its
 control is below the fold, after scrolling and after wrist-down/up. A simulator
 preview checks layout only, not paired-iPhone Crown behavior. The user explicitly
-authorized this release; TestFlight build 38 publication is in progress.
+authorized this release.
+
+Published to the existing **Internal** TestFlight group. Apple build
+`d9b561df-a63b-4aa8-8592-498b7d12b52c` is `VALID`, not expired, and
+`IN_BETA_TESTING`, marketing version 0.12.10, without non-exempt encryption.
+Update both iPhone and watch apps through TestFlight.
+
+Signed source: `ea145e8b4310b3d35003f5f275c7f045ca7e2641` on `main`.
+Core tests and watch/iPhone SDK source typechecks passed:
+https://github.com/agawlbb/FanControl/actions/runs/45032298991
+The final simulator screenshot verifies that volume is fully below the initial
+viewport while title, progress, playback and Mark Complete remain visible:
+https://github.com/agawlbb/FanControl/actions/runs/45031192542
+Signed archive/export, signature and production APNs entitlement checks, upload,
+Apple processing and Internal TestFlight access passed:
+https://github.com/agawlbb/FanControl/actions/runs/45032298801
+Release tag: `v0.12.10-build38`. Processing evidence remains in the workflow
+artifact; no local release archive or evidence report was retained. The requested
+simulator image remains at ignored
+`build/podcast-preview/watch-podcast-volume-offscreen.png` for user retrieval
+until it is superseded or no longer needed. No HA deployment was needed.
 
 # Podcast volume and scrolling — 0.12.9 (37), November 17, 2026
 
