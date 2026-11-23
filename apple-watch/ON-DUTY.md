@@ -1,5 +1,22 @@
 # Direct FlightSync flight tile — Apple 0.13.0 (40), November 23, 2026
 
+## Pending app correction — November 23, 2026
+
+Limit the visible flight fields to flight number, city pair, departure time in
+the watch's local timezone, and time to go. Remove the unrequested arrival time,
+departure date, and provider status (including predeparture). The retained trip
+data and the 40-minute opening-position rule are unchanged.
+
+The flight tile now observes horizontal swipes simultaneously with native
+vertical scrolling. Its former high-priority drag could capture vertical touch
+movement before checking the direction on release. Keep the existing horizontal
+direction threshold and other tiles' command/control gesture handling unchanged.
+The opening position is still applied once per visible entry; phone updates
+must not reposition a user who is scrolling. This correction needs a new app
+build/release, not a server deployment. Paired-watch touch/Crown checks remain
+for scrolling in both directions, including over text/dividers, horizontal
+navigation, and returning to the skipped flight above the opening position.
+
 The iPhone pairs directly with FlightSync in Settings → FlightSync using its
 separate server secret. It is validated against the fixed HTTPS FlightSync
 endpoint and saved only in the iPhone Keychain. HA never receives this secret,

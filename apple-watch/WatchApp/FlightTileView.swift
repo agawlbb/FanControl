@@ -33,8 +33,16 @@ struct FlightTileView: View {
                     }
                     .padding(.horizontal, 5)
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
-                    .tileSwipe(onSwipe: onSwipe)
+                    .contentShape(Rectangle())
                 }
+                // Observe horizontal swipes alongside native scrolling. A high-priority
+                // drag captures vertical movement before its onEnded direction check.
+                .simultaneousGesture(DragGesture(minimumDistance: TileSwipe.minimumDistance)
+                    .onEnded { value in
+                        if let direction = TileSwipe.direction(x: value.translation.width, y: value.translation.height) {
+                            onSwipe(direction)
+                        }
+                    })
                 .task(id: openingIndex) {
                     // Wait for the current rows to be laid out, including a first phone response.
                     await Task.yield()
@@ -48,14 +56,14 @@ struct FlightTileView: View {
 
     private func flightInfo(_ flight: [String: Any]) -> some View {
         let departure = FlightPresentation.departure(flight["departure"] as? String)
-        let arrival = FlightPresentation.departure(flight["arrival"] as? String)
+        // Keep the requested tile fields: number, city pair, departure time and countdown.
         return VStack(spacing: 12) {
             Text(flight["number"] as? String ?? "—").font(.headline)
             Text(flight["city_pair"] as? String ?? "—").font(.title2.bold())
             if let departure {
                 VStack(spacing: 2) {
                     Text("Departure").font(.caption)
-                    Text(departure, format: .dateTime.month(.abbreviated).day().hour().minute()).font(.body)
+                    Text(departure, style: .time).font(.title3)
                 }
                 VStack(spacing: 2) {
                     Text("Time to go").font(.caption)
@@ -64,13 +72,6 @@ struct FlightTileView: View {
                     }
                 }
             }
-            if let arrival {
-                VStack(spacing: 2) {
-                    Text("Arrival").font(.caption)
-                    Text(arrival, format: .dateTime.month(.abbreviated).day().hour().minute()).font(.body)
-                }
-            }
-            if let status = flight["status"] as? String { Text(status.replacingOccurrences(of: "_", with: " ")).font(.caption) }
         }
     }
 }
