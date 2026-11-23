@@ -1,3 +1,25 @@
+# Direct FlightSync flight tile — 0.13.0 (40), November 23, 2026
+
+Release explicitly authorized by the user. The iPhone pairs directly with
+FlightSync in Settings → FlightSync using the private server secret. FlightSync
+owns flight selection and sends direct silent iPhone APNs hints. The phone stores
+the full current/next flight and following trip legs and supplies them promptly
+to the watch on foreground entry. No HA update is required.
+
+The flight tile includes flight number, city pair, departure/arrival and status.
+At 40 minutes after the latest received departure estimate, the watch opens on
+the next retained flight if one exists. Skipped flights remain above for scrolling
+up; a delayed estimate updates the cutoff, and the final flight remains visible.
+This is a local presentation assumption and never changes FlightSync progress.
+
+Source validation passed for `e8faf79`:
+https://github.com/agawlbb/FanControl/actions/runs/45251602796
+App Store Connect preflight found 39 as the highest uploaded build and 40 available.
+Signed archive/export, Apple processing and Internal TestFlight publication are
+pending the authorized workflow. Paired-device checks remain for secret pairing,
+silent-push/background execution, foreground cache retrieval, opening scroll
+position, upward access to skipped flights, and scrolling during fresh updates.
+
 # Podcast series and episode title — 0.12.11 (39), November 22, 2026
 
 Split the watch title into two single-line fields: series without the Star Trek
