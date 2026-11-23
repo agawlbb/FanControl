@@ -15,3 +15,10 @@ Diagnostics retain up to 120 local events and HA attempts per watch, with correl
 Imported audio stays in private phone/watch storage and transfers through WatchConnectivity. It is not uploaded to the developer, relay or HA. Legacy explicit HA music download remains available in watch recovery. Headset names and the remembered watch audio-route identifier stay on the devices/paired HA. Removing a phone track takes effect on watch after Sync; ongoing playback can finish its current library. Unlink phone keeps the user's imported library. Forget connection on watch removes watch credentials, music and diagnostics.
 
 Apple may provide TestFlight crash reports, beta feedback and diagnostics under its policies. Do not include private credentials or entity details in public issues. Use private GitHub security reporting when available.
+
+Flight information can be paired directly with FlightSync using a server secret
+stored in the iPhone Keychain. FlightSync stores that phone's APNs registration
+and a hash identifying its authorization secret to send silent flight-change
+hints. The phone stores the current/next flight and remaining trip locally and
+shares the flight data, without the server secret, with its paired watch. Home
+Assistant does not receive this credential or supply these flight updates.

@@ -4,7 +4,7 @@ import Foundation
 @MainActor public enum VisibleStateRefresh {
     public static func request(for device: Device) -> [String: Any]? {
         // Vehicle entry has its own bounded wake/readiness coordinator.
-        guard device.panel?.vehicle != true else { return nil }
+        guard device.panel?.vehicle != true, device.panel?.type != "on_duty" else { return nil }
         if let panel = device.panel {
             var body: [String: Any] = ["action": "panel_state", "panel_id": panel.id]
             if panel.type == "exercise" { body["music_mode"] = "local" }

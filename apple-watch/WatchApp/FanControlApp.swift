@@ -70,7 +70,7 @@ import FanControlCore
                 await CommandAlerts.shared.prepareNotifications()
             }
         }
-        observed = connection.flatMap { c in device.map { ObservationCache.shared.load(c, $0) } } ?? [:]
+        observed = connection.flatMap { c in device.map { $0.panel?.type == "on_duty" ? WatchFlightSync.state(c) : ObservationCache.shared.load(c, $0) } } ?? [:]
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.arguments.contains("--preview-podcast") {
             sessionTarget = PodcastTile.id
@@ -117,6 +117,10 @@ import FanControlCore
                 do { try await Task.sleep(until: deadline, clock: .continuous) } catch { return }
             }
             guard !Task.isCancelled, ticket == generation, visible, let d = device else { return }
+            if d.panel?.type == "on_duty" {
+                refreshFlightTrip()
+                return
+            }
             let client = Integration(connection)
             if d.panel?.vehicle != true {
                 // Refresh the displayed nonvehicle target once, even without a phone
@@ -304,6 +308,11 @@ import FanControlCore
         if let intent = activeIntent { CommandAlerts.shared.clear(intent.id) }
         if busy { feedback?.phase = .unconfirmed }; commandPending = false
     }
+    func refreshFlightTrip() {
+        guard visible, device?.panel?.type == "on_duty", let c = connection else { return }
+        observed = WatchFlightSync.state(c)
+        stateFresh = observed["available"] as? Bool == true
+    }
     func receiveCompanion(_ snapshot: CompanionSnapshot?) {
         guard let saved = Vault.load() else { return }
         // Invalidate older navigation even when a command defers visible selection.
@@ -323,24 +332,16 @@ import FanControlCore
         connection = saved
         if !same || selectedChanged {
             enter(resetSelection: true, allowEntryWake: visible)
-        } else if visible, let d = device, d.panel?.type == "on_duty" {
-            observed = ObservationCache.shared.load(saved, d)
-            stateFresh = false
-            if let snapshot, let source = try? snapshot.resolved(for: saved), source.sameTarget(as: saved),
-               let raw = snapshot.states[d.entity],
-               let state = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
-               VisibleStateRefresh.available(state, for: d) {
-                observed = state
-                stateFresh = true
-            }
+        } else if visible, device?.panel?.type == "on_duty" {
+            refreshFlightTrip()
         } else if !stateFresh, let d = device {
             observed = ObservationCache.shared.load(saved, d)
             // A passive snapshot cannot cancel the active entry coordinator or confirm a command.
         }
     }
 
-    func paired(_ value: Connection) { if connection?.watch_id != value.watch_id || connection?.token != value.token { CommandDelivery.shared.clear(); WatchPodcast.shared.clear() }; connection = value; WatchCompanion.shared.provision(); enter() }
-    func forget() { WatchPodcast.shared.clear(); CommandDelivery.shared.clear(); defaultTile.clear(); leave(); showingSettings = false; sessionTarget = nil; ExercisePlayer.shared.forget(); ObservationCache.shared.clear(); PushDiagnostics.shared.clear(); Vault.clear(); connection = nil; observed = [:]; feedback = nil }
+    func paired(_ value: Connection) { if connection?.watch_id != value.watch_id || connection?.token != value.token { CommandDelivery.shared.clear(); WatchPodcast.shared.clear(); WatchFlightSync.clear() }; connection = value; WatchCompanion.shared.provision(); enter() }
+    func forget() { WatchFlightSync.clear(); WatchPodcast.shared.clear(); CommandDelivery.shared.clear(); defaultTile.clear(); leave(); showingSettings = false; sessionTarget = nil; ExercisePlayer.shared.forget(); ObservationCache.shared.clear(); PushDiagnostics.shared.clear(); Vault.clear(); connection = nil; observed = [:]; feedback = nil }
 }
 
 

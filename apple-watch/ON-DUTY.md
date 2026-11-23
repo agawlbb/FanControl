@@ -1,3 +1,43 @@
+# Direct FlightSync flight tile — unreleased November 23, 2026
+
+The iPhone pairs directly with FlightSync in Settings → FlightSync using its
+separate server secret. It is validated against the fixed HTTPS FlightSync
+endpoint and saved only in the iPhone Keychain. HA never receives this secret,
+selects these flights, or transports this flight snapshot. Existing HA sensors,
+automations, and older clients retain their behavior.
+
+FlightSync API version 1 owns current/next selection through the shared progress
+tracker. Its snapshot contains the present flight, or the next flight when none
+is active, followed by every remaining flight in that trip's source order.
+Flight number, city pair, departure/arrival, scheduled/actual times, status, route
+and delay are retained together. Authoritative empty trips clear the old list.
+
+FlightSync sends silent APNs change hints directly to the iPhone topic
+`dev.fancontrol.watch`; the phone fetches and persists a whole trip, then publishes
+it through WatchConnectivity. On watch foreground entry, the watch asks the phone
+once: the phone returns the cached trip promptly and starts one direct FlightSync
+refresh. Foreground phone refresh and OS background refresh recover missed hints.
+No direct watch network read or HA flight read is involved. On the existing tile,
+scroll down to see each following flight and its flight number. Saved data is
+gray when FlightSync's source observation is stale.
+
+Server setup requires `FLIGHTSYNC_FANCONTROL_TOKEN_FILE`,
+`FLIGHTSYNC_FANCONTROL_APNS_CONFIG_FILE`, its existing Apple provider signing key,
+and `app/fancontrol_schema.sql`. The JSON APNs configuration has `team_id`,
+`key_id`, `key_file`. Registrations survive restart; unchanged digests do not
+resend. Secret rotation excludes old registrations. Unlinking clears phone
+credentials/cache and asks FlightSync to unregister this phone. The server secret
+and APNs tokens are absent from watch snapshots and diagnostics. APNs acceptance
+is not device receipt, and iOS may defer background delivery.
+
+This needs the coordinated unreleased FanControl iPhone/watch sources and the
+FlightSync direct API. No HA update is required. Deployment and app builds have
+not been requested. Paired-device checks remain for secure pairing, real silent
+push delivery, immediate foreground cache retrieval, offline/stale display,
+scrolling, empty trips and unlink/relink.
+
+The notes below describe historical released HA-backed behavior.
+
 > Message behavior below describes the original release. It is superseded by
 > phone-only storage and 12-hour/manual dismissal with HA 0.14.0 and the next
 > iPhone build. Arrival no longer clears messages; HA no longer retains them.

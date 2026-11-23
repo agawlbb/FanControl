@@ -123,12 +123,26 @@ struct CompanionView: View {
 private struct SettingsView: View {
     @ObservedObject private var model = PhoneModel.shared
     @State private var headset = ""
+    @State private var flightSecret = ""
+    @State private var pairingFlight = false
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var enablingNotifications = false
     @Environment(\.scenePhase) private var phase
     @Environment(\.openURL) private var openURL
     var body: some View {
         Form {
+            Section("FlightSync") {
+                if model.flightSyncPaired { Text("Paired").foregroundStyle(.secondary) }
+                SecureField("Server secret", text: $flightSecret)
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                Button(model.flightSyncPaired ? "Pair again" : "Pair FlightSync") {
+                    pairingFlight = true
+                    Task { @MainActor in
+                        defer { pairingFlight = false }
+                        if await model.pairFlightSync(flightSecret) { flightSecret = "" }
+                    }
+                }.disabled(pairingFlight || flightSecret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
             Section("Headset") {
                 TextField("Name", text: $headset)
                     .autocorrectionDisabled()

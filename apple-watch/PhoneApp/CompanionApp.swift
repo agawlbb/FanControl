@@ -26,7 +26,9 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCe
             Task { @MainActor in
                 let work = Task {
                     await PodcastPlayer.shared.refresh()
-                    return await PhoneModel.shared.refresh()
+                    let flights = await PhoneModel.shared.refreshFlights()
+                    let home = await PhoneModel.shared.refresh()
+                    return flights || home
                 }
                 task.expirationHandler = { work.cancel() }
                 let success = await work.value
@@ -63,9 +65,16 @@ final class PhoneDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCe
     }
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         PhoneModel.shared.pushToken = deviceToken.map { String(format: "%02x", $0) }.joined()
-        Task { await PhoneModel.shared.registerPush() }
+        Task { await PhoneModel.shared.registerPush(); await PhoneModel.shared.registerFlightPush() }
     }
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        if userInfo["flightsync"] as? Bool == true {
+            Task { @MainActor in
+                let success = await PhoneModel.shared.refreshFlights()
+                completionHandler(success ? .newData : .failed)
+            }
+            return
+        }
         if let hint = userInfo["fancontrol"] as? [String: Any], hint["notification"] as? Bool == true,
            let aps = userInfo["aps"] as? [String: Any], let alert = aps["alert"] as? [String: Any],
            let title = alert["title"] as? String, let body = alert["body"] as? String {

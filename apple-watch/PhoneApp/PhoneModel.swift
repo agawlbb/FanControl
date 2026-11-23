@@ -13,6 +13,7 @@ import FanControlCore
     var messages: [AppMessage] { inbox.messages }
     @Published var selectedMessage: AppMessage?
     @Published var error = ""
+    @Published private(set) var flightSyncPaired = PhoneFlightSync.shared.paired
     @Published private(set) var reachable = false
     @Published private(set) var refreshedAt: Date?
     @Published private(set) var watchSequence = 0
@@ -56,9 +57,11 @@ import FanControlCore
         foregroundWork = Task {
             await loadDeliveredMessages()
             await registerPush()
+            await registerFlightPush()
             while !Task.isCancelled {
                 expireMessages()
                 _ = await refresh()
+                _ = await refreshFlights()
                 do { try await Task.sleep(for: .seconds(15)) } catch { return }
             }
         }
@@ -146,8 +149,8 @@ import FanControlCore
             do {
                 _ = try await Integration(c).request(["action": "companion_unlink"])
                 guard connection?.token == c.token else { return }
-                foregroundWork?.cancel(); connection = nil; snapshot = nil; outbox = []; events = []; watchSequence = 0; refreshedAt = nil
-                clearMessages(); PhoneLibrary.shared.targetChanged(); PodcastPlayer.shared.pairingChanged()
+                foregroundWork?.cancel(); connection = nil; flightSyncPaired = false; snapshot = nil; outbox = []; events = []; watchSequence = 0; refreshedAt = nil
+                PhoneFlightSync.shared.forget(); clearMessages(); PhoneLibrary.shared.targetChanged(); PodcastPlayer.shared.pairingChanged()
                 Vault.clear()
                 for key in ["phoneSnapshot", "phoneReceipts", "phoneEvents", "phoneMessages", "phoneMessageDismissals"] { defaults.removeObject(forKey: key) }
                 for transfer in session.outstandingFileTransfers { transfer.cancel() }
@@ -191,6 +194,28 @@ import FanControlCore
         connection = c; snapshot = next; settings = c.companion_settings ?? CompanionSettings()
         refreshedAt = Date(timeIntervalSince1970: Double(next.atMS) / 1000); error = ""
         publish()
+    }
+    func pairFlightSync(_ secret: String) async -> Bool {
+        do {
+            try await PhoneFlightSync.shared.pair(secret: secret)
+            flightSyncPaired = true
+            await registerFlightPush()
+            publish()
+            return true
+        } catch {
+            self.error = "FlightSync pairing failed. Check the server secret and FlightSync server configuration."
+            return false
+        }
+    }
+    func registerFlightPush() async {
+        guard let token = pushToken,
+              let environment = Bundle.main.object(forInfoDictionaryKey: "FanControlAPNSEnvironment") as? String else { return }
+        await PhoneFlightSync.shared.register(token: token, environment: environment == "development" ? "sandbox" : "production")
+    }
+    @discardableResult func refreshFlights() async -> Bool {
+        let success = await PhoneFlightSync.shared.refresh()
+        if success { publish() }
+        return success
     }
     func saveSettings() {
         guard let original = connection, !saving else { return }
@@ -236,6 +261,8 @@ import FanControlCore
         if let manifest = PhoneLibrary.shared.manifest, manifest.watchID == connection?.watch_id,
            let raw = try? JSONEncoder().encode(manifest) { value["playlist"] = raw }
         if let c = connection {
+            value["flight_trip"] = PhoneFlightSync.shared.snapshot(watchID: c.watch_id)
+            value["flight_watch_id"] = c.watch_id
             value["podcast"] = try? JSONEncoder().encode(PodcastPlayer.shared.snapshot())
             value["podcast_watch_id"] = c.watch_id
             value["podcast_index"] = podcastIndex ?? orderedDevices.count
@@ -282,8 +309,8 @@ import FanControlCore
         if let grant = value["grant"] as? Data, let c = try? JSONDecoder().decode(Connection.self, from: grant).validated(), c.companion == true {
             do {
                 if connection?.token != c.token {
-                    snapshot = nil; outbox = []; events = []; watchSequence = 0; refreshedAt = nil
-                    clearMessages(); PhoneLibrary.shared.targetChanged(); PodcastPlayer.shared.pairingChanged()
+                    flightSyncPaired = false; snapshot = nil; outbox = []; events = []; watchSequence = 0; refreshedAt = nil
+                    PhoneFlightSync.shared.forget(); clearMessages(); PhoneLibrary.shared.targetChanged(); PodcastPlayer.shared.pairingChanged()
                     for key in ["phoneSnapshot", "phoneReceipts", "phoneEvents", "phoneMessages", "phoneMessageDismissals"] { defaults.removeObject(forKey: key) }
                 }
                 try Vault.save(c); connection = c; settings = c.companion_settings ?? CompanionSettings(); error = ""
@@ -329,6 +356,7 @@ import FanControlCore
         Task { @MainActor in
             Vault.clear(); self.connection = nil; self.snapshot = nil; self.outbox = []; self.settings = CompanionSettings()
             self.events = []; self.watchSequence = 0; self.refreshedAt = nil; PhoneLibrary.shared.targetChanged(); PodcastPlayer.shared.pairingChanged()
+            PhoneFlightSync.shared.forget(); self.flightSyncPaired = false
             self.clearMessages(); self.defaults.removeObject(forKey: "phoneMessages"); self.defaults.removeObject(forKey: "phoneMessageDismissals"); self.defaults.removeObject(forKey: "phoneSnapshot"); self.defaults.removeObject(forKey: "phoneReceipts"); self.defaults.removeObject(forKey: "phoneEvents")
             session.activate()
         }
@@ -371,7 +399,10 @@ import FanControlCore
                 return
             }
             replyHandler(self.payload()) // Return cache promptly; fetch HA separately.
-            if message["action"] as? String == "latest" { _ = await self.refresh() }
+            if message["action"] as? String == "latest" {
+                _ = await self.refreshFlights()
+                _ = await self.refresh()
+            }
         }
     }
 }

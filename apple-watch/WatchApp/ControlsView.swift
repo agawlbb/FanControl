@@ -54,6 +54,7 @@ struct ControlsView: View {
         .onReceive(NotificationCenter.default.publisher(for: .commandOutcomeSaved)) { note in
             if let id = note.object as? String { model.refreshCommandOutcome(id) }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .flightTripSaved)) { _ in model.refreshFlightTrip() }
         .onReceive(NotificationCenter.default.publisher(for: .companionSnapshotSaved)) { note in
             model.receiveCompanion(note.object as? CompanionSnapshot)
         }
@@ -108,23 +109,16 @@ struct ControlsView: View {
     }
     @ViewBuilder private func panel(_ p: Panel) -> some View {
         if p.type == "on_duty" {
-            let departure = FlightPresentation.departure(model.observed["departure"] as? String)
             let fresh = model.stateFresh && model.observed["available"] as? Bool == true
-            VStack(spacing: 12) {
-                Text(model.observed["city_pair"] as? String ?? "—").font(.title2.bold())
-                VStack(spacing: 2) {
-                    Text("Departure").font(.caption)
-                    if let departure { Text(departure, style: .time).font(.title3) }
-                    else { Text("—").font(.title3) }
-                }
-                VStack(spacing: 2) {
-                    Text("Time to go").font(.caption)
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
-                        Text(departure.map { FlightPresentation.timeToGo(departure: $0, now: context.date) } ?? "—")
-                            .font(.title2.monospacedDigit())
-                    }
-                }
-            }.foregroundStyle(fresh ? Color.mint : Color.gray)
+            let flights = model.observed["flights"] as? [[String: Any]] ?? (model.observed["city_pair"] == nil ? [] : [model.observed])
+            if flights.isEmpty {
+                Text(model.observed["flightsync_paired"] as? Bool == false ? "Pair FlightSync in the iPhone app" : "No flight")
+                    .foregroundStyle(.gray)
+            }
+            ForEach(Array(flights.enumerated()), id: \.offset) { index, flight in
+                if index > 0 { Divider().padding(.vertical, 12) }
+                flightInfo(flight).foregroundStyle(fresh ? Color.mint : Color.gray)
+            }
         } else if p.type == "driving" {
             // Five controls fill a two-column, three-row grid; the final cell stays empty.
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
@@ -145,6 +139,33 @@ struct ControlsView: View {
                 .foregroundStyle(model.stateFresh && battery != nil ? Color.mint : Color.gray)
             climate(p)
             actionControl("leave", p.script_label ?? "Leave for work")
+        }
+    }
+    private func flightInfo(_ flight: [String: Any]) -> some View {
+        let departure = FlightPresentation.departure(flight["departure"] as? String)
+        let arrival = FlightPresentation.departure(flight["arrival"] as? String)
+        return VStack(spacing: 12) {
+            Text(flight["number"] as? String ?? "—").font(.headline)
+            Text(flight["city_pair"] as? String ?? "—").font(.title2.bold())
+            if let departure {
+                VStack(spacing: 2) {
+                    Text("Departure").font(.caption)
+                    Text(departure, format: .dateTime.month(.abbreviated).day().hour().minute()).font(.body)
+                }
+                VStack(spacing: 2) {
+                    Text("Time to go").font(.caption)
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(FlightPresentation.timeToGo(departure: departure, now: context.date)).font(.title2.monospacedDigit())
+                    }
+                }
+            }
+            if let arrival {
+                VStack(spacing: 2) {
+                    Text("Arrival").font(.caption)
+                    Text(arrival, format: .dateTime.month(.abbreviated).day().hour().minute()).font(.body)
+                }
+            }
+            if let status = flight["status"] as? String { Text(status.replacingOccurrences(of: "_", with: " ")).font(.caption) }
         }
     }
     @ViewBuilder private func actionControl(_ action: String, _ label: String, compact: Bool = false) -> some View {

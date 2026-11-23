@@ -74,6 +74,9 @@ extension Notification.Name { static let companionSnapshotSaved = Notification.N
     }
     private func receive(_ message: [String: Any], live: Bool = false) {
         WatchPodcast.shared.receive(message, live: live)
+        if let flight = message["flight_trip"] as? Data {
+            WatchFlightSync.receive(flight, watchID: message["flight_watch_id"] as? String)
+        }
         if message["action"] as? String == "link", let c = Vault.load() {
             UserDefaults.standard.removeObject(forKey: "companionGranted." + c.watch_id); provision()
         }
