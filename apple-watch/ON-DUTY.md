@@ -1,6 +1,6 @@
-# Direct FlightSync flight tile — Apple 0.13.0 (40), November 23, 2026
+# Direct FlightSync flight tile — Apple 0.13.1 (41), November 23, 2026
 
-## Authorized 0.13.1 (41) correction — November 23, 2026
+## Released 0.13.1 (41) correction — November 23, 2026
 
 Limit the visible flight fields to flight number, city pair, departure time in
 the departure airport's timezone, and time to go. Remove the unrequested arrival time,
@@ -20,6 +20,9 @@ missing timezone metadata shows a dash rather than a device-local time. Both
 apps must be updated so phone/offline/watch snapshots retain this metadata.
 Countdown and opening cutoffs continue to use absolute instants. The user
 authorized the needed server update and the app release after this change.
+Apple processing and existing Internal TestFlight access passed in run
+https://github.com/agawlbb/FanControl/actions/runs/45261321460 .
+Signed source: `fb3aeef9d97516d2af508a6103b9d3a9b47338d8`.
 Paired-watch touch/Crown checks remain
 for scrolling in both directions, including over text/dividers, horizontal
 navigation, and returning to the skipped flight above the opening position.
@@ -65,8 +68,8 @@ credentials/cache and asks FlightSync to unregister this phone. The server secre
 and APNs tokens are absent from watch snapshots and diagnostics. APNs acceptance
 is not device receipt, and iOS may defer background delivery.
 
-Released in FanControl 0.13.0 (40) for iPhone/watch, using the FlightSync direct
-API. No HA update is required. FlightSync image `vm-f9b5f62` is deployed with the privately installed existing
+Released in FanControl 0.13.1 (41) for iPhone/watch, using the FlightSync direct
+API. No HA update is required. FlightSync image `vm-b9802b2` is deployed with the privately installed existing
 APNs provider key; the app release is published in Internal TestFlight. Paired-device checks remain for secure pairing, real silent
 push delivery, immediate foreground cache retrieval, offline/stale display,
 scrolling, empty trips and unlink/relink.

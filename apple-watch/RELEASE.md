@@ -17,7 +17,21 @@ compare absolute instants. Update both iPhone and watch apps.
 Corrected display/gesture source `e56a1d8` passed core tests and both SDK typechecks:
 https://github.com/agawlbb/FanControl/actions/runs/45258910328
 App Store Connect preflight found 40 as the highest uploaded build and 41 unused.
-Timezone validation, coordinated server deployment and signed release are pending.
+Timezone source `fb3aeef9d97516d2af508a6103b9d3a9b47338d8` passed core tests
+and watch/iPhone SDK typechecks:
+https://github.com/agawlbb/FanControl/actions/runs/45260299883
+Published to the existing **Internal** TestFlight group. Apple build
+`d3629abc-24ec-4b9a-9e30-082771441b6a` is `VALID`, not expired,
+`IN_BETA_TESTING`, marketing version 0.13.1, without non-exempt encryption.
+Signed archive/export, production APNs entitlements, upload, Apple processing,
+Internal-group access and temporary signing cleanup passed on retry attempt 2:
+https://github.com/agawlbb/FanControl/actions/runs/45261321460
+The first attempt stopped before upload after an Apple provisioning connection
+loss. Release tag: `v0.13.1-build41`, pointing to the signed source above.
+FlightSync `vm-b9802b2` is deployed, healthy and serving fresh authenticated
+snapshots with airport timezones; 67 relevant server tests passed.
+Deployment staging, image exports and the superseded image were removed.
+No local app archive or raw release report was downloaded.
 Paired-device checks remain for touch/Crown scrolling, horizontal navigation,
 local airport times when traveling, skipped flights above and OS push delivery.
 
