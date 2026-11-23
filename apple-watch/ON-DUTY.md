@@ -1,4 +1,4 @@
-# Direct FlightSync flight tile — unreleased November 23, 2026
+# Direct FlightSync flight tile — Apple 0.13.0 (40), November 23, 2026
 
 The iPhone pairs directly with FlightSync in Settings → FlightSync using its
 separate server secret. It is validated against the fixed HTTPS FlightSync
@@ -41,9 +41,9 @@ credentials/cache and asks FlightSync to unregister this phone. The server secre
 and APNs tokens are absent from watch snapshots and diagnostics. APNs acceptance
 is not device receipt, and iOS may defer background delivery.
 
-This needs the coordinated unreleased FanControl iPhone/watch sources and the
-FlightSync direct API. No HA update is required. Deployment and app builds have
-not been requested. Paired-device checks remain for secure pairing, real silent
+Released in FanControl 0.13.0 (40) for iPhone/watch, using the FlightSync direct
+API. No HA update is required. Server replacement is pending installation of
+the existing APNs provider key; the app release is published in Internal TestFlight. Paired-device checks remain for secure pairing, real silent
 push delivery, immediate foreground cache retrieval, offline/stale display,
 scrolling, empty trips and unlink/relink.
 Also verify on a paired watch that opening at the 40-minute boundary positions

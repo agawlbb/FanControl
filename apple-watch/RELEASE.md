@@ -15,8 +15,19 @@ This is a local presentation assumption and never changes FlightSync progress.
 Source validation passed for `e8faf79`:
 https://github.com/agawlbb/FanControl/actions/runs/45251602796
 App Store Connect preflight found 39 as the highest uploaded build and 40 available.
-Signed archive/export, Apple processing and Internal TestFlight publication are
-pending the authorized workflow. Paired-device checks remain for secret pairing,
+Published to the existing **Internal** TestFlight group. Apple build
+`189ca4c8-a91e-4709-9273-dbf54c8ecd80` is `VALID`, not expired, and
+`IN_BETA_TESTING`, marketing version 0.13.0, without non-exempt encryption.
+Signed source: `ad72194b4ed16399989be700360b11a3dff619b9` on `main`.
+Signed archive/export, signatures, production APNs entitlements, Apple processing
+and existing Internal-group access passed:
+https://github.com/agawlbb/FanControl/actions/runs/45252744328
+Release tag: `v0.13.0-build40`. Workflow artifacts retain processing evidence;
+no local app archive or raw release report was downloaded. Update both apps in
+TestFlight. Server replacement is pending authorization for the existing HA
+APNs provider key copy after the original hosting directory was found absent.
+
+Paired-device checks remain for secret pairing,
 silent-push/background execution, foreground cache retrieval, opening scroll
 position, upward access to skipped flights, and scrolling during fresh updates.
 

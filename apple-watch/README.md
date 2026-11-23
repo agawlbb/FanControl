@@ -1,9 +1,12 @@
 # Fan Control for iPhone and Apple Watch
 
-**Current TestFlight release:** 0.11.1 (27), compatible with deployed HA 0.14.0
-and direct Apple push delivery. Update Fan Control in TestFlight to activate
-phone-only messages, swipe-to-reveal Delete and 12-hour expiry. See [release evidence](RELEASE.md) and
-[the implementation record](UNRELEASED-CORRECTIONS.md).
+**Current TestFlight release:** 0.13.0 (40), iOS 17+ and watchOS 10+.
+The iPhone pairs directly with FlightSync using a server secret. The flight tile
+shows the remaining trip and flight numbers, opening on the next flight at
+40 minutes after the latest departure estimate while retaining skipped flights
+above. FlightSync server activation is pending provider-key installation;
+existing HA controls remain compatible. See [release evidence](RELEASE.md) and
+[flight pairing and delivery](ON-DUTY.md).
 
 Active watch commands now submit immediately through foreground HTTPS, with one
 bounded background continuation when needed. See [release evidence](RELEASE.md).
@@ -107,7 +110,7 @@ For instructions to run tests, build on GitHub's Mac runner, configure Apple
 signing credentials, and publish to internal TestFlight directly from this
 repository, see [GitHub builds and TestFlight setup](GITHUB-TESTFLIGHT.md).
 
-Current version: **0.12.11 (39)**; iOS 17+, watchOS 10+, HA 0.14.0. Published to the existing Internal TestFlight group. Podcast shows compact series/episode titles, playback, Mark Complete and visible native iPhone volume without scrolling. Paired-watch Crown response remains a physical check.
+Current version: **0.13.0 (40)**; iOS 17+, watchOS 10+, HA 0.14.0. Published to the existing Internal TestFlight group. Podcast shows compact series/episode titles, playback, Mark Complete and visible native iPhone volume without scrolling. Paired-watch Crown response remains a physical check.
 `swift test` runs core regression tests. XcodeGen uses `project.yml` to generate
 the iPhone, watch and complication targets. GitHub app builds and TestFlight publication run only by explicit dispatch. Inspect workflow triggers before pushing; do not run release workflows
 for documentation maintenance.
