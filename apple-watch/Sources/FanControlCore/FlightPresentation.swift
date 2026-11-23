@@ -14,4 +14,14 @@ public enum FlightPresentation {
         let minutes = Int(ceil(seconds / 60))
         return minutes >= 60 ? "\(minutes / 60)h \(minutes % 60)m" : "\(minutes)m"
     }
+    public static func departureTime(_ raw: String?, timeZoneIdentifier: String?, locale: Locale = .current) -> String {
+        guard let date = departure(raw), let timeZoneIdentifier,
+              let zone = TimeZone(identifier: timeZoneIdentifier) else { return "—" }
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = zone
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
 }

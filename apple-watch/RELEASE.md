@@ -1,3 +1,26 @@
+# Flight tile display, scrolling and airport time — 0.13.1 (41), November 23, 2026
+
+The user authorized release after changing flight times to the departure airport's
+local timezone, and authorized the needed server deployment. This release keeps
+only flight number, city pair, departure time and countdown. Unrequested arrival,
+date and provider-status display are removed. Horizontal swipes observe alongside
+native vertical scrolling instead of capturing vertical drags at high priority.
+The existing 40-minute opening rule and upward access to skipped flights remain.
+
+FlightSync adds each leg's IANA `departure_timezone` from its existing airport
+map, without a schema or progress-selection change. The phone retains it in the
+trip snapshot; the watch explicitly formats departure in that zone with the
+user's locale and daylight-saving rules. Missing/unknown metadata shows a dash,
+never a fallback to the device timezone. Countdown and the 40-minute rule still
+compare absolute instants. Update both iPhone and watch apps.
+
+Corrected display/gesture source `e56a1d8` passed core tests and both SDK typechecks:
+https://github.com/agawlbb/FanControl/actions/runs/45258910328
+App Store Connect preflight found 40 as the highest uploaded build and 41 unused.
+Timezone validation, coordinated server deployment and signed release are pending.
+Paired-device checks remain for touch/Crown scrolling, horizontal navigation,
+local airport times when traveling, skipped flights above and OS push delivery.
+
 # Direct FlightSync flight tile — 0.13.0 (40), November 23, 2026
 
 Release explicitly authorized by the user. The iPhone pairs directly with

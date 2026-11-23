@@ -1,9 +1,9 @@
 # Direct FlightSync flight tile — Apple 0.13.0 (40), November 23, 2026
 
-## Pending app correction — November 23, 2026
+## Authorized 0.13.1 (41) correction — November 23, 2026
 
 Limit the visible flight fields to flight number, city pair, departure time in
-the watch's local timezone, and time to go. Remove the unrequested arrival time,
+the departure airport's timezone, and time to go. Remove the unrequested arrival time,
 departure date, and provider status (including predeparture). The retained trip
 data and the 40-minute opening-position rule are unchanged.
 
@@ -12,8 +12,15 @@ vertical scrolling. Its former high-priority drag could capture vertical touch
 movement before checking the direction on release. Keep the existing horizontal
 direction threshold and other tiles' command/control gesture handling unchanged.
 The opening position is still applied once per visible entry; phone updates
-must not reposition a user who is scrolling. This correction needs a new app
-build/release, not a server deployment. Paired-watch touch/Crown checks remain
+must not reposition a user who is scrolling. FlightSync supplies optional IANA
+`departure_timezone` metadata for each leg using its existing airport map. The
+app formats that flight's departure in the airport zone, preserving locale and
+daylight-saving rules independently of the phone/watch timezone. Unknown or
+missing timezone metadata shows a dash rather than a device-local time. Both
+apps must be updated so phone/offline/watch snapshots retain this metadata.
+Countdown and opening cutoffs continue to use absolute instants. The user
+authorized the needed server update and the app release after this change.
+Paired-watch touch/Crown checks remain
 for scrolling in both directions, including over text/dividers, horizontal
 navigation, and returning to the skipped flight above the opening position.
 

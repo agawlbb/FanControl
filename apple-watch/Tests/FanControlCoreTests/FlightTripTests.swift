@@ -82,4 +82,29 @@ final class FlightTripTests: XCTestCase {
         XCTAssertEqual(decoded.trip?.flights.count, 2)
         XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("secret"))
     }
+    func testDepartureUsesEachAirportZoneAndRespectsDaylightSaving() throws {
+        let locale = Locale(identifier: "en_GB")
+        let raw = "2026-07-15T18:00:00Z"
+        XCTAssertEqual(FlightPresentation.departureTime(raw, timeZoneIdentifier: "America/Los_Angeles", locale: locale), "11:00")
+        XCTAssertEqual(FlightPresentation.departureTime(raw, timeZoneIdentifier: "America/New_York", locale: locale), "14:00")
+        XCTAssertEqual(FlightPresentation.departureTime(raw, timeZoneIdentifier: "America/Phoenix", locale: locale), "11:00")
+        let winter = "2026-12-15T18:00:00Z"
+        XCTAssertEqual(FlightPresentation.departureTime(winter, timeZoneIdentifier: "America/Los_Angeles", locale: locale), "10:00")
+        XCTAssertEqual(FlightPresentation.departureTime(winter, timeZoneIdentifier: "America/Phoenix", locale: locale), "11:00")
+    }
+    func testDepartureZoneHandlesMidnightAndMissingMetadataWithoutDeviceZoneFallback() {
+        let locale = Locale(identifier: "en_GB")
+        XCTAssertEqual(FlightPresentation.departureTime("2026-07-16T02:30:00Z", timeZoneIdentifier: "America/Los_Angeles", locale: locale), "19:30")
+        XCTAssertEqual(FlightPresentation.departureTime("2026-07-16T02:30:00Z", timeZoneIdentifier: nil, locale: locale), "—")
+        XCTAssertEqual(FlightPresentation.departureTime("2026-07-16T02:30:00Z", timeZoneIdentifier: "invalid", locale: locale), "—")
+    }
+    func testDepartureZoneSurvivesPhoneWatchAndOfflineRoundTrip() throws {
+        let flights = #"[{"number":"AA1","city_pair":"LAX → CLT","departure":"2026-07-15T18:00:00Z","departure_timezone":"America/Los_Angeles","arrival":"2026-07-15T23:00:00Z"},{"number":"AA2","city_pair":"CLT → LAX","departure":"2026-07-16T14:00:00Z","departure_timezone":"America/New_York","arrival":"2026-07-16T19:00:00Z"}]"#
+        let value = PhoneFlightSnapshot(watchID: "synthetic-watch", trip: try trip(flights: flights), generation: 100)
+        let restored = try JSONDecoder().decode(PhoneFlightSnapshot.self, from: JSONEncoder().encode(value))
+        XCTAssertEqual(restored.trip?.flights.map(\.departure_timezone), ["America/Los_Angeles", "America/New_York"])
+        let rows = try XCTUnwrap(restored.trip?.state()["flights"] as? [[String: Any]])
+        XCTAssertEqual(rows[0]["departure_timezone"] as? String, "America/Los_Angeles")
+        XCTAssertEqual(rows[1]["departure_timezone"] as? String, "America/New_York")
+    }
 }

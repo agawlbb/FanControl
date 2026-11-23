@@ -63,7 +63,8 @@ struct FlightTileView: View {
             if let departure {
                 VStack(spacing: 2) {
                     Text("Departure").font(.caption)
-                    Text(departure, style: .time).font(.title3)
+                    Text(FlightPresentation.departureTime(flight["departure"] as? String,
+                        timeZoneIdentifier: flight["departure_timezone"] as? String)).font(.title3)
                 }
                 VStack(spacing: 2) {
                     Text("Time to go").font(.caption)

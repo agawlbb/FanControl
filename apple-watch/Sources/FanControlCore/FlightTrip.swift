@@ -5,6 +5,7 @@ public struct TripFlight: Codable, Sendable, Equatable {
     public let number: String
     public let city_pair: String
     public let departure: String
+    public let departure_timezone: String?
     public let arrival: String
     public let scheduled_departure: String?
     public let scheduled_arrival: String?
