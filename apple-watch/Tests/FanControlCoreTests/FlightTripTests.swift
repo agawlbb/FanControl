@@ -2,6 +2,9 @@ import XCTest
 @testable import FanControlCore
 
 final class FlightTripTests: XCTestCase {
+    private func date(_ value: String) throws -> Date {
+        try XCTUnwrap(FlightPresentation.departure(value))
+    }
     private func trip(flights: String = #"[{"number":"AA123","city_pair":"CLT → BOS","departure":"2026-11-24T12:00:00Z","arrival":"2026-11-24T14:00:00Z"},{"number":"AA456","city_pair":"BOS → CLT","departure":"2026-11-25T12:00:00Z","arrival":"2026-11-25T14:00:00Z"}]"#) throws -> FlightTrip {
         try JSONDecoder().decode(FlightTrip.self, from: Data("{\"version\":1,\"available\":true,\"source_last_success\":\"2026-11-24T11:00:00Z\",\"flights\":\(flights)}".utf8)).validated()
     }
@@ -13,6 +16,53 @@ final class FlightTripTests: XCTestCase {
         let at = try XCTUnwrap(FlightPresentation.departure("2026-11-24T11:00:10Z"))
         XCTAssertEqual(value.state(now: at)["available"] as? Bool, true)
         XCTAssertEqual(value.state(now: at.addingTimeInterval(181))["available"] as? Bool, false)
+    }
+    func testOpeningAdvancesAtFortyMinutesAndRetainsSkippedFlightAbove() throws {
+        let value = try trip()
+        let before = try date("2026-11-24T12:39:59Z")
+        let cutoff = try date("2026-11-24T12:40:00Z")
+        XCTAssertEqual(value.openingFlightIndex(now: before), 0)
+        XCTAssertEqual(value.openingFlightIndex(now: cutoff), 1)
+        let state = value.state(now: cutoff)
+        XCTAssertEqual(state["opening_flight_index"] as? Int, 1)
+        let rows = try XCTUnwrap(state["flights"] as? [[String: Any]])
+        XCTAssertEqual(rows.compactMap { $0["number"] as? String }, ["AA123", "AA456"])
+        XCTAssertEqual(rows.first?["departure"] as? String, "2026-11-24T12:00:00Z")
+        XCTAssertNil(rows.first?["actual_departure"])
+        XCTAssertNil(rows.first?["status"])
+    }
+    func testLaterEstimateReplacesOldCutoffWithoutChangingTheServerSnapshot() throws {
+        let original = try trip()
+        let updatedFlights = try JSONEncoder().encode(original.flights)
+        let delayedJSON = String(decoding: updatedFlights, as: UTF8.self)
+            .replacingOccurrences(of: "2026-11-24T12:00:00Z", with: "2026-11-24T13:00:00Z")
+        let delayed = try trip(flights: delayedJSON)
+        let now = try date("2026-11-24T12:45:00Z")
+        XCTAssertEqual(original.openingFlightIndex(now: now), 1)
+        XCTAssertEqual(delayed.openingFlightIndex(now: now), 0)
+        XCTAssertEqual(delayed.openingFlightIndex(now: try date("2026-11-24T13:40:00Z")), 1)
+        XCTAssertEqual(original.flights[0].departure, "2026-11-24T12:00:00Z")
+    }
+    func testOpeningSkipsElapsedPrefixAndKeepsFinalFlightWhenNoNextExists() throws {
+        let flights = #"[{"number":"AA1","city_pair":"CLT → BOS","departure":"2026-11-24T12:00:00Z","arrival":"2026-11-24T14:00:00Z"},{"number":"AA2","city_pair":"BOS → JFK","departure":"2026-11-24T15:00:00Z","arrival":"2026-11-24T16:00:00Z"},{"number":"AA3","city_pair":"JFK → CLT","departure":"2026-11-24T17:00:00Z","arrival":"2026-11-24T19:00:00Z"}]"#
+        let value = try trip(flights: flights)
+        XCTAssertEqual(value.openingFlightIndex(now: try date("2026-11-24T11:00:00Z")), 0)
+        XCTAssertEqual(value.openingFlightIndex(now: try date("2026-11-24T15:40:00Z")), 2)
+        XCTAssertEqual(value.openingFlightIndex(now: try date("2026-11-25T00:00:00Z")), 2)
+        XCTAssertEqual(value.flights.count, 3)
+        let single = try trip(flights: #"[{"number":"AA1","city_pair":"CLT → BOS","departure":"2026-11-24T12:00:00Z","arrival":"2026-11-24T14:00:00Z"}]"#)
+        XCTAssertEqual(single.openingFlightIndex(now: try date("2026-11-25T00:00:00Z")), 0)
+        XCTAssertNil(try trip(flights: "[]").openingFlightIndex())
+    }
+    func testLatestDepartureEstimateDrivesOpeningAcrossTimezonesAndOffline() throws {
+        let flights = #"[{"number":"AA1","city_pair":"CLT → BOS","departure":"2026-11-24T08:00:00.500-05:00","scheduled_departure":"2026-11-24T12:00:00Z","arrival":"2026-11-24T15:00:00Z"},{"number":"AA2","city_pair":"BOS → CLT","departure":"2026-11-25T12:00:00Z","arrival":"2026-11-25T14:00:00Z"}]"#
+        let value = try trip(flights: flights)
+        XCTAssertEqual(value.openingFlightIndex(now: try date("2026-11-24T13:40:00.499Z")), 0)
+        let now = try date("2026-11-24T13:40:00.500Z")
+        XCTAssertEqual(value.openingFlightIndex(now: now), 1)
+        XCTAssertEqual(value.state(now: now)["available"] as? Bool, false)
+        XCTAssertEqual(value.state(now: now)["opening_flight_index"] as? Int, 1)
+        XCTAssertEqual(try JSONDecoder().decode(FlightTrip.self, from: JSONEncoder().encode(value)), value)
     }
     @MainActor func testFlightTileNeverReadsHomeAssistant() throws {
         let raw = Data(#"{"entity":"panel.on_duty","title":"On Duty","panel":{"id":"on_duty","name":"On Duty","type":"on_duty","city_pair_entity":"sensor.airports","departure_entity":"sensor.departure"}}"#.utf8)

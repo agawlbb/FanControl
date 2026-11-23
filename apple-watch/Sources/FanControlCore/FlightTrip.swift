@@ -1,6 +1,6 @@
 import Foundation
 
-/// FlightSync owns selection and trip order. Neither app infers progress from clocks.
+/// FlightSync owns flight data and trip order. The watch chooses its opening scroll position locally.
 public struct TripFlight: Codable, Sendable, Equatable {
     public let number: String
     public let city_pair: String
@@ -30,11 +30,25 @@ public struct FlightTrip: Codable, Sendable, Equatable {
         }
         return self
     }
+    /// A presentation assumption only: keep elapsed flights above the opening flight.
+    /// Each new estimate replaces the previous cutoff; no progress is written back.
+    public func openingFlightIndex(now: Date = Date()) -> Int? {
+        guard !flights.isEmpty else { return nil }
+        var index = 0
+        while index < flights.count - 1,
+              let departure = FlightPresentation.departure(flights[index].departure),
+              now.timeIntervalSince(departure) >= 40 * 60 {
+            index += 1
+        }
+        return index
+    }
     public func state(now: Date = Date()) -> [String: Any] {
         let source = FlightPresentation.departure(source_last_success)
         let fresh = available && source.map { (0...180).contains(now.timeIntervalSince($0)) } == true
         let raw = (try? JSONEncoder().encode(flights)).flatMap { try? JSONSerialization.jsonObject(with: $0) } ?? []
-        return ["version": 1, "flights": raw, "available": fresh, "flightsync_paired": true]
+        var state: [String: Any] = ["version": 1, "flights": raw, "available": fresh, "flightsync_paired": true]
+        if let index = openingFlightIndex(now: now) { state["opening_flight_index"] = index }
+        return state
     }
 }
 

@@ -21,6 +21,17 @@ No direct watch network read or HA flight read is involved. On the existing tile
 scroll down to see each following flight and its flight number. Saved data is
 gray when FlightSync's source observation is stale.
 
+The watch chooses its opening scroll position locally. At 40 minutes after a
+flight's latest received departure estimate, it assumes that flight has begun
+for display purposes and opens on the following flight when one exists. It
+skips consecutive elapsed flights but keeps the final flight visible if there
+is no next flight. All skipped rows remain above the opening position for
+scrolling up; no flight is removed, marked as actually departed, or written back
+to FlightSync. A later estimate replaces the old cutoff. The position is
+recalculated on each visible tile entry, including reopening offline with saved
+data. Phone updates during an open session do not override manual scrolling.
+This presentation change requires an app build only, with no server change.
+
 Server setup requires `FLIGHTSYNC_FANCONTROL_TOKEN_FILE`,
 `FLIGHTSYNC_FANCONTROL_APNS_CONFIG_FILE`, its existing Apple provider signing key,
 and `app/fancontrol_schema.sql`. The JSON APNs configuration has `team_id`,
@@ -35,6 +46,9 @@ FlightSync direct API. No HA update is required. Deployment and app builds have
 not been requested. Paired-device checks remain for secure pairing, real silent
 push delivery, immediate foreground cache retrieval, offline/stale display,
 scrolling, empty trips and unlink/relink.
+Also verify on a paired watch that opening at the 40-minute boundary positions
+the next flight at the top, skipped flights remain accessible above, the last
+flight can align at the top, and updates do not jump while scrolling.
 
 The notes below describe historical released HA-backed behavior.
 

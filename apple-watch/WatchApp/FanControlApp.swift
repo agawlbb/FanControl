@@ -20,6 +20,7 @@ import FanControlCore
     @Published var connection = Vault.load()
     @Published var observed: [String: Any] = [:]
     @Published var stateFresh = false
+    @Published private(set) var flightEntryID = UUID()
     @Published var feedback: Feedback?
     @Published private(set) var commandPending = false
     @Published var speedDraft: Int?
@@ -58,6 +59,7 @@ import FanControlCore
     func enter(resetSelection: Bool = true, allowEntryWake: Bool = true) {
         // A refresh launch can instantiate the view without user-visible entry.
         guard WKExtension.shared().applicationState == .active else { return }
+        flightEntryID = UUID()
         leave(resetReceipts: resetSelection); visible = true
         if resetSelection { WatchCompanion.shared.beginEntry(); connection = Vault.load(); sessionTarget = connection.flatMap { defaultTile.load($0) }; showingSettings = false; feedback = nil; wakeAfter = nil }
         // Migrate older unlocked-only keychain entries before the next wrist-down push.
