@@ -4,7 +4,7 @@
 The iPhone pairs directly with FlightSync using a server secret. The flight tile
 shows the remaining trip and flight numbers, opening on the next flight at
 40 minutes after the latest departure estimate while retaining skipped flights
-above. FlightSync server activation is pending provider-key installation;
+above. FlightSync is deployed with direct phone pairing and push hints;
 existing HA controls remain compatible. See [release evidence](RELEASE.md) and
 [flight pairing and delivery](ON-DUTY.md).
 

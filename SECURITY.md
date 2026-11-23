@@ -34,3 +34,14 @@ publishing them.
 Repository owner names, commit metadata and activity are visible in a public
 repository. A source review does not cover GitHub account settings, collaborators,
 Actions secrets, release downloads, issues or other remotely stored content.
+
+
+## November 23, 2026 provider transfer disclosure
+
+During the owner-approved copy of the existing HA APNs provider key to
+FlightSync's private VPS configuration, nested terminal echo put the key in this
+conversation's tool output. No credential contents were committed to Git or
+written to a source/report file. The owner was informed. Do not characterize the
+key as never displayed. Its original HA copy and authorization remain unchanged;
+it was not revoked because HA also depends on it. A replacement would require
+separate authorization and coordinated Apple/HA/FlightSync configuration.

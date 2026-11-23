@@ -24,8 +24,11 @@ and existing Internal-group access passed:
 https://github.com/agawlbb/FanControl/actions/runs/45252744328
 Release tag: `v0.13.0-build40`. Workflow artifacts retain processing evidence;
 no local app archive or raw release report was downloaded. Update both apps in
-TestFlight. Server replacement is pending authorization for the existing HA
-APNs provider key copy after the original hosting directory was found absent.
+TestFlight. FlightSync image `vm-f9b5f62` is deployed and healthy, with authenticated fresh
+flight snapshots and missing/wrong-secret rejection verified. The existing HA
+APNs key was copied privately to the VPS after the owner explicitly approved
+that source; HA configuration stayed unchanged. Provider ES256 signing passed
+an offline check; real iPhone APNs receipt remains a paired-device check.
 
 Paired-device checks remain for secret pairing,
 silent-push/background execution, foreground cache retrieval, opening scroll

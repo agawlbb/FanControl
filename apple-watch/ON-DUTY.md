@@ -42,8 +42,8 @@ and APNs tokens are absent from watch snapshots and diagnostics. APNs acceptance
 is not device receipt, and iOS may defer background delivery.
 
 Released in FanControl 0.13.0 (40) for iPhone/watch, using the FlightSync direct
-API. No HA update is required. Server replacement is pending installation of
-the existing APNs provider key; the app release is published in Internal TestFlight. Paired-device checks remain for secure pairing, real silent
+API. No HA update is required. FlightSync image `vm-f9b5f62` is deployed with the privately installed existing
+APNs provider key; the app release is published in Internal TestFlight. Paired-device checks remain for secure pairing, real silent
 push delivery, immediate foreground cache retrieval, offline/stale display,
 scrolling, empty trips and unlink/relink.
 Also verify on a paired watch that opening at the 40-minute boundary positions
