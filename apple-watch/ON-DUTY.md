@@ -1,8 +1,8 @@
 ## Tap a flight for crew — November 24, 2026
 
 Prepared in app source `fe18fefde4a54854bfa6234c486dfa87769078e3` and
-FlightSync source `e1a4f1b`; server deployment and a coordinated phone/watch
-build/release are still required and were not requested for this follow-up.
+FlightSync source `e1a4f1b`; explicitly authorized server deployment and
+coordinated 0.13.4 (44) release are finished and verified.
 This includes the earlier prepared discrete flight pages and IATA labels.
 
 Tap a flight page to open its crew names and employee numbers. A fixed
@@ -27,7 +27,12 @@ No database schema, HA, credentials or public endpoint changes are required.
 between flights, completed-flight retention and crew-only hint changes.
 Core cache/leading-zero tests and both Apple SDK typechecks passed:
 https://github.com/agawlbb/FanControl/actions/runs/45409169757
-No simulator/distributable build or deployment was dispatched. Physical checks
+FlightSync `vm-e1a4f1b` is deployed and fresh. Signed app source
+`43d3c0b9b950c2a67b950681b741a7dc8dd92b56` passed core/SDK checks
+(run 45410648912) and release run 45411690814. Apple build
+`aefb2ec5-bf60-4e2b-8fdd-3177f8b9337e` is VALID and IN_BETA_TESTING;
+existing Internal-group access and signing cleanup passed. No new simulator
+run was requested or dispatched. Physical checks
 remain for tile tap versus swipe, native crew Crown scrolling, return-to-same-flight,
 missing crew, and live updates while details are open. No task artifact retained.
 
@@ -36,7 +41,8 @@ missing crew, and live updates while details are open. No task artifact retained
 Source `354fbbec52e57295d3bdbad765ddd07ea49e92d5` is prepared and verified
 by core tests and watch/iPhone SDK typechecks:
 https://github.com/agawlbb/FanControl/actions/runs/45407258778
-An app build/release is still required; none was requested for this follow-up.
+Released in Internal TestFlight 0.13.4 (44) with the crew feature after the
+owner explicitly requested coordinated delivery.
 No server deployment, schema or credential change is needed.
 
 One flight is rendered at a time, without a ScrollView or neighboring partial
@@ -60,7 +66,7 @@ Regression coverage includes opening focus, single-swipe stepping, horizontal/
 diagonal discrimination, bounded Crown positions, empty/late trips, passive
 selection retention/reordering, and mixed US/Canadian/Caribbean code labels.
 Actual swipe/Crown focus, haptics and direction remain simulator/paired-watch
-checks; no app/simulator build was dispatched for this source-only change.
+checks; the signed 0.13.4 (44) release is published, with no new simulator run.
 The old scrolling-layout screenshot was superseded and removed from
 `build/flight-preview-53d20bf/`; no task artifact is retained.
 

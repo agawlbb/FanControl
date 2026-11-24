@@ -19,7 +19,19 @@ passed core tests and both Apple SDK typechecks:
 https://github.com/agawlbb/FanControl/actions/runs/45409169757
 FlightSync source `e1a4f1b` passed 69 relevant server tests and compilation.
 App Store Connect highest uploaded build was 43; build 44 was unused.
-Coordinated server deployment, signed release and Apple processing are pending.
+FlightSync `vm-e1a4f1b` is deployed, healthy and serving fresh authenticated
+crew snapshots; exact deployment staging and exports were removed.
+Published to the existing **Internal** TestFlight group. Apple build
+`aefb2ec5-bf60-4e2b-8fdd-3177f8b9337e` is `VALID`, not expired,
+`IN_BETA_TESTING`, marketing version 0.13.4, without non-exempt encryption.
+Exact signed source: `43d3c0b9b950c2a67b950681b741a7dc8dd92b56`.
+Exact-source core tests and both SDK typechecks passed:
+https://github.com/agawlbb/FanControl/actions/runs/45410648912
+Signed archive/export, production APNs entitlements, upload, Apple processing,
+existing Internal-group access and temporary signing cleanup passed:
+https://github.com/agawlbb/FanControl/actions/runs/45411690814
+Release tag: `v0.13.4-build44`, pointing to the exact signed source above.
+No local app archive or raw release report was downloaded.
 Update both apps. Simulator/paired-device checks remain for paging gestures,
 Crown focus/haptics, crew scrolling, tap/return and updates during crew display.
 
