@@ -1,3 +1,23 @@
+# Ultra 4 flight opening and compact Completed — 0.13.3 (43), November 24, 2026
+
+The owner explicitly requested release of all completed changes. This coordinated
+iPhone/watch release preserves current flight selection and the 40-minute rule.
+The flight tile opens on its intended row without the preceding flight above it.
+Each row is a single scroll target; initial positioning waits for real eager
+layout, and later updates do not reset manual scrolling. Completed uses caption
+size; compact field spacing keeps the full countdown inside the Ultra 4 viewport.
+No server deployment or database/credential change is needed.
+
+UI source `53d20bfc948b7e2126168f5eba0e210e6b11bf3f` passed core tests
+and watch/iPhone SDK typechecks:
+https://github.com/agawlbb/FanControl/actions/runs/45321364847
+Ultra 4 (49mm), watchOS 27.2 compilation and focused/completed/late-data captures
+passed and were visually inspected:
+https://github.com/agawlbb/FanControl/actions/runs/45321364665
+App Store Connect highest uploaded build was 42; build 43 was unused.
+Signed release and Apple processing are pending. Update both iPhone and watch.
+Real-device Crown/touch scrolling and live phone-update behavior remain checks.
+
 # Previous trip flights — 0.13.2 (42), November 24, 2026
 
 The owner explicitly authorized server deployment and app release after the
