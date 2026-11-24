@@ -1,65 +1,64 @@
 import SwiftUI
 import FanControlCore
 
-/// Each visible entry opens once on the locally chosen flight; all rows remain scrollable.
+/// Each entry opens on the chosen flight; swipe or Crown steps between whole pages.
 struct FlightTileView: View {
     let state: [String: Any]
     let fresh: Bool
     let onSwipe: (Int) -> Void
-    @State private var positioned = false
+    @State private var selection = FlightPageSelection()
+    @State private var crownPosition = 0.0
+    @FocusState private var crownFocused: Bool
+
     private var flights: [[String: Any]] { state["flights"] as? [[String: Any]] ?? [] }
     private var openingIndex: Int? {
         guard !flights.isEmpty else { return nil }
         return min(max(state["opening_flight_index"] as? Int ?? 0, 0), flights.count - 1)
     }
 
+    private var flightKeys: [String] {
+        flights.map {
+            ($0["number"] as? String ?? "") + "|" +
+            ($0["scheduled_departure"] as? String ?? $0["departure"] as? String ?? "")
+        }
+    }
+
     var body: some View {
         GeometryReader { geometry in
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(spacing: 0) {
-                        if flights.isEmpty {
-                            Text(state["flightsync_paired"] as? Bool == false ? "Pair FlightSync in the iPhone app" : "No flight")
-                                .foregroundStyle(.gray)
-                        }
-                        ForEach(Array(flights.enumerated()), id: \.offset) { index, flight in
-                            // A single target per flight avoids a ForEach frame spanning
-                            // the previous divider/row when restoring a scroll position.
-                            VStack(spacing: 0) {
-                                flightInfo(flight)
-                                    .foregroundStyle(fresh && state["available"] as? Bool == true ? Color.mint : Color.gray)
-                                    .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
-                                if index < flights.count - 1 { Divider().padding(.vertical, 12) }
-                            }
-                            .id(index)
-                        }
-                    }
-                    .padding(.horizontal, 5)
-                    .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
-                    .contentShape(Rectangle())
-                    .background {
-                        GeometryReader { content in
-                            Color.clear.preference(key: FlightContentHeight.self, value: content.size.height)
-                        }
-                    }
-                }
-                // Observe horizontal swipes alongside native scrolling. A high-priority
-                // drag captures vertical movement before its onEnded direction check.
-                .simultaneousGesture(DragGesture(minimumDistance: TileSwipe.minimumDistance)
-                    .onEnded { value in
-                        if let direction = TileSwipe.direction(x: value.translation.width, y: value.translation.height) {
-                            onSwipe(direction)
-                        }
-                    })
-                .clipped()
-                .onPreferenceChange(FlightContentHeight.self) { height in
-                    // Scroll only after the eager rows have real layout dimensions,
-                    // including a first phone response. Do not reposition later updates.
-                    guard height > 0, !positioned, let openingIndex else { return }
-                    proxy.scrollTo(openingIndex, anchor: .top)
-                    positioned = true
+            Group {
+                if let index = selection.index ?? openingIndex, flights.indices.contains(index) {
+                    flightInfo(flights[index])
+                        .foregroundStyle(fresh && state["available"] as? Bool == true ? Color.mint : Color.gray)
+                } else {
+                    Text(state["flightsync_paired"] as? Bool == false ? "Pair FlightSync in the iPhone app" : "No flight")
+                        .foregroundStyle(.gray)
                 }
             }
+            .padding(.horizontal, 5)
+            .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
+            .contentShape(Rectangle())
+            .clipped()
+            .gesture(DragGesture(minimumDistance: TileSwipe.minimumDistance)
+                .onEnded { value in
+                    if let direction = TileSwipe.direction(x: value.translation.width, y: value.translation.height) {
+                        onSwipe(direction)
+                    } else if let direction = FlightPageSelection.verticalDirection(x: value.translation.width, y: value.translation.height) {
+                        selection.step(direction)
+                        crownPosition = Double(selection.index ?? 0)
+                    }
+                })
+            .focusable()
+            .focused($crownFocused)
+            .digitalCrownRotation($crownPosition, from: 0, through: Double(max(flights.count - 1, 1)),
+                                  by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
+            .onChange(of: crownPosition) { _, value in
+                selection.crown(value)
+            }
+            .onChange(of: flightKeys, initial: true) { _, keys in
+                selection.update(keys: keys, openingIndex: openingIndex)
+                crownPosition = Double(selection.index ?? 0)
+            }
+            .onAppear { crownFocused = true }
         }
     }
 
@@ -68,7 +67,7 @@ struct FlightTileView: View {
         let completed = flight["completed"] as? Bool == true
         return VStack(spacing: 0) {
             Text(flight["number"] as? String ?? "—").font(.headline)
-            Text(flight["city_pair"] as? String ?? "—").font(.title2.bold())
+            Text(FlightPresentation.airportPair(flight["city_pair"] as? String)).font(.title2.bold())
             if completed {
                 VStack(spacing: 2) {
                     Text("Arrival").font(.caption)
@@ -90,12 +89,5 @@ struct FlightTileView: View {
                 }
             }
         }
-    }
-}
-
-private struct FlightContentHeight: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
     }
 }

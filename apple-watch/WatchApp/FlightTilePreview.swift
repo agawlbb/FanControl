@@ -8,10 +8,10 @@ struct FlightTilePreview: View {
     private var state: [String: Any] {
         if args.contains("--preview-flight-delayed") && !loaded { return ["flights": []] }
         let flights: [[String: Any]] = (0..<6).map { index in
-            ["number": "AA\(100 + index)", "city_pair": index == 5 ? "BOS → CLT" : "CLT → BOS",
+            ["number": "AA\(100 + index)", "city_pair": index == 5 ? "KBOS → KCLT" : "KCLT → KBOS",
              "departure": Date.now.addingTimeInterval(7200).ISO8601Format(),
              "arrival": Date.now.addingTimeInterval(14400).ISO8601Format(),
-             "departure_timezone": "America/New_York", "completed": index < 5]
+             "departure_timezone": "America/New_York", "scheduled_departure": "2026-11-24T12:00:00Z", "completed": index < 5]
         }
         return ["flights": flights, "available": true,
                 "opening_flight_index": args.contains("--preview-flight-completed") ? 4 : 5]
