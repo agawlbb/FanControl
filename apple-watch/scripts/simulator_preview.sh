@@ -2,7 +2,7 @@
 set -euo pipefail
 xcrun simctl list devices available --json > build/simulators.json
 udid=$(python3 - <<'PY'
-import json, subprocess, sys
+import json, os, subprocess, sys
 with open('build/simulators.json') as f: devices=json.load(f)['devices']
 candidates=[(runtime, device) for runtime, entries in devices.items()
             if 'watchOS' in runtime for device in entries]
@@ -26,6 +26,8 @@ def priority(candidate):
     name=device['name'].lower()
     return ('ultra 4' in name, 'ultra' in name, runtime, device['name'])
 runtime, device=max(candidates, key=priority)
+if os.environ.get('FLIGHT_PREVIEW_ONLY') == 'true' and 'Ultra 4' not in device['name']:
+    raise SystemExit('Flight regression requires Apple Watch Ultra 4; no substitute model allowed')
 selection={'name':device['name'], 'udid':device['udid'], 'runtime':runtime, 'created':device['udid']==created_udid}
 print('Selected simulator: '+json.dumps(selection), file=sys.stderr)
 with open('build/watch-simulator-selection.json', 'w') as f: json.dump(selection, f)
@@ -45,6 +47,17 @@ cleanup_simulator() {
 trap cleanup_simulator EXIT
 xcrun simctl bootstatus "$udid" -b
 xcrun simctl install "$udid" build/Build/Products/Debug-watchsimulator/FanControlWatch.app
+if [[ "${FLIGHT_PREVIEW_ONLY:-false}" == true ]]; then
+    for mode in focused completed delayed; do
+        extra=()
+        [[ "$mode" == focused ]] || extra+=("--preview-flight-$mode")
+        xcrun simctl launch "$udid" dev.fancontrol.watch.watchkitapp --preview-flight "${extra[@]}"
+        sleep 3
+        xcrun simctl io "$udid" screenshot "build/watch-flight-$mode.png"
+        xcrun simctl terminate "$udid" dev.fancontrol.watch.watchkitapp
+    done
+    exit 0
+fi
 xcrun simctl launch "$udid" dev.fancontrol.watch.watchkitapp
 sleep 3
 xcrun simctl io "$udid" screenshot build/watch-first-launch.png

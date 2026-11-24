@@ -6,6 +6,10 @@ on:
         description: Capture unsigned simulator previews without a device archive
         type: boolean
         default: false
+      flight_preview_only:
+        description: Capture focused/completed flight cases on Apple Watch Ultra 4 only (use with preview_only)
+        type: boolean
+        default: false
       validation_only:
         description: Run core tests and compile unsigned simulators only
         type: boolean
@@ -52,6 +56,8 @@ jobs:
         run: xcodebuild -project FanControlWatch.xcodeproj -scheme FanControlWatch -sdk watchsimulator -destination 'generic/platform=watchOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
       - name: Capture watch simulator first launch
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.validation_only) }}
+        env:
+          FLIGHT_PREVIEW_ONLY: ${{ inputs.flight_preview_only }}
         run: bash scripts/simulator_preview.sh
       - name: Compile unsigned watchOS archive
         if: ${{ !inputs.validation_only && !inputs.preview_only }}

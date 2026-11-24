@@ -9,12 +9,24 @@ import FanControlCore
     init() { UNUserNotificationCenter.current().delegate = CommandAlerts.shared; WatchCompanion.shared.start(); CommandDelivery.shared.recover() }
     var body: some Scene {
         WindowGroup {
-            ControlsView().onChange(of: scenePhase) { _, phase in
+            root.onChange(of: scenePhase) { _, phase in
                 if phase != .active { CommandDelivery.shared.appInactive() }
             }
         }
             .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) { await BackgroundRefresh.run() }
     }
+    @ViewBuilder private var root: some View {
+        #if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("--preview-flight") {
+            FlightTilePreview()
+        } else {
+            ControlsView()
+        }
+        #else
+        ControlsView()
+        #endif
+    }
+
 }
 @MainActor final class WatchModel: ObservableObject {
     @Published var connection = Vault.load()

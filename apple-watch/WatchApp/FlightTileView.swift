@@ -7,6 +7,16 @@ struct FlightTileView: View {
     let fresh: Bool
     let onSwipe: (Int) -> Void
     @State private var positioned = false
+    @State private var scrollPosition: Int?
+
+    init(state: [String: Any], fresh: Bool, onSwipe: @escaping (Int) -> Void) {
+        self.state = state
+        self.fresh = fresh
+        self.onSwipe = onSwipe
+        let flights = state["flights"] as? [[String: Any]] ?? []
+        let index = flights.isEmpty ? nil : min(max(state["opening_flight_index"] as? Int ?? 0, 0), flights.count - 1)
+        _scrollPosition = State(initialValue: index)
+    }
 
     private var flights: [[String: Any]] { state["flights"] as? [[String: Any]] ?? [] }
     private var openingIndex: Int? {
@@ -16,21 +26,25 @@ struct FlightTileView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(spacing: 10) {
+                    LazyVStack(spacing: 0) {
                         if flights.isEmpty {
                             Text(state["flightsync_paired"] as? Bool == false ? "Pair FlightSync in the iPhone app" : "No flight")
                                 .foregroundStyle(.gray)
                         }
                         ForEach(Array(flights.enumerated()), id: \.offset) { index, flight in
-                            if index > 0 { Divider().padding(.vertical, 12) }
-                            flightInfo(flight)
-                                .foregroundStyle(fresh && state["available"] as? Bool == true ? Color.mint : Color.gray)
-                                .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
-                                .id(index)
+                            // A single target per flight avoids a ForEach frame spanning
+                            // the previous divider/row when restoring a scroll position.
+                            VStack(spacing: 0) {
+                                flightInfo(flight)
+                                    .foregroundStyle(fresh && state["available"] as? Bool == true ? Color.mint : Color.gray)
+                                    .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
+                                if index < flights.count - 1 { Divider().padding(.vertical, 12) }
+                            }
+                            .id(index)
                         }
                     }
+                    .scrollTargetLayout()
                     .padding(.horizontal, 5)
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
                     .contentShape(Rectangle())
@@ -43,14 +57,14 @@ struct FlightTileView: View {
                             onSwipe(direction)
                         }
                     })
-                .task(id: openingIndex) {
-                    // Wait for the current rows to be laid out, including a first phone response.
-                    await Task.yield()
-                    guard !Task.isCancelled, !positioned, let openingIndex else { return }
-                    proxy.scrollTo(openingIndex, anchor: .top)
+                .scrollPosition(id: $scrollPosition, anchor: .top)
+                .onChange(of: openingIndex, initial: true) { _, index in
+                    // Initial data can arrive after entry. Set the first position
+                    // declaratively; later phone updates must not reset manual scrolling.
+                    guard !positioned, let index else { return }
+                    scrollPosition = index
                     positioned = true
                 }
-            }
         }
     }
 
@@ -66,7 +80,7 @@ struct FlightTileView: View {
                     Text(FlightPresentation.departureTime(flight["arrival"] as? String,
                         timeZoneIdentifier: flight["departure_timezone"] as? String)).font(.title3)
                 }
-                Text("Completed").font(.title2)
+                Text("Completed").font(.caption)
             } else if let departure {
                 VStack(spacing: 2) {
                     Text("Departure").font(.caption)
