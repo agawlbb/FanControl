@@ -8,6 +8,26 @@ final class FlightTripTests: XCTestCase {
     private func trip(flights: String = #"[{"number":"AA123","city_pair":"CLT → BOS","departure":"2026-11-24T12:00:00Z","arrival":"2026-11-24T14:00:00Z"},{"number":"AA456","city_pair":"BOS → CLT","departure":"2026-11-25T12:00:00Z","arrival":"2026-11-25T14:00:00Z"}]"#) throws -> FlightTrip {
         try JSONDecoder().decode(FlightTrip.self, from: Data("{\"version\":1,\"available\":true,\"source_last_success\":\"2026-11-24T11:00:00Z\",\"flights\":\(flights)}".utf8)).validated()
     }
+    func testServerFocusRetainsPreviousFlightsAndDoesNotRewindWithDelayedEstimates() throws {
+        let original = try trip()
+        let encoded = try JSONEncoder().encode(original)
+        var payload = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        payload["focused_flight_index"] = 1
+        let value = try JSONDecoder().decode(FlightTrip.self, from: JSONSerialization.data(withJSONObject: payload)).validated()
+        let now = try date("2026-11-24T11:00:00Z")
+        XCTAssertEqual(value.openingFlightIndex(now: now), 1)
+        let rows = try XCTUnwrap(value.state(now: now)["flights"] as? [[String: Any]])
+        XCTAssertEqual(rows.count, 2)
+        XCTAssertEqual(rows[0]["completed"] as? Bool, true)
+        XCTAssertEqual(rows[1]["completed"] as? Bool, false)
+        XCTAssertEqual(rows[0]["arrival"] as? String, "2026-11-24T14:00:00Z")
+        let restored = try JSONDecoder().decode(PhoneFlightSnapshot.self,
+            from: JSONEncoder().encode(PhoneFlightSnapshot(watchID: "test", trip: value, generation: 1)))
+        XCTAssertEqual(restored.trip?.focused_flight_index, 1)
+        payload["focused_flight_index"] = 2
+        XCTAssertThrowsError(try JSONDecoder().decode(FlightTrip.self,
+            from: JSONSerialization.data(withJSONObject: payload)).validated())
+    }
     func testFullTripRetainsOrderAndFlightNumber() throws {
         let value = try trip()
         XCTAssertEqual(value.flights.map(\.number), ["AA123", "AA456"])
@@ -30,6 +50,8 @@ final class FlightTripTests: XCTestCase {
         XCTAssertEqual(rows.first?["departure"] as? String, "2026-11-24T12:00:00Z")
         XCTAssertNil(rows.first?["actual_departure"])
         XCTAssertNil(rows.first?["status"])
+        XCTAssertEqual(rows.first?["completed"] as? Bool, true)
+        XCTAssertEqual(rows.last?["completed"] as? Bool, false)
     }
     func testLaterEstimateReplacesOldCutoffWithoutChangingTheServerSnapshot() throws {
         let original = try trip()

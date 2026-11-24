@@ -21,8 +21,10 @@ public struct FlightTrip: Codable, Sendable, Equatable {
     public let available: Bool
     public let flights: [TripFlight]
     public let source_last_success: String?
+    public let focused_flight_index: Int?
     public func validated() throws -> FlightTrip {
-        guard version == 1, flights.count <= 200 else { throw ControlError.invalidResponse }
+        guard version == 1, flights.count <= 200,
+              focused_flight_index.map({ $0 >= 0 && $0 < max(1, flights.count) }) ?? true else { throw ControlError.invalidResponse }
         for flight in flights {
             guard !flight.number.isEmpty, flight.number.count <= 160,
                   !flight.city_pair.isEmpty, flight.city_pair.count <= 160,
@@ -35,7 +37,7 @@ public struct FlightTrip: Codable, Sendable, Equatable {
     /// Each new estimate replaces the previous cutoff; no progress is written back.
     public func openingFlightIndex(now: Date = Date()) -> Int? {
         guard !flights.isEmpty else { return nil }
-        var index = 0
+        var index = focused_flight_index ?? 0
         while index < flights.count - 1,
               let departure = FlightPresentation.departure(flights[index].departure),
               now.timeIntervalSince(departure) >= 40 * 60 {
@@ -46,7 +48,13 @@ public struct FlightTrip: Codable, Sendable, Equatable {
     public func state(now: Date = Date()) -> [String: Any] {
         let source = FlightPresentation.departure(source_last_success)
         let fresh = available && source.map { (0...180).contains(now.timeIntervalSince($0)) } == true
-        let raw = (try? JSONEncoder().encode(flights)).flatMap { try? JSONSerialization.jsonObject(with: $0) } ?? []
+        var raw = (try? JSONEncoder().encode(flights)).flatMap {
+            try? JSONSerialization.jsonObject(with: $0) as? [[String: Any]]
+        } ?? []
+        let opening = openingFlightIndex(now: now)
+        for index in raw.indices {
+            raw[index]["completed"] = index < (opening ?? 0)
+        }
         var state: [String: Any] = ["version": 1, "flights": raw, "available": fresh, "flightsync_paired": true]
         if let index = openingFlightIndex(now: now) { state["opening_flight_index"] = index }
         return state

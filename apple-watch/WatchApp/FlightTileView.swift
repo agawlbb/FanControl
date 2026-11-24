@@ -56,11 +56,18 @@ struct FlightTileView: View {
 
     private func flightInfo(_ flight: [String: Any]) -> some View {
         let departure = FlightPresentation.departure(flight["departure"] as? String)
-        // Keep the requested tile fields: number, city pair, departure time and countdown.
+        let completed = flight["completed"] as? Bool == true
         return VStack(spacing: 12) {
             Text(flight["number"] as? String ?? "—").font(.headline)
             Text(flight["city_pair"] as? String ?? "—").font(.title2.bold())
-            if let departure {
+            if completed {
+                VStack(spacing: 2) {
+                    Text("Arrival").font(.caption)
+                    Text(FlightPresentation.departureTime(flight["arrival"] as? String,
+                        timeZoneIdentifier: flight["departure_timezone"] as? String)).font(.title3)
+                }
+                Text("Completed").font(.title2)
+            } else if let departure {
                 VStack(spacing: 2) {
                     Text("Departure").font(.caption)
                     Text(FlightPresentation.departureTime(flight["departure"] as? String,
