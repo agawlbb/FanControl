@@ -7,17 +7,6 @@ struct FlightTileView: View {
     let fresh: Bool
     let onSwipe: (Int) -> Void
     @State private var positioned = false
-    @State private var scrollPosition: Int?
-
-    init(state: [String: Any], fresh: Bool, onSwipe: @escaping (Int) -> Void) {
-        self.state = state
-        self.fresh = fresh
-        self.onSwipe = onSwipe
-        let flights = state["flights"] as? [[String: Any]] ?? []
-        let index = flights.isEmpty ? nil : min(max(state["opening_flight_index"] as? Int ?? 0, 0), flights.count - 1)
-        _scrollPosition = State(initialValue: index)
-    }
-
     private var flights: [[String: Any]] { state["flights"] as? [[String: Any]] ?? [] }
     private var openingIndex: Int? {
         guard !flights.isEmpty else { return nil }
@@ -26,8 +15,9 @@ struct FlightTileView: View {
 
     var body: some View {
         GeometryReader { geometry in
+            ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 0) {
+                    VStack(spacing: 0) {
                         if flights.isEmpty {
                             Text(state["flightsync_paired"] as? Bool == false ? "Pair FlightSync in the iPhone app" : "No flight")
                                 .foregroundStyle(.gray)
@@ -44,10 +34,14 @@ struct FlightTileView: View {
                             .id(index)
                         }
                     }
-                    .scrollTargetLayout()
                     .padding(.horizontal, 5)
                     .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
                     .contentShape(Rectangle())
+                    .background {
+                        GeometryReader { content in
+                            Color.clear.preference(key: FlightContentHeight.self, value: content.size.height)
+                        }
+                    }
                 }
                 // Observe horizontal swipes alongside native scrolling. A high-priority
                 // drag captures vertical movement before its onEnded direction check.
@@ -57,14 +51,15 @@ struct FlightTileView: View {
                             onSwipe(direction)
                         }
                     })
-                .scrollPosition(id: $scrollPosition, anchor: .top)
-                .onChange(of: openingIndex, initial: true) { _, index in
-                    // Initial data can arrive after entry. Set the first position
-                    // declaratively; later phone updates must not reset manual scrolling.
-                    guard !positioned, let index else { return }
-                    scrollPosition = index
+                .clipped()
+                .onPreferenceChange(FlightContentHeight.self) { height in
+                    // Scroll only after the eager rows have real layout dimensions,
+                    // including a first phone response. Do not reposition later updates.
+                    guard height > 0, !positioned, let openingIndex else { return }
+                    proxy.scrollTo(openingIndex, anchor: .top)
                     positioned = true
                 }
+            }
         }
     }
 
@@ -95,5 +90,12 @@ struct FlightTileView: View {
                 }
             }
         }
+    }
+}
+
+private struct FlightContentHeight: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
