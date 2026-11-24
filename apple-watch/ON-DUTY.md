@@ -1,3 +1,37 @@
+## Ultra 4 flight opening and Completed size — November 24, 2026
+
+Source `53d20bfc948b7e2126168f5eba0e210e6b11bf3f` is prepared and verified;
+an app release is still needed. No server deployment is required or performed.
+Each flight now has one scroll target, including its trailing divider. Entry
+positioning waits for real eager-row layout dimensions rather than a single
+task yield or estimated lazy positions. The scroll area clips content to its
+viewport so the previous row does not show above the selected flight.
+Positioning remains once per entry; later phone updates do not reset scrolling.
+The existing shared focus and local 40-minute rule are unchanged.
+Completed uses caption size; tighter field spacing keeps the full countdown
+inside the Ultra 4 viewport.
+
+Core tests and watch/iPhone SDK typechecks passed:
+https://github.com/agawlbb/FanControl/actions/runs/45321364847
+Unsigned compilation and visual capture passed on **Apple Watch Ultra 4 (49mm),
+watchOS 27.2**:
+https://github.com/agawlbb/FanControl/actions/runs/45321364665
+Inspected focused AA105, completed AA104, and initially empty/late-data AA105
+screenshots: each expected flight starts at the top without the preceding row;
+all requested fields and the complete countdown fit. Synthetic simulator-only
+fixtures do not pair or fetch flight data. The capture requires the actual Ultra 4
+model and all three screenshot files. The script shuts down the selected existing
+simulator; it deletes only a simulator it created.
+The first capture script's macOS Bash empty-array error was corrected; subsequent
+visual checks caught the initial positioning and countdown clipping before the
+final passing run. Real-device Crown/touch scrolling and live phone-update
+behavior remain physical checks.
+
+Only the completed-row screenshot is offered for user review at ignored
+`build/flight-preview-53d20bf/watch-flight-completed.png`; retain until retrieved
+or superseded. Downloaded ZIPs, extracted app bundles and superseded/intermediate
+screenshots are absent. No distributable build or TestFlight release was requested.
+
 ## Previous flights in the selected trip — November 24, 2026
 
 Released in Internal TestFlight 0.13.2 (42); FlightSync deployment verified. FlightSync retains the whole selected trip
