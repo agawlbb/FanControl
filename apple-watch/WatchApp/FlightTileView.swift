@@ -66,7 +66,7 @@ struct FlightTileView: View {
     private func flightInfo(_ flight: [String: Any]) -> some View {
         let departure = FlightPresentation.departure(flight["departure"] as? String)
         let completed = flight["completed"] as? Bool == true
-        return VStack(spacing: 12) {
+        return VStack(spacing: 6) {
             Text(flight["number"] as? String ?? "—").font(.headline)
             Text(flight["city_pair"] as? String ?? "—").font(.title2.bold())
             if completed {
