@@ -1,3 +1,31 @@
+# Previous trip flights — 0.13.2 (42), November 24, 2026
+
+The owner explicitly authorized server deployment and app release after the
+change. The selected trip retains earlier flights above the unchanged focused
+flight. FlightSync sends its shared current/next focus separately; the watch
+still applies the existing 40-minute rule and retains the final flight if no
+next flight exists. Earlier rows show Arrival and Completed, with arrival time
+in the departure airport's timezone. Focused/following rows retain departure
+and countdown. Completed is presentation only, not a new progress signal.
+Manual scrolling is not reset by phone updates.
+
+Exact release source: `921e0ab3746d08c9135df15d90b85f7e2fb51ff0`.
+Core tests and both SDK typechecks passed:
+https://github.com/agawlbb/FanControl/actions/runs/45313971443
+67 relevant server tests and Python compilation passed. FlightSync image
+`vm-4757709` is deployed, healthy and serving fresh full-trip snapshots.
+App Store Connect highest uploaded build was 41; build 42 was unused.
+Published to the existing **Internal** TestFlight group. Apple build
+`59e1c65a-35cb-4f5e-9e70-60350e0a78e2` is `VALID`, not expired,
+`IN_BETA_TESTING`, marketing version 0.13.2, without non-exempt encryption.
+Signed archive/export, production APNs entitlements, upload, Apple processing,
+existing Internal-group access and temporary signing cleanup passed.
+Release tag: `v0.13.2-build42`, pointing to the exact signed source above.
+Verified release:
+https://github.com/agawlbb/FanControl/actions/runs/45314451669
+Update both apps. Paired-watch scrolling, foreground updates and offline
+reopening remain physical checks. No local archive/report has been downloaded.
+
 # Flight tile display, scrolling and airport time — 0.13.1 (41), November 23, 2026
 
 The user authorized release after changing flight times to the departure airport's

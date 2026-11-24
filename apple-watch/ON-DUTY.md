@@ -1,6 +1,6 @@
 ## Previous flights in the selected trip — November 24, 2026
 
-Authorized deployment and app release 0.13.2 (42) pending verification. FlightSync retains the whole selected trip
+Released in Internal TestFlight 0.13.2 (42); FlightSync deployment verified. FlightSync retains the whole selected trip
 in source order and sends optional `focused_flight_index` from its existing
 current/next selector. The watch starts there and applies the unchanged 40-minute
 departure cutoff, retaining the final flight when no next flight exists.
@@ -9,9 +9,13 @@ and Time to go. Arrival is formatted in the departure airport's timezone, as
 requested for all flight times. This is presentation only, not a new flight
 completion signal. Focused/following rows retain departure and countdown.
 Phone updates do not reposition an already scrolling view. Old cached payloads
-without the focus field default to zero. Update server and both apps together.
+without the focus field default to zero. Server image `vm-4757709` is deployed and healthy. Update both apps.
 Paired-device touch/Crown scrolling, foreground updates and offline reopening
 remain physical checks. The owner explicitly authorized server deployment and app release.
+Exact source `921e0ab3746d08c9135df15d90b85f7e2fb51ff0` passed core/SDK
+checks (run 45313971443); release run 45314451669 passed Apple processing
+and existing Internal-group access. Apple build `59e1c65a-35cb-4f5e-9e70-60350e0a78e2`
+is VALID and IN_BETA_TESTING.
 
 # Direct FlightSync flight tile — Apple 0.13.1 (41), November 23, 2026
 
