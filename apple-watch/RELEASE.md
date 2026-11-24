@@ -12,7 +12,17 @@ Fix source `698a6cf644a31416ed711602c02523b23407cd45` passed core
 regressions and both Apple SDK typechecks:
 https://github.com/agawlbb/FanControl/actions/runs/45418031437
 App Store Connect highest uploaded build was 44; build 45 was unused.
-Signed release and Apple processing are pending. Update both apps.
+Published to the existing **Internal** TestFlight group. Apple build
+`28079e1f-1bd9-40ce-aa02-e152c2eefe6e` is `VALID`, not expired,
+`IN_BETA_TESTING`, marketing version 0.13.5, without non-exempt encryption.
+Exact signed source: `08c1774e7bf5289e5f68094466901c981bcc4389`.
+Exact-source core tests and both SDK typechecks passed:
+https://github.com/agawlbb/FanControl/actions/runs/45418952853
+Signed archive/export, production APNs entitlements, upload, Apple processing,
+existing Internal-group access and temporary signing cleanup passed:
+https://github.com/agawlbb/FanControl/actions/runs/45418952698
+Release tag: `v0.13.5-build45`, pointing to the exact signed source.
+No local app archive or raw release report was downloaded. Update both apps.
 Simulator/paired-device swipe/tap arbitration, Settings long press, accessibility
 and Close/Crown restoration remain interaction checks.
 

@@ -3,7 +3,8 @@
 Source `698a6cf644a31416ed711602c02523b23407cd45` is prepared and
 verified by core regression tests and watch/iPhone SDK typechecks:
 https://github.com/agawlbb/FanControl/actions/runs/45418031437
-A new app build/release is required; this follow-up did not request one.
+The owner subsequently requested release; 0.13.5 (45) is now published and
+verified in Internal TestFlight.
 No server deployment or crew data/cache changes are needed.
 
 The flight page no longer nests a Button tap recognizer under its drag gesture.
@@ -23,8 +24,13 @@ Regression coverage includes diagonal routing, radial threshold, zero/short
 drag rejection, directional page stepping and preserved unrelated tile gestures.
 Native arbitration, quick/curved/reversed swipes over text and empty space,
 true taps, long-press Settings, VoiceOver activation and Close/Crown restoration
-remain simulator/paired-watch interaction checks. No simulator/distributable
-build was dispatched and no task artifact was created.
+remain simulator/paired-watch interaction checks. No new simulator run was
+dispatched. Signed release source
+`08c1774e7bf5289e5f68094466901c981bcc4389` passed core/SDK checks
+(run 45418952853) and release run 45418952698. Apple build
+`28079e1f-1bd9-40ce-aa02-e152c2eefe6e` is VALID and IN_BETA_TESTING;
+existing Internal-group access and signing cleanup passed. No local app archive
+or task artifact was retained.
 
 ## Tap a flight for crew — November 24, 2026
 
