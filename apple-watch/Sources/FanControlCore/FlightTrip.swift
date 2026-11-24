@@ -14,6 +14,7 @@ public struct TripFlight: Codable, Sendable, Equatable {
     public let status: String?
     public let route: String?
     public let delay_minutes: Double?
+    public let crew: [FlightCrewMember]?
 }
 
 public struct FlightTrip: Codable, Sendable, Equatable {
@@ -30,6 +31,12 @@ public struct FlightTrip: Codable, Sendable, Equatable {
                   !flight.city_pair.isEmpty, flight.city_pair.count <= 160,
                   FlightPresentation.departure(flight.departure) != nil,
                   FlightPresentation.departure(flight.arrival) != nil else { throw ControlError.invalidResponse }
+            guard (flight.crew?.count ?? 0) <= 20 else { throw ControlError.invalidResponse }
+            for member in flight.crew ?? [] {
+                guard !member.employee_number.isEmpty, member.employee_number.count <= 160,
+                      (member.first_name?.count ?? 0) <= 255,
+                      (member.last_name?.count ?? 0) <= 255 else { throw ControlError.invalidResponse }
+            }
         }
         return self
     }
@@ -68,5 +75,18 @@ public struct PhoneFlightSnapshot: Codable, Sendable {
     public let generation: Int64
     public init(watchID: String, trip: FlightTrip?, generation: Int64) {
         self.watchID = watchID; self.trip = trip; self.generation = generation
+    }
+}
+
+/// Read-only crew fields from the private FlightSync snapshot; preserve leading zeros.
+public struct FlightCrewMember: Codable, Sendable, Equatable {
+    public let first_name: String?
+    public let last_name: String?
+    public let employee_number: String
+
+    public var displayName: String {
+        let parts = [first_name, last_name].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return parts.isEmpty ? "Name unavailable" : parts.joined(separator: " ")
     }
 }

@@ -28,6 +28,25 @@ final class FlightTripTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(FlightTrip.self,
             from: JSONSerialization.data(withJSONObject: payload)).validated())
     }
+    func testCrewRetainsNamesAndEmployeeNumbersThroughPhoneWatchOfflineSnapshot() throws {
+        let flights = #"""
+        [
+            {"number":"AA1","city_pair":"CLT → BOS","departure":"2026-11-24T12:00:00Z","arrival":"2026-11-24T14:00:00Z",
+             "crew":[{"first_name":"Lex","last_name":"Example","employee_number":"000001"},{"first_name":null,"last_name":"Sample","employee_number":"000002"}]},
+            {"number":"AA2","city_pair":"BOS → CLT","departure":"2026-11-25T12:00:00Z","arrival":"2026-11-25T14:00:00Z","crew":[]}
+        ]
+        """#
+        let value = PhoneFlightSnapshot(watchID: "test", trip: try trip(flights: flights), generation: 1)
+        let restored = try JSONDecoder().decode(PhoneFlightSnapshot.self, from: JSONEncoder().encode(value))
+        XCTAssertEqual(restored.trip?.flights[0].crew?.map(\.displayName), ["Lex Example", "Sample"])
+        XCTAssertEqual(restored.trip?.flights[0].crew?.map(\.employee_number), ["000001", "000002"])
+        XCTAssertEqual(restored.trip?.flights[1].crew, [])
+        let rows = try XCTUnwrap(restored.trip?.state()["flights"] as? [[String: Any]])
+        let crew = try XCTUnwrap(rows[0]["crew"] as? [[String: Any]])
+        XCTAssertEqual(crew[0]["employee_number"] as? String, "000001")
+        XCTAssertNil(try trip().flights[0].crew) // Existing caches remain compatible.
+    }
+
     func testFullTripRetainsOrderAndFlightNumber() throws {
         let value = try trip()
         XCTAssertEqual(value.flights.map(\.number), ["AA123", "AA456"])

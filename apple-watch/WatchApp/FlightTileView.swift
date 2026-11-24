@@ -9,6 +9,7 @@ struct FlightTileView: View {
     @State private var selection = FlightPageSelection()
     @State private var crownPosition = 0.0
     @FocusState private var crownFocused: Bool
+    @State private var crewFlight: CrewFlight?
 
     private var flights: [[String: Any]] { state["flights"] as? [[String: Any]] ?? [] }
     private var openingIndex: Int? {
@@ -27,8 +28,17 @@ struct FlightTileView: View {
         GeometryReader { geometry in
             Group {
                 if let index = selection.index ?? openingIndex, flights.indices.contains(index) {
-                    flightInfo(flights[index])
-                        .foregroundStyle(fresh && state["available"] as? Bool == true ? Color.mint : Color.gray)
+                    Button {
+                        crownFocused = false
+                        crewFlight = CrewFlight(id: flightKeys[index], flight: flights[index])
+                    } label: {
+                        flightInfo(flights[index])
+                            .foregroundStyle(fresh && state["available"] as? Bool == true ? Color.mint : Color.gray)
+                            .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Show flight crew")
                 } else {
                     Text(state["flightsync_paired"] as? Bool == false ? "Pair FlightSync in the iPhone app" : "No flight")
                         .foregroundStyle(.gray)
@@ -47,11 +57,12 @@ struct FlightTileView: View {
                         crownPosition = Double(selection.index ?? 0)
                     }
                 })
-            .focusable()
+            .focusable(crewFlight == nil)
             .focused($crownFocused)
             .digitalCrownRotation($crownPosition, from: 0, through: Double(max(flights.count - 1, 1)),
                                   by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
             .onChange(of: crownPosition) { _, value in
+                guard crewFlight == nil else { return }
                 selection.crown(value)
             }
             .onChange(of: flightKeys, initial: true) { _, keys in
@@ -59,6 +70,12 @@ struct FlightTileView: View {
                 crownPosition = Double(selection.index ?? 0)
             }
             .onAppear { crownFocused = true }
+            .sheet(item: $crewFlight, onDismiss: { crownFocused = true }) { captured in
+                // Update this crew only when the same flight still exists. Never
+                // substitute another flight at a reused index after a trip update.
+                let current = flightKeys.firstIndex(of: captured.id).map { flights[$0] } ?? captured.flight
+                FlightCrewView(flight: current)
+            }
         }
     }
 
@@ -90,4 +107,9 @@ struct FlightTileView: View {
             }
         }
     }
+}
+
+private struct CrewFlight: Identifiable {
+    let id: String
+    let flight: [String: Any]
 }
