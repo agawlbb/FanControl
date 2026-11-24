@@ -1,3 +1,36 @@
+## Discrete flight pages and IATA labels — November 24, 2026
+
+Source `354fbbec52e57295d3bdbad765ddd07ea49e92d5` is prepared and verified
+by core tests and watch/iPhone SDK typechecks:
+https://github.com/agawlbb/FanControl/actions/runs/45407258778
+An app build/release is still required; none was requested for this follow-up.
+No server deployment, schema or credential change is needed.
+
+One flight is rendered at a time, without a ScrollView or neighboring partial
+rows. One dominant upward swipe selects the following flight; downward selects
+the previous flight. Crown positions use discrete one-flight detents, with no
+wrapping beyond the first/last flight. Horizontal swipes retain main-tile
+navigation. Entry still uses the existing opening index and 40-minute rule.
+Passive updates retain the selected flight when its number/scheduled-departure
+identity remains present, even if earlier legs disappear or indices change.
+An empty trip clears selection; a different trip uses its opening focus.
+
+Labels normalize cached and live mixed ICAO/IATA routes using FlightSync's
+existing supported-airport registry: KCLT/KBOS become CLT/BOS, CYVR becomes YVR,
+and supported Caribbean codes retain their explicit mappings. Unknown four-letter
+identifiers show a dash instead of being guessed or displayed as ICAO.
+Existing three-letter codes are uppercase. Raw trip data and timezone metadata
+remain unchanged. Completed/arrival presentation, compact text and departure-airport
+local times are preserved.
+
+Regression coverage includes opening focus, single-swipe stepping, horizontal/
+diagonal discrimination, bounded Crown positions, empty/late trips, passive
+selection retention/reordering, and mixed US/Canadian/Caribbean code labels.
+Actual swipe/Crown focus, haptics and direction remain simulator/paired-watch
+checks; no app/simulator build was dispatched for this source-only change.
+The old scrolling-layout screenshot was superseded and removed from
+`build/flight-preview-53d20bf/`; no task artifact is retained.
+
 ## Ultra 4 flight opening and Completed size — November 24, 2026
 
 Source `53d20bfc948b7e2126168f5eba0e210e6b11bf3f` is prepared and verified;
