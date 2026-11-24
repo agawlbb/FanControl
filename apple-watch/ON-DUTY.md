@@ -1,3 +1,31 @@
+## Exclusive flight swipe/tap and Close-only crew — November 24, 2026
+
+Source `698a6cf644a31416ed711602c02523b23407cd45` is prepared and
+verified by core regression tests and watch/iPhone SDK typechecks:
+https://github.com/agawlbb/FanControl/actions/runs/45418031437
+A new app build/release is required; this follow-up did not request one.
+No server deployment or crew data/cache changes are needed.
+
+The flight page no longer nests a Button tap recognizer under its drag gesture.
+A single native exclusive DragGesture-before-TapGesture arbitrates each touch:
+recognized drags can only navigate or be ignored, never open crew on release.
+Only the successful tap branch (or accessibility activation) opens crew.
+Flight-specific swipe routing uses radial minimum travel and the dominant axis,
+with vertical priority on exact diagonals. This removes the previous gap between
+the two 1.5x direction thresholds. Shared gestures on other panels are unchanged.
+Each swipe still steps one flight, boundaries do not wrap, and Crown selection
+is unchanged. Returning a recognized drag to its starting point does not open crew.
+
+Crew presentation retains the native sheet Close button and removes the custom
+return icon. Native dismissal continues to restore flight Crown focus and the
+selected flight. The flight number, crew list and missing-data state remain.
+Regression coverage includes diagonal routing, radial threshold, zero/short
+drag rejection, directional page stepping and preserved unrelated tile gestures.
+Native arbitration, quick/curved/reversed swipes over text and empty space,
+true taps, long-press Settings, VoiceOver activation and Close/Crown restoration
+remain simulator/paired-watch interaction checks. No simulator/distributable
+build was dispatched and no task artifact was created.
+
 ## Tap a flight for crew — November 24, 2026
 
 Prepared in app source `fe18fefde4a54854bfa6234c486dfa87769078e3` and
