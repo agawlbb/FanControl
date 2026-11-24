@@ -28,17 +28,12 @@ struct FlightTileView: View {
         GeometryReader { geometry in
             Group {
                 if let index = selection.index ?? openingIndex, flights.indices.contains(index) {
-                    Button {
-                        crownFocused = false
-                        crewFlight = CrewFlight(id: flightKeys[index], flight: flights[index])
-                    } label: {
-                        flightInfo(flights[index])
-                            .foregroundStyle(fresh && state["available"] as? Bool == true ? Color.mint : Color.gray)
-                            .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Show flight crew")
+                    flightInfo(flights[index])
+                        .foregroundStyle(fresh && state["available"] as? Bool == true ? Color.mint : Color.gray)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHint("Show flight crew")
+                        .accessibilityAction { openCrew() }
                 } else {
                     Text(state["flightsync_paired"] as? Bool == false ? "Pair FlightSync in the iPhone app" : "No flight")
                         .foregroundStyle(.gray)
@@ -48,13 +43,24 @@ struct FlightTileView: View {
             .frame(maxWidth: .infinity, minHeight: geometry.size.height, alignment: .top)
             .contentShape(Rectangle())
             .clipped()
+            // One recognizer arbitrates the whole touch. Once a drag wins,
+            // its release cannot also activate the crew tap (even after reversing).
             .gesture(DragGesture(minimumDistance: TileSwipe.minimumDistance)
-                .onEnded { value in
-                    if let direction = TileSwipe.direction(x: value.translation.width, y: value.translation.height) {
-                        onSwipe(direction)
-                    } else if let direction = FlightPageSelection.verticalDirection(x: value.translation.width, y: value.translation.height) {
-                        selection.step(direction)
-                        crownPosition = Double(selection.index ?? 0)
+                .exclusively(before: TapGesture())
+                .onEnded { result in
+                    switch result {
+                    case .first(let value):
+                        switch FlightTileSwipe.direction(x: value.translation.width, y: value.translation.height) {
+                        case .tile(let direction):
+                            onSwipe(direction)
+                        case .flight(let direction):
+                            selection.step(direction)
+                            crownPosition = Double(selection.index ?? 0)
+                        case nil:
+                            break
+                        }
+                    case .second:
+                        openCrew()
                     }
                 })
             .focusable(crewFlight == nil)
@@ -77,6 +83,13 @@ struct FlightTileView: View {
                 FlightCrewView(flight: current)
             }
         }
+    }
+
+    private func openCrew() {
+        guard crewFlight == nil, let index = selection.index ?? openingIndex,
+              flights.indices.contains(index) else { return }
+        crownFocused = false
+        crewFlight = CrewFlight(id: flightKeys[index], flight: flights[index])
     }
 
     private func flightInfo(_ flight: [String: Any]) -> some View {

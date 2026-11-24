@@ -4,7 +4,6 @@ import FanControlCore
 /// Crew scrolling owns the Crown while presented; the flight page stays selected.
 struct FlightCrewView: View {
     let flight: [String: Any]
-    @Environment(\.dismiss) private var dismiss
 
     private var crew: [FlightCrewMember] {
         guard let raw = flight["crew"], JSONSerialization.isValidJSONObject(raw),
@@ -15,16 +14,7 @@ struct FlightCrewView: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            HStack {
-                Button { dismiss() } label: {
-                    Image(systemName: "arrow.uturn.backward")
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Return to flight")
-                Spacer()
-                Text(flight["number"] as? String ?? "—").font(.headline)
-            }
+            Text(flight["number"] as? String ?? "—").font(.headline)
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     if crew.isEmpty {

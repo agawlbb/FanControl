@@ -28,8 +28,18 @@ public struct FlightPageSelection: Equatable, Sendable {
         index = Int(bounded.rounded())
     }
 
-    public static func verticalDirection(x: CGFloat, y: CGFloat) -> Int? {
-        guard abs(y) >= TileSwipe.minimumDistance, abs(y) > abs(x) * 1.5 else { return nil }
-        return y < 0 ? 1 : -1
+}
+
+/// Flight-only routing: choose the dominant axis without a diagonal dead zone.
+/// A recognized drag that returns to its starting point is ignored, never a tap.
+public enum FlightTileSwipe: Equatable, Sendable {
+    case flight(Int)
+    case tile(Int)
+
+    public static func direction(x: CGFloat, y: CGFloat) -> Self? {
+        guard x.isFinite, y.isFinite,
+              hypot(Double(x), Double(y)) >= Double(TileSwipe.minimumDistance) else { return nil }
+        if abs(y) >= abs(x) { return .flight(y < 0 ? 1 : -1) }
+        return .tile(x < 0 ? 1 : -1)
     }
 }

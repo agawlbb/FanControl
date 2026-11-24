@@ -6,19 +6,37 @@ final class FlightPageSelectionTests: XCTestCase {
         var pages = FlightPageSelection()
         pages.update(keys: ["previous", "current", "next", "last"], openingIndex: 1)
         XCTAssertEqual(pages.index, 1)
-        let up = FlightPageSelection.verticalDirection(x: 2, y: -200)!
+        guard case .flight(let up) = FlightTileSwipe.direction(x: 2, y: -200) else {
+            return XCTFail("Upward swipe should select the following flight")
+        }
         pages.step(up)
         XCTAssertEqual(pages.index, 2)
-        pages.step(FlightPageSelection.verticalDirection(x: 1, y: 40)!)
+        guard case .flight(let down) = FlightTileSwipe.direction(x: 1, y: 40) else {
+            return XCTFail("Downward swipe should select the previous flight")
+        }
+        pages.step(down)
         XCTAssertEqual(pages.index, 1)
         pages.step(-1); pages.step(-1)
         XCTAssertEqual(pages.index, 0)
         pages.step(1); pages.step(1); pages.step(1); pages.step(1)
         XCTAssertEqual(pages.index, 3)
-        XCTAssertNil(FlightPageSelection.verticalDirection(x: 100, y: -20))
-        XCTAssertNil(FlightPageSelection.verticalDirection(x: 30, y: -30))
-        XCTAssertNil(FlightPageSelection.verticalDirection(x: 0, y: -5))
+        XCTAssertEqual(FlightTileSwipe.direction(x: 100, y: -20), .tile(-1))
+        XCTAssertEqual(FlightTileSwipe.direction(x: 30, y: -30), .flight(1))
+        XCTAssertNil(FlightTileSwipe.direction(x: 0, y: -5))
         XCTAssertEqual(TileSwipe.direction(x: -100, y: 20), 1)
+    }
+
+    func testDiagonalSwipesAlwaysChooseOneAxisAndCancelledDragsDoNotTap() {
+        // These diagonals previously fell between both 1.5x direction thresholds.
+        XCTAssertEqual(FlightTileSwipe.direction(x: -40, y: -35), .tile(1))
+        XCTAssertEqual(FlightTileSwipe.direction(x: 35, y: -40), .flight(1))
+        XCTAssertEqual(FlightTileSwipe.direction(x: 35, y: 40), .flight(-1))
+        XCTAssertEqual(FlightTileSwipe.direction(x: 40, y: 35), .tile(-1))
+        XCTAssertEqual(FlightTileSwipe.direction(x: 9, y: -9), .flight(1))
+        // The native exclusive drag branch ignores these; only TapGesture opens crew.
+        XCTAssertNil(FlightTileSwipe.direction(x: 0, y: 0))
+        XCTAssertNil(FlightTileSwipe.direction(x: 3, y: -3))
+        XCTAssertNil(FlightTileSwipe.direction(x: .nan, y: 30))
     }
 
     func testCrownUsesBoundedDiscreteFlightPositions() {
