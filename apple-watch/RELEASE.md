@@ -1,3 +1,28 @@
+# Flight paging, IATA airports and crew — 0.13.4 (44), November 24, 2026
+
+The owner explicitly authorized server deployment and app release. One flight
+is displayed per page. Dominant up/down swipes step between flights, Crown
+positions select discrete flights, and horizontal swipes retain main-tile
+navigation. Existing opening focus, the 40-minute rule, airport-local times
+and previous-flight Arrival/Completed presentation remain unchanged. Supported
+mixed ICAO/IATA routes render IATA codes, including cached data.
+
+Tap a flight to see its crew names and employee numbers, with a return icon
+to the same flight. Crew details scroll independently while the flight pager's
+Crown handler is disabled. Leading zeros and offline phone/watch crew caches
+are preserved. Missing crew shows No crew information. FlightSync supplies
+only first/last names and employee numbers behind existing direct pairing.
+No database schema, credential, HA or public-route changes are needed.
+
+Crew app source `fe18fef`, including discrete paging source `354fbbe`,
+passed core tests and both Apple SDK typechecks:
+https://github.com/agawlbb/FanControl/actions/runs/45409169757
+FlightSync source `e1a4f1b` passed 69 relevant server tests and compilation.
+App Store Connect highest uploaded build was 43; build 44 was unused.
+Coordinated server deployment, signed release and Apple processing are pending.
+Update both apps. Simulator/paired-device checks remain for paging gestures,
+Crown focus/haptics, crew scrolling, tap/return and updates during crew display.
+
 # Ultra 4 flight opening and compact Completed — 0.13.3 (43), November 24, 2026
 
 The owner explicitly requested release of all completed changes. This coordinated
