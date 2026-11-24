@@ -1,3 +1,21 @@
+# Exclusive flight gestures and Close-only crew — 0.13.5 (45), November 24, 2026
+
+The owner explicitly requested release after the gesture fix. Flight pages use
+one native exclusive drag-before-tap recognizer instead of a Button competing
+with a drag. Recognized drags navigate or are ignored, never open crew on release.
+Dominant-axis routing removes the flight swipe diagonal dead zone. Each swipe
+still steps one flight, and horizontal main-tile navigation is preserved.
+Crew details retain only the native sheet Close control. Closing restores the
+same selected flight and Crown focus. No server change is needed.
+
+Fix source `698a6cf644a31416ed711602c02523b23407cd45` passed core
+regressions and both Apple SDK typechecks:
+https://github.com/agawlbb/FanControl/actions/runs/45418031437
+App Store Connect highest uploaded build was 44; build 45 was unused.
+Signed release and Apple processing are pending. Update both apps.
+Simulator/paired-device swipe/tap arbitration, Settings long press, accessibility
+and Close/Crown restoration remain interaction checks.
+
 # Flight paging, IATA airports and crew — 0.13.4 (44), November 24, 2026
 
 The owner explicitly authorized server deployment and app release. One flight
