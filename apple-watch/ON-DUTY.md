@@ -1,7 +1,7 @@
 ## Ultra 4 flight opening and Completed size — November 24, 2026
 
 Source `53d20bfc948b7e2126168f5eba0e210e6b11bf3f` is prepared and verified;
-an app release is still needed. No server deployment is required or performed.
+released in Internal TestFlight 0.13.3 (43). No server deployment is required or performed.
 Each flight now has one scroll target, including its trailing divider. Entry
 positioning waits for real eager-row layout dimensions rather than a single
 task yield or estimated lazy positions. The scroll area clips content to its
@@ -30,7 +30,11 @@ behavior remain physical checks.
 Only the completed-row screenshot is offered for user review at ignored
 `build/flight-preview-53d20bf/watch-flight-completed.png`; retain until retrieved
 or superseded. Downloaded ZIPs, extracted app bundles and superseded/intermediate
-screenshots are absent. No distributable build or TestFlight release was requested.
+screenshots are absent. The owner subsequently explicitly requested release.
+Signed source `f77e1b33fcf0e17b1b56e4dabc5a975361f942d2` passed core/SDK
+checks (run 45322303495) and release run 45322303385. Apple build
+`c88ccb03-f251-46db-b850-6eba816222d9` is VALID and IN_BETA_TESTING;
+existing Internal-group access and signing cleanup passed. Update both apps.
 
 ## Previous flights in the selected trip — November 24, 2026
 

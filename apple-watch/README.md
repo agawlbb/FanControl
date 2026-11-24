@@ -1,6 +1,6 @@
 # Fan Control for iPhone and Apple Watch
 
-**Current TestFlight release:** 0.13.2 (42), iOS 17+ and watchOS 10+.
+**Current TestFlight release:** 0.13.3 (43), iOS 17+ and watchOS 10+.
 The iPhone pairs directly with FlightSync using a server secret. The flight tile
 shows the remaining trip and flight numbers, opening on the next flight at
 40 minutes after the latest departure estimate while retaining skipped flights
@@ -110,7 +110,7 @@ For instructions to run tests, build on GitHub's Mac runner, configure Apple
 signing credentials, and publish to internal TestFlight directly from this
 repository, see [GitHub builds and TestFlight setup](GITHUB-TESTFLIGHT.md).
 
-Current version: **0.13.2 (42)**; iOS 17+, watchOS 10+, HA 0.14.0. Published to the existing Internal TestFlight group. Flight tiles show flight number, city pair, departure in each departure airport’s local timezone and countdown; native vertical scrolling retains access to all earlier and following flights in the selected trip. Earlier rows show arrival time and Completed; the opening focus and 40-minute rule are unchanged. Update both iPhone and watch. Paired-device scrolling remains a physical check. Podcast shows compact series/episode titles, playback, Mark Complete and visible native iPhone volume without scrolling. Paired-watch Crown response remains a physical check.
+Current version: **0.13.3 (43)**; iOS 17+, watchOS 10+, HA 0.14.0. Published to the existing Internal TestFlight group. Flight tiles show flight number, city pair, departure in each departure airport’s local timezone and countdown; native vertical scrolling retains access to all earlier and following flights in the selected trip. Earlier rows show arrival time and caption-sized Completed; the opening focus and 40-minute rule are unchanged. Ultra 4 simulator checks verify the correct row at entry and a fully visible countdown. Update both iPhone and watch. Paired-device scrolling remains a physical check. Podcast shows compact series/episode titles, playback, Mark Complete and visible native iPhone volume without scrolling. Paired-watch Crown response remains a physical check.
 `swift test` runs core regression tests. XcodeGen uses `project.yml` to generate
 the iPhone, watch and complication targets. GitHub app builds and TestFlight publication run only by explicit dispatch. Inspect workflow triggers before pushing; do not run release workflows
 for documentation maintenance.

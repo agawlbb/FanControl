@@ -15,7 +15,19 @@ Ultra 4 (49mm), watchOS 27.2 compilation and focused/completed/late-data capture
 passed and were visually inspected:
 https://github.com/agawlbb/FanControl/actions/runs/45321364665
 App Store Connect highest uploaded build was 42; build 43 was unused.
-Signed release and Apple processing are pending. Update both iPhone and watch.
+Published to the existing **Internal** TestFlight group. Apple build
+`c88ccb03-f251-46db-b850-6eba816222d9` is `VALID`, not expired,
+`IN_BETA_TESTING`, marketing version 0.13.3, without non-exempt encryption.
+Exact signed source: `f77e1b33fcf0e17b1b56e4dabc5a975361f942d2`.
+Exact-source core tests and both SDK typechecks passed:
+https://github.com/agawlbb/FanControl/actions/runs/45322303495
+Signed archive/export, production APNs entitlements, upload, Apple processing,
+existing Internal-group access and temporary signing cleanup passed:
+https://github.com/agawlbb/FanControl/actions/runs/45322303385
+Release tag: `v0.13.3-build43`, pointing to the exact signed source.
+No local app archive or raw release report was downloaded. The existing Ultra 4
+completed-row preview remains for user retrieval under its recorded condition.
+Update both iPhone and watch.
 Real-device Crown/touch scrolling and live phone-update behavior remain checks.
 
 # Previous trip flights — 0.13.2 (42), November 24, 2026
