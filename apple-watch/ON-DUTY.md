@@ -1,3 +1,36 @@
+## Tap a flight for crew — November 24, 2026
+
+Prepared in app source `fe18fefde4a54854bfa6234c486dfa87769078e3` and
+FlightSync source `e1a4f1b`; server deployment and a coordinated phone/watch
+build/release are still required and were not requested for this follow-up.
+This includes the earlier prepared discrete flight pages and IATA labels.
+
+Tap a flight page to open its crew names and employee numbers. A fixed
+`arrow.uturn.backward` return button dismisses the crew screen and restores
+pager Crown focus without changing the selected flight. The crew list can scroll
+independently; the underlying flight Crown handler is disabled during presentation.
+Details stay tied to the tapped flight identity, with current same-flight metadata
+when available and captured details if the trip removes that flight. Missing
+crew displays No crew information. Partial names remain usable and employee
+numbers remain strings, preserving leading zeros. No role/seniority/tail/notes
+fields are added to the screen or private crew payload.
+
+FlightSync reads its existing durable flight metadata within the same scoped
+snapshot transaction, adding optional per-flight `crew` with `first_name`,
+`last_name`, `employee_number`. This remains behind the existing separate phone
+pairing secret and participates in the existing change-hint digest. The phone
+retains crew in the whole-trip offline snapshot and WatchConnectivity envelope.
+Old caches/servers without crew remain compatible and show the missing-data state.
+No database schema, HA, credentials or public endpoint changes are required.
+
+69 relevant server tests and Python compilation passed, including crew isolation
+between flights, completed-flight retention and crew-only hint changes.
+Core cache/leading-zero tests and both Apple SDK typechecks passed:
+https://github.com/agawlbb/FanControl/actions/runs/45409169757
+No simulator/distributable build or deployment was dispatched. Physical checks
+remain for tile tap versus swipe, native crew Crown scrolling, return-to-same-flight,
+missing crew, and live updates while details are open. No task artifact retained.
+
 ## Discrete flight pages and IATA labels — November 24, 2026
 
 Source `354fbbec52e57295d3bdbad765ddd07ea49e92d5` is prepared and verified
